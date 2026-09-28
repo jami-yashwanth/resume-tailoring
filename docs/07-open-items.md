@@ -3,7 +3,17 @@
 ## Decisions still needed
 - Data-policy FAQ: a draft is on the landing page, marked "[Draft: confirm storage region and deletion time]". Needs real hosting and legal answers.
 - Final ₹149 pack size once real per-resume AI cost is measured (15 vs 10).
-- Update the design system's type tokens to the chosen web pairing (Bricolage Grotesque + Geist + Geist Mono); tokens still list Literata / Hind / IBM Plex Mono.
+- `design/design-system/tokens.json` and `bundle.css` are a **v1 canvas snapshot** and now
+  diverge from the shipped code on four points: the type families (they still list Literata /
+  Hind / IBM Plex Mono), `link` (retired), `focus` (now ink) and dark `action` (no longer the
+  highlighter). They are deliberately **not** hand-edited — `design/README.md` says the canvas
+  is the source of truth and these files are refreshed from it, so a local edit would be
+  silently reverted on the next refresh. Fix at the source: update the canvas artifact, then
+  refresh the snapshot. Until then the live spec is `design/redesign/tokens.css`, which matches
+  `src/app/globals.css`.
+- The Claude Design canvas still shows v1 of the landing and Result screens (Bricolage, carded
+  hero, 19 eyebrows). `src/` and `design/redesign/` are v2. Reconcile before anyone treats the
+  canvas as current.
 - A drawn logo (the Wordmark is a typographic stand-in).
 
 ## To verify from primary sources

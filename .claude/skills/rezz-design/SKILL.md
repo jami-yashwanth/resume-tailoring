@@ -26,23 +26,27 @@ Screens: `design/screens/*.dc.html` (canvas copies). Core screen spec: `docs/03-
 
 ## Type
 
-Web pairing chosen on the canvas (28 Sep 2026), use this for all new web work:
+**One rule: sans is Rezz talking, serif is what the user wrote.**
 
-| Role | Family | Weights |
+| Token | Face | Carries |
 | --- | --- | --- |
-| Display / headlines | **Bricolage Grotesque** (opsz 12..96) | 600, 700 |
-| UI and reading text | **Geist** | 400, 500, 600 |
-| Evidence: source tags, parse previews, file facts, eyebrows | **Geist Mono** | 400, 500 |
+| `--font-ui` | **Geist** (variable, 400–600 in use) | every word Rezz says: chrome, headlines, copy |
+| `--font-doc` | the user's own font (Georgia in samples) | every word the user wrote |
+| `--font-mark` | **Geist Mono** | margin marks and source tags only |
 
-Known drift: `tokens.json` and `bundle.css` still ship Literata / Hind / IBM Plex
-Mono. That is a tracked open item (`docs/07-open-items.md`). Follow the table
-above and say in your summary that the tokens still need updating.
+Rezz's promise is *this is still your resume*. If the app chrome and the
+document share a face, that boundary blurs; making the split absolute means you
+can tell at a glance whose words are whose. The type system enforces the product
+rule, which is why it is worth defending.
 
-Rules: the display family is for headlines only — never buttons, inputs or
-labels. Mono marks evidence and is the only uppercase text (`eyebrow`). Body
-text is never below 16px. Type scale lives in `tokens.json` → `type.groups`
-(`display-xl` 56, `display` 40, `heading-1` 28, `heading-2` 20, `body-lg` 18,
-`body` 16, `body-sm` 14, `label` 15, `caption` 12).
+**Bricolage Grotesque is retired** (superseded 28 Sep 2026). It sat in a token
+named `--font-serif` while being a grotesque, and its deliberate quirk argued
+against a product selling sober honesty. There is no separate display face: the
+headline is Geist at 600 with tight tracking on a short measure, because the
+drama belongs to the document, not the headline.
+
+Rules: mono marks evidence only. Body text is never below 16px. Never use a
+`--font-*` token for the wrong voice — app chrome in `--font-doc` is a bug.
 
 ## Colour
 
@@ -53,14 +57,21 @@ secondary `ink-muted`. Hairlines: `line`; control borders `line-strong`.
 - **`highlighter` (#e4f264) means exactly one thing: this text changed.** Only as
   a background behind changed text (Highlight), the Wordmark stroke, and the
   dark-theme `action` fill. Never as a text colour, never decoration.
-- **The resume sheet is `sheet` / `sheet-ink` — paper white in both themes.**
-  Dark mode darkens the app *around* the resume, never the resume.
+- **The resume sheet is paper-white in both themes.** Dark mode darkens the app
+  *around* the resume, never the resume. The `.sheet` class is not decoration:
+  it re-declares every theme-varying token it uses, so dark values can never
+  land on white paper. Keep the class, and when you add a token the sheet reads,
+  add it to that block too. Caught twice already: dark `--gap-soft` painted a
+  dark block behind dark text, and dark `--focus` would draw a near-white ring
+  on white paper. `--shadow-sheet` is deliberately excluded — it falls on the
+  app's ground, so it must follow the theme.
 - `verified` = sourced and confirmed. `gap` = missing, needs the user — always
   paired with a word, never colour alone.
 - Primary buttons `action` / `on-action`; one primary button per view.
 - Links are `link` and always underlined.
-- Focus is `focus-ring`: 2px paper gap, then a 2px solid `focus` ring, on every
-  interactive element.
+- Focus is `outline: 2px solid var(--focus)` with `outline-offset: 2px` — a real
+  gap of whatever ground is behind it, correct on paper, on cards and on the
+  white sheet with one declaration, and never clipped by a scroll container.
 
 ## Layout, depth, motion
 

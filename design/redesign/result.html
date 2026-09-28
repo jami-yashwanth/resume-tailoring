@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Backend Engineer, Kosha Payments — Rezz</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="tokens.css">
+<style>
+html, body { height: 100%; }
+body { display: flex; flex-direction: column; overflow: hidden; }
+
+/* ---- ONE bar of chrome (v1 had header + status stacked) ---- */
+.bar { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center;
+  gap: var(--space-8); padding: var(--space-3) var(--space-8);
+  background: var(--paper-raised); border-bottom: 1px solid var(--line); }
+.bar .id { display: flex; align-items: baseline; gap: var(--space-4); min-width: 0; }
+.mark { font-size: 21px; font-weight: 600; letter-spacing: -0.04em; position: relative;
+  display: inline-block; flex: none; }
+.mark::before { content: ""; position: absolute; left: -3px; right: -3px; bottom: 2px; height: 7px;
+  background: var(--highlighter); z-index: -1; }
+.crumb { font-size: 15px; line-height: 21px; min-width: 0; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap; }
+.crumb a { color: var(--ink-muted); text-decoration: none; }
+.crumb a:hover { text-decoration: underline; }
+.crumb b { font-weight: 600; }
+.bar .state { display: block; font-size: 13px; line-height: 18px; color: var(--ink-muted); margin-top: 1px; }
+.bar .right { display: flex; align-items: center; gap: var(--space-4); }
+.pages { font-size: 13px; line-height: 18px; color: var(--ink-muted); }
+
+.btn { display: inline-flex; align-items: center; justify-content: center; min-height: 40px;
+  padding: 0 var(--space-4); border: 1px solid transparent; border-radius: var(--radius-md);
+  font: 600 14px/20px var(--font-ui); cursor: pointer; text-decoration: none;
+  transition: background-color 150ms, color 150ms, border-color 150ms; }
+.btn--primary { background: var(--action); color: var(--on-action); }
+.btn--primary:hover { background: #24344f; }
+.btn--secondary { background: transparent; color: var(--ink); border-color: var(--line-strong); }
+.btn--secondary:hover { border-color: var(--ink); }
+.tgl { display: inline-flex; align-items: center; gap: var(--space-2); min-height: 40px;
+  padding: 0 var(--space-4) 0 var(--space-3); border: 1px solid var(--line-strong);
+  border-radius: var(--radius-full); background: transparent; color: var(--ink);
+  font: 500 14px/20px var(--font-ui); cursor: pointer; }
+.tgl i { width: 28px; height: 16px; border-radius: 9999px; background: var(--line-strong);
+  position: relative; flex: none; }
+.tgl i::after { content: ""; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px;
+  border-radius: 9999px; background: #fff; }
+
+/* ---- workspace ---- */
+.work { flex: 1; min-height: 0; display: grid;
+  grid-template-columns: 264px minmax(0,620px) 300px; gap: var(--space-8);
+  justify-content: center; padding: var(--space-8) var(--space-8) 0;
+  background: var(--paper-sunken); overflow-y: auto; }
+
+/* left: the job. no card — a rule and a big honest number. */
+.job h2 { margin: 0; font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink-muted); }
+.job .gain { margin: var(--space-2) 0 var(--space-1); font-size: 34px; line-height: 38px;
+  font-weight: 600; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.job .before { font-size: 14px; line-height: 21px; color: var(--ink-muted); }
+.job ul { margin: var(--space-6) 0 0; padding: 0; list-style: none; border-top: 1px solid var(--line); }
+.job li { border-bottom: 1px solid var(--line); }
+.job button, .job .fixed { display: grid; grid-template-columns: 18px minmax(0,1fr); gap: var(--space-3);
+  width: 100%; text-align: left; background: none; border: 0; padding: 10px var(--space-2);
+  font: 400 15px/21px var(--font-ui); color: var(--ink); cursor: pointer; }
+.job .fixed { cursor: default; color: var(--ink-muted); }
+.job button:hover { background: var(--paper-raised); }
+.job small { grid-column: 2; display: block; font-size: 12.5px; line-height: 17px;
+  color: var(--ink-muted); margin-top: 2px; }
+.st { font-family: var(--font-mark); font-size: 13px; line-height: 21px; font-weight: 500; }
+.st--ok { color: var(--verified); }
+.st--ask { color: var(--gap); }
+.st--no { color: var(--ink-muted); }
+.job .hint { margin: var(--space-4) 0 0; font-size: 12.5px; line-height: 18px; color: var(--ink-muted); }
+
+/* centre: the document */
+.sheet { background: var(--sheet); color: var(--sheet-ink); border-radius: var(--radius-sheet);
+  box-shadow: var(--shadow-sheet); padding: 48px 52px 72px; font-family: var(--font-doc);
+  font-size: 13.5px; line-height: 21px; align-self: start; }
+.sheet .who { font-size: 21px; line-height: 26px; font-weight: 700; letter-spacing: -0.01em; }
+.sheet .contact { color: #5a6273; font-size: 12.5px; }
+.sheet hr { border: 0; border-top: 1px solid var(--sheet-line); margin: 16px 0 12px; }
+.sheet h4 { margin: 0 0 6px; font-size: 11px; line-height: 14px; letter-spacing: .1em;
+  text-transform: uppercase; color: #5a6273; font-weight: 700; }
+.sheet .role { display: flex; justify-content: space-between; gap: 12px; font-weight: 700; }
+.sheet ul { margin: 6px 0 0; padding-left: 16px; }
+.sheet li { margin: 5px 0; }
+.sheet .pend { outline: 1.5px dashed var(--gap); outline-offset: 3px; border-radius: 2px;
+  background: var(--gap-soft); }
+.sheet .gone { color: #8a94a6; text-decoration: line-through; }
+
+/* right: the margin — the signature. bigger and louder than v1. */
+.margin { position: relative; font-family: var(--font-mark); }
+.mk { position: absolute; left: 0; right: 0; display: flex; align-items: flex-start; gap: 10px;
+  font-size: 12px; line-height: 16px; font-weight: 500; color: var(--ink); }
+.mk::before { content: ""; flex: 0 0 22px; height: 1px; margin-top: 8px; background: var(--line-strong); }
+.mk b { font-weight: 500; }
+.mk span { display: block; color: var(--ink-muted); font-weight: 400; margin-top: 3px; }
+.mk--ask { color: var(--gap); }
+.mk--ask::before { background: var(--gap); }
+.mk--ask span { color: var(--gap); opacity: .85; }
+.mk--cut::before { background: var(--line-strong); }
+.mk--cut, .mk--cut b { color: var(--ink-muted); }
+
+/* the popover, anchored in the margin */
+.pop { position: absolute; left: 32px; right: 0; margin-top: -6px; background: var(--paper-raised);
+  border: 1px solid var(--line); border-radius: var(--radius-lg); box-shadow: var(--shadow-float);
+  padding: var(--space-4); font-family: var(--font-ui); font-size: 14px; line-height: 21px;
+  display: flex; flex-direction: column; gap: var(--space-3); z-index: 5; }
+.pop h3 { margin: 0; font-size: 15px; line-height: 22px; font-weight: 600; }
+.pop q { quotes: none; display: block; font-family: var(--font-doc); font-size: 13px; line-height: 20px;
+  color: var(--ink-muted); padding: var(--space-2) var(--space-3); background: var(--paper-sunken);
+  border-radius: var(--radius-md); }
+.pop .k { font-family: var(--font-mark); font-size: 11px; line-height: 16px; color: var(--ink-muted);
+  display: block; margin-bottom: 3px; }
+.pop .acts { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4); }
+.pop .lk { background: none; border: 0; padding: 0; min-height: 28px; color: var(--ink);
+  font: 500 14px/20px var(--font-ui); text-decoration: underline; text-underline-offset: 3px;
+  cursor: pointer; }
+
+/* ---- the one decision, at the bottom ---- */
+.decide { display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center;
+  gap: var(--space-8); padding: var(--space-4) var(--space-8);
+  background: var(--paper-raised); border-top: 1px solid var(--line);
+  box-shadow: 0 -8px 24px -12px #15203326; }
+.decide .n { font-family: var(--font-mark); font-size: 11.5px; line-height: 16px; color: var(--gap);
+  display: block; margin-bottom: 3px; }
+.decide .q { font-size: 17px; line-height: 25px; font-weight: 600; }
+.decide .draft { font-family: var(--font-doc); font-size: 14px; line-height: 21px;
+  color: var(--ink-muted); margin-top: 2px; }
+.decide .note { font-size: 13px; line-height: 19px; color: var(--ink-muted); margin-top: 4px; }
+.decide .pair { display: flex; gap: var(--space-3); }
+/* equal weight, nothing pre-selected — a product rule, not a style choice */
+.decide .pair .btn { min-width: 132px; min-height: 46px; font-size: 15px;
+  background: transparent; color: var(--ink); border-color: var(--line-strong); }
+.decide .pair .btn:hover { border-color: var(--ink); }
+
+/* The Result screen is a desktop workspace (web first, per CLAUDE.md). Narrower
+   than this it drops the panels rather than overflowing. */
+@media (max-width: 1240px) {
+  .work { grid-template-columns: 240px minmax(0,1fr); }
+  .margin { display: none; }
+}
+@media (max-width: 900px) {
+  .work { grid-template-columns: minmax(0,1fr); padding: var(--space-4); }
+  .job { display: none; }
+  .bar { grid-template-columns: minmax(0,1fr); gap: var(--space-3); }
+  .bar .right { flex-wrap: wrap; }
+  .decide { grid-template-columns: minmax(0,1fr); }
+  .decide .pair .btn { flex: 1; }
+}
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <div>
+    <div class="id">
+      <span class="mark">rezz</span>
+      <div class="crumb"><a href="#tracker">Your resumes</a> / <b>Backend Engineer, Kosha Payments &mdash; Pune</b></div>
+    </div>
+    <span class="state" role="status">7 lines reworded from your own facts. 2 lines need your OK.</span>
+  </div>
+  <div class="right">
+    <span class="pages">Page 1 of 1</span>
+    <button class="tgl" type="button" aria-pressed="false"><i aria-hidden="true"></i>Compare with original</button>
+    <a class="btn btn--secondary" href="#download">Download resume</a>
+  </div>
+</header>
+
+<div class="work">
+
+  <aside class="job" aria-label="What this job asks for">
+    <h2>This job asks for nine things</h2>
+    <div class="gain">Covers 6 of 9</div>
+    <div class="before">Your original covered 3.</div>
+    <ul>
+      <li><button type="button"><span class="st st--ok">&#10003;</span><span>Java</span></button></li>
+      <li><button type="button"><span class="st st--ok">&#10003;</span><span>Spring Boot</span></button></li>
+      <li><button type="button"><span class="st st--ok">&#10003;</span><span>AWS</span></button></li>
+      <li><button type="button"><span class="st st--ok">&#10003;</span><span>Microservices</span></button></li>
+      <li><button type="button"><span class="st st--ok">&#10003;</span><span>REST APIs</span></button></li>
+      <li><button type="button"><span class="st st--ok">&#10003;</span><span>Mentoring</span></button></li>
+      <li><button type="button"><span class="st st--ask">!</span><span>Kafka<small>Must have. Not in your resume.</small></span></button></li>
+      <li><button type="button"><span class="st st--ask">!</span><span>Kubernetes<small>Nice to have. Not in your resume.</small></span></button></li>
+      <li><div class="fixed"><span class="st st--no">&ndash;</span><span>Based in Pune, on-site<small>You're in Bengaluru. We never change this.</small></span></div></li>
+    </ul>
+    <p class="hint">Choose a requirement to find its line in your resume.</p>
+  </aside>
+
+  <article class="sheet" aria-label="Your resume, tailored">
+    <div class="who">Priya Sharma</div>
+    <div class="contact">Backend Engineer &middot; Bengaluru &middot; Notice period 30 days &middot; priya.sharma@example.com</div>
+    <hr>
+    <p id="r-sum" style="margin:0"><mark>Backend engineer with 3 years building payment and ledger services in Java and Spring Boot on AWS.</mark></p>
+    <hr>
+    <h4>Experience</h4>
+    <div class="role"><span>Razorfin &mdash; Software Engineer, Backend</span><span>Aug 2024 &ndash; present</span></div>
+    <ul>
+      <li id="r-p95"><mark style="animation-delay:120ms">Cut payment API p95 latency from 820&nbsp;ms to 310&nbsp;ms using async Spring Boot workers on AWS ECS.</mark></li>
+      <li><mark style="animation-delay:240ms">Split the refunds module into 4 microservices, each deployed on its own.</mark></li>
+      <li><mark style="animation-delay:360ms">Mentored 2 junior engineers through their first on-call rotations.</mark></li>
+      <li id="r-kafka"><span class="pend">Consumed payment events from Kafka topics to update the ledger.</span></li>
+      <li id="r-cut"><span class="gone">Moved nightly batch jobs from cron to a managed scheduler.</span></li>
+    </ul>
+    <div class="role" style="margin-top:14px"><span>Kitebyte Labs &mdash; Associate Software Engineer</span><span>Jul 2023 &ndash; Aug 2024</span></div>
+    <ul>
+      <li><mark style="animation-delay:480ms">Wrote REST APIs in Java for an internal billing tool used by 40 staff.</mark></li>
+      <li>Added JUnit and Testcontainers integration tests to the loyalty service.</li>
+    </ul>
+    <hr>
+    <h4>Skills</h4>
+    <p id="r-skills" style="margin:0"><mark style="animation-delay:600ms">Java, Spring Boot, AWS (ECS, SQS, RDS), microservices</mark>, PostgreSQL, Redis, Docker, Git, Python, <span class="pend">Kubernetes</span></p>
+    <hr>
+    <h4>Education</h4>
+    <p style="margin:0">B.Tech, Computer Science &mdash; CGPA 8.4<span style="float:right">2023</span></p>
+  </article>
+
+  <div class="margin" aria-label="What changed and why">
+    <p class="mk" data-for="r-sum"><span><b>Reworded</b><span>from your summary</span></span></p>
+    <p class="mk" data-for="r-p95"><span><b>Reworded</b><span>your facts #2, #4</span></span></p>
+    <p class="mk mk--ask" data-for="r-kafka"><span><b>Needs your OK</b><span>Kafka isn't yours</span></span></p>
+    <p class="mk mk--cut" data-for="r-cut"><span><b>Removed to fit</b><span>least relevant here</span></span></p>
+
+    <div class="pop" data-for="r-skills" role="dialog" aria-label="Why this line changed">
+      <h3>The job lists Java, Spring Boot and AWS first.</h3>
+      <div><span class="k">based on your line</span><q>Python, Git, Docker, Java, Spring Boot, AWS, PostgreSQL, Redis</q></div>
+      <div><span class="k">the job says</span><q>Strong Java, Spring Boot and AWS background.</q></div>
+      <div><span class="k" style="color:var(--verified)">&mdash; reordered, nothing added</span></div>
+      <div class="acts">
+        <button class="lk" type="button">Undo</button>
+        <button class="lk" type="button">Try another wording</button>
+        <button class="lk" type="button">Edit</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="decide">
+  <div>
+    <span class="n">decision 1 of 2</span>
+    <div class="q">Kafka isn't in your resume. Add this line to your Razorfin role?</div>
+    <div class="draft">&ldquo;Consumed payment events from Kafka topics to update the ledger.&rdquo;</div>
+    <div class="note">Recruiters may ask you about it. Nothing is added unless you choose Add it.</div>
+  </div>
+  <div class="pair">
+    <button class="btn" type="button">Skip</button>
+    <button class="btn" type="button">Add it</button>
+  </div>
+</div>
+
+<script>
+/* Marks are annotations on specific lines, so they are positioned from those
+   lines rather than from hand-tuned offsets that drift the moment copy changes. */
+function alignMarks() {
+  document.querySelectorAll(".margin").forEach(function (margin) {
+    var base = margin.getBoundingClientRect().top;
+
+    // floating layers sit exactly on their line
+    margin.querySelectorAll(".pop[data-for]").forEach(function (el) {
+      var t = document.getElementById(el.dataset.for);
+      if (t) el.style.top = (t.getBoundingClientRect().top - base) + "px";
+    });
+
+    // marks sit on their line, then are pushed down just enough not to overlap
+    // the mark above — two annotated lines can be one line apart.
+    var floor = -Infinity;
+    margin.querySelectorAll(".mk[data-for]").forEach(function (mk) {
+      var t = document.getElementById(mk.dataset.for);
+      if (!t) return;
+      var want = t.getBoundingClientRect().top - base;
+      var top = Math.max(want, floor);
+      mk.style.top = top + "px";
+      floor = top + mk.offsetHeight + 8;
+    });
+  });
+}
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(alignMarks);
+else window.addEventListener("load", alignMarks);
+window.addEventListener("resize", alignMarks);
+</script>
+</body>
+</html>
