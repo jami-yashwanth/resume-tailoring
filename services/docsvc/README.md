@@ -24,7 +24,7 @@ already works.
 ```bash
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
-.venv/bin/uvicorn app.main:app --reload --port 8000
+DOCSVC_ALLOW_INSECURE=true .venv/bin/uvicorn app.main:app --reload --port 8000
 ```
 
 `GET /health` reports whether a renderer was found. Without LibreOffice the
@@ -32,7 +32,7 @@ service still runs, but page counts fall back to estimates and say so in
 `warnings` — never trust a fit decision made in that mode.
 
 ```bash
-.venv/bin/pytest          # 19 tests; the renderer ones skip if LibreOffice is absent
+.venv/bin/pytest          # 49 tests; the renderer ones skip if LibreOffice is absent
 ```
 
 ## Endpoints
@@ -44,9 +44,20 @@ service still runs, but page counts fall back to estimates and say so in
 | `POST /apply` | Document + plan in, edited document out, inside the page budget |
 | `POST /export` | Final file as DOCX (as-is) or PDF (via the renderer) |
 
-Files cross the wire base64-encoded. Set `DOCSVC_TOKEN` and every route but
-`/health` requires `Authorization: Bearer $DOCSVC_TOKEN`. **Unset means open** —
-that is for local development, and the service must never be deployed without it.
+Files cross the wire base64-encoded, capped at 15 MB. Every route but `/health`
+requires `Authorization: Bearer $DOCSVC_TOKEN`.
+
+**With no token set the service refuses to serve at all** (503), rather than
+running open. A forgotten environment variable must not be the difference
+between locked and wide open. To run without authentication locally, say so
+explicitly:
+
+```bash
+DOCSVC_ALLOW_INSECURE=true .venv/bin/uvicorn app.main:app --reload --port 8000
+```
+
+A real `DOCSVC_TOKEN` always wins; the escape hatch cannot weaken a configured
+token.
 
 ## Addressing lines
 
@@ -84,6 +95,8 @@ within a margin rather than exact.
 Built for Fly.io in `bom` (Mumbai) — the only managed container host with an
 India region, which is what keeps the data-residency answer simple.
 
-Two operational notes. The image is large (LibreOffice ~700 MB), so give the
-machine at least 1 GB of RAM. And `bom` is a high-demand region on Fly: pin
+Three operational notes. The image is large (LibreOffice ~700 MB), so give the
+machine at least 1 GB of RAM. `bom` is a high-demand region on Fly: pin
 `min_machines_running = 1` so it cannot scale to zero and fail to come back.
+And set `DOCSVC_TOKEN` — without it the service returns 503 to everything,
+which is deliberate.

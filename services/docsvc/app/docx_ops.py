@@ -14,6 +14,7 @@ import copy
 
 import pymupdf
 from docx import Document
+from lxml import etree
 from docx.shared import Emu
 from docx.text.paragraph import Paragraph
 from docx.text.run import Run as DocxRun  # distinct from the wire type below
@@ -278,6 +279,18 @@ def _runs(p, base: float) -> tuple[list[Run], float]:
 
 A_NS = "{http://schemas.openxmlformats.org/drawingml/2006/main}"
 
+#: Everything this service parses arrives inside a file a stranger uploaded.
+#: lxml resolves entities by default, so a crafted theme part could read local
+#: files through a SYSTEM entity or exhaust memory by expanding nested ones.
+#: None of that is needed to read a font name.
+_SAFE_XML = etree.XMLParser(
+    resolve_entities=False,
+    no_network=True,
+    load_dtd=False,
+    dtd_validation=False,
+    huge_tree=False,
+)
+
 
 def _theme_font(doc, reference: str | None) -> str | None:
     """Resolve `minorHAnsi` / `majorHAnsi` to the family the theme names."""
@@ -297,10 +310,8 @@ def _theme_font(doc, reference: str | None) -> str | None:
     if theme is None:
         return None
     try:
-        from lxml import etree
-
-        root = etree.fromstring(theme.blob)
-    except Exception:
+        root = etree.fromstring(theme.blob, parser=_SAFE_XML)
+    except etree.XMLSyntaxError:
         return None
     latin = root.find(f".//{A_NS}fontScheme/{A_NS}{slot}/{A_NS}latin")
     return latin.get("typeface") if latin is not None else None

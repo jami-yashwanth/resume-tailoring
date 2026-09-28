@@ -1,9 +1,8 @@
 # docsvc — the file pipeline.
 #
 # Heavy on purpose: LibreOffice is what makes the page count real rather than
-# estimated, and Tectonic is what compiles a LaTeX resume. Neither fits in a
-# serverless function, which is the whole reason this service exists separately
-# from the Next.js app.
+# estimated, and it does not fit in a serverless function — which is the whole
+# reason this service exists separately from the Next.js app.
 FROM python:3.12-slim-bookworm
 
 ENV PYTHONUNBUFFERED=1 \
@@ -26,9 +25,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       curl ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Tectonic for the LaTeX path. Self-contained binary, no TeX Live tree.
-RUN curl -fsSL https://drop-sh.fullyjustified.net | sh -s -- --dest /usr/local/bin \
-    && chmod +x /usr/local/bin/tectonic
+# Tectonic, for the LaTeX path, is deliberately NOT installed here yet.
+#
+# It was previously fetched with `curl … | sh` from a third-party host, with no
+# version pin and no checksum — an unreviewed remote script running as root at
+# build time, for a binary nothing in this service calls. docs/05-architecture.md
+# still lists LaTeX as "Not prototyped".
+#
+# When the LaTeX path is built, install a pinned release tarball from the
+# project's own GitHub releases and verify its sha256 before unpacking. Do not
+# restore the piped installer.
 
 WORKDIR /srv
 COPY requirements.txt .

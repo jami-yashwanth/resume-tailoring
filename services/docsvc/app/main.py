@@ -7,6 +7,7 @@ database and never sees the Claude API key.
 import base64
 import binascii
 import os
+import secrets
 import shutil
 import tempfile
 from pathlib import Path
@@ -22,23 +23,50 @@ from .models import ApplyRequest, ApplyResponse, Layout
 app = FastAPI(title="docsvc", version="0.1.0")
 
 
+#: A resume is about as personal as a document gets, and this service will
+#: edit any one it is handed. Refusing to serve without a token is the only
+#: safe default: a forgotten environment variable must not be the difference
+#: between locked and wide open. Same reasoning as `gatesEnforced` on the web
+#: side — secure unless something explicitly says otherwise.
 def require_token(authorization: str | None = Header(default=None)) -> None:
-    """Locked by a shared bearer token. Unset means local development — the
-    service must never be deployed without DOCSVC_TOKEN set."""
     expected = os.environ.get("DOCSVC_TOKEN")
+
     if not expected:
-        return
-    if authorization != f"Bearer {expected}":
+        if os.environ.get("DOCSVC_ALLOW_INSECURE", "").strip().lower() == "true":
+            return  # local development, opted into deliberately
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "DOCSVC_TOKEN is not set. Set it, or set DOCSVC_ALLOW_INSECURE=true "
+                "to run without authentication locally."
+            ),
+        )
+
+    # Constant-time: a plain == leaks the token a character at a time to
+    # anyone who can measure the response.
+    if not secrets.compare_digest(authorization or "", f"Bearer {expected}"):
         raise HTTPException(status_code=401, detail="bad or missing bearer token")
 
 
+#: Resumes are a page or two. Anything approaching this is not a resume, and
+#: without a ceiling a single request can fill the disk of a machine that has
+#: to hold a LibreOffice render as well.
+MAX_UPLOAD_BYTES = 15 * 1024 * 1024
+
+
 def _decode(data: str, suffix: str) -> str:
+    # Checked before decoding, so an oversized payload is rejected rather than
+    # materialised in memory first.
+    if len(data) > MAX_UPLOAD_BYTES * 4 // 3 + 1024:
+        raise HTTPException(status_code=413, detail="file is too large (limit 15 MB)")
     try:
         raw = base64.b64decode(data, validate=True)
     except (binascii.Error, ValueError) as exc:
         raise HTTPException(status_code=400, detail=f"file is not valid base64: {exc}") from exc
     if not raw:
         raise HTTPException(status_code=400, detail="file is empty")
+    if len(raw) > MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="file is too large (limit 15 MB)")
     handle = tempfile.NamedTemporaryFile(suffix=suffix, delete=False)
     handle.write(raw)
     handle.close()

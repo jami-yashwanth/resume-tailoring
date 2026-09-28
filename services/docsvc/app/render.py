@@ -10,11 +10,16 @@ import os
 import shutil
 import subprocess
 import tempfile
+from collections import OrderedDict
 from pathlib import Path
 
 import pymupdf
 
-_CACHE: dict[str, int] = {}
+#: Bounded on purpose. Keyed by file content, this grows by one entry per
+#: distinct document the service ever sees — unbounded in a long-running
+#: process, and the fit loop adds an entry per round.
+_CACHE_MAX = 256
+_CACHE: "OrderedDict[str, int]" = OrderedDict()
 
 
 class RenderUnavailable(RuntimeError):
@@ -84,10 +89,13 @@ def count_pages(docx_path: str) -> int:
     the fit loop pays once per distinct document state."""
     digest = hashlib.sha256(Path(docx_path).read_bytes()).hexdigest()
     if digest in _CACHE:
+        _CACHE.move_to_end(digest)
         return _CACHE[digest]
     with pymupdf.open(stream=to_pdf(docx_path), filetype="pdf") as doc:
         pages = doc.page_count
     _CACHE[digest] = pages
+    while len(_CACHE) > _CACHE_MAX:
+        _CACHE.popitem(last=False)
     return pages
 
 

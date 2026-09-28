@@ -7,6 +7,15 @@ REPO = Path(__file__).resolve().parents[3]
 SAMPLE = REPO / "prototypes" / "in-place-editing" / "samples" / "priya_resume.docx"
 
 
+@pytest.fixture(autouse=True)
+def _local_auth(monkeypatch):
+    """The service refuses to serve without a token. Tests opt out of that
+    explicitly, the same way a developer does — never by the service quietly
+    defaulting to open."""
+    monkeypatch.setenv("DOCSVC_ALLOW_INSECURE", "true")
+    monkeypatch.delenv("DOCSVC_TOKEN", raising=False)
+
+
 @pytest.fixture(scope="session")
 def sample_path() -> Path:
     if not SAMPLE.exists():
