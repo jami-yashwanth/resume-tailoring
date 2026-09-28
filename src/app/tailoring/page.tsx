@@ -42,6 +42,7 @@ export default function TailoringPage() {
 
     const resume = session.getResume();
     const jobDescription = session.getJob();
+    const filename = session.getFilename();
     if (!resume || !jobDescription) {
       router.replace(resume ? "/job" : "/upload");
       return;
@@ -51,7 +52,7 @@ export default function TailoringPage() {
       const response = await fetch("/api/tailor/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ resume, jobDescription }),
+        body: JSON.stringify({ resume, jobDescription, filename }),
       }).catch(() => null);
 
       if (!response?.ok || !response.body) {

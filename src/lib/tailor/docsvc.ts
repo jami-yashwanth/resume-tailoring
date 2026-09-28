@@ -62,10 +62,22 @@ export async function health(): Promise<{ ok: boolean; renderer: string | null; 
   return response.json();
 }
 
-export const parseResume = (file: string) => post<Layout>("/parse", { file });
+export const parseResume = (file: string, filename?: string) =>
+  post<Layout>("/parse", { file, filename });
 
 export const applyOps = (file: string, ops: DocsvcOp[], maxPages: number | null) =>
   post<ApplyResult>("/apply", { file, ops, max_pages: maxPages });
 
 export const exportResume = (file: string, format: "docx" | "pdf") =>
   post<{ file: string; format: string }>("/export", { file, format });
+
+export type TemplateBlock = { kind: Layout["blocks"][number]["kind"]; text: string };
+
+/**
+ * Render the tailored content into the one default Rezz template.
+ *
+ * v1 override (28 Sep 2026, see CLAUDE.md): every download goes through this
+ * instead of `applyOps` + `exportResume`, which edit the user's own file.
+ */
+export const renderTemplate = (blocks: TemplateBlock[]) =>
+  post<{ file: string; pages: number; format: string }>("/render-template", { blocks });

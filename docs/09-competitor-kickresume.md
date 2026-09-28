@@ -163,3 +163,49 @@ Remix SPA, and nothing about it is instructive for our architecture.
 5. **Adjacent surfaces are where an incumbent expands** — job board, interview
    practice, career map. Useful to know what "complete" looks like, and useful
    to keep refusing until the core is right.
+
+---
+
+# Editor walkthrough (28 Sep 2026, logged-in dashboard, own account)
+
+Walked the actual editor end to end via screenshots (a real resume imported,
+then Templates, Layout, Fill In, Design, and the left-nav account structure)
+rather than the marketing site. Recorded here because it clarifies *why* they
+need a template system at all, which sharpens the case for not copying it
+wholesale even as Rezz borrows the one idea worth borrowing.
+
+**They decouple content from presentation, on purpose.** Once a resume is
+imported, it's parsed into structured fields (`Fill In`: company, title,
+location, dates, a rich-text bullet editor per role — this is their equivalent
+of Rezz's `Layout.blocks`). That same content is then rendered through two
+independent, swappable layers on top: **Templates** (visual skin + colour, each
+tagged `ATS` or `PREMIUM`) and **Layout** (section-level arrangement — Split vs
+Standard for Experience/Education, Columns/Lines/Stacked for Skills, all
+independent of which template is picked). The template system exists *because*
+their product is a builder that owns your document's presentation; it is not a
+feature that floats free of that choice, which is exactly the trap
+`docs/01-product.md` and the section above already warn against replicating in
+full.
+
+**Navigation**: left sidebar is `Dashboard → My Documents` (their resume
+directory) → opening one drops into `My Resume` with tabs `Fill In / Design /
+ATS Checker / Proofread & Translate / Download & Share`. Separately, the
+preview pane surfaces `Resume Tailoring` as its own tab, with a tooltip nudging
+"Try tailoring your resume to a specific job with AI" — tailoring is a distinct,
+per-document action reachable from a saved resume, not folded into the base
+editor.
+
+**Import feedback micro-prompt**: immediately after parsing an uploaded resume
+into the structured model, they show a lightweight reaction-emoji prompt ("What
+did you think of the resume import?") — cheap, well-timed signal collection at
+exactly the point parsing quality most matters.
+
+**What Rezz is actually taking from this, for now**: nothing structural. v1
+(see `CLAUDE.md`'s dated override) renders every result into **one** fixed
+Rezz template — no gallery, no colour picker, no independent layout layer — so
+the Templates/Layout split above does not apply. The two ideas worth keeping
+for later, once/if a real multi-resume library is built, are the `My Documents`
+directory concept and `Resume Tailoring` as a distinct entry point off a saved
+document, both already anticipated in Rezz's own designs (the "Your resumes"
+nav slot in `design/screens/WebAddJob.dc.html`). This is a narrowing, not a
+roadmap toward matching their builder.

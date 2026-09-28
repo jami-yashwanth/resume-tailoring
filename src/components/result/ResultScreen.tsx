@@ -10,9 +10,9 @@ import type { Layout, TailorPlan } from "@/lib/tailor/types";
 import { type Decisions, buildLines } from "@/lib/tailor/view";
 import { ChangePopover } from "./ChangePopover";
 import { DecisionBar } from "./DecisionBar";
+import { DefaultTemplateSheet } from "./DefaultTemplateSheet";
 import { JobPanel } from "./JobPanel";
 import { ResultMargin } from "./ResultMargin";
-import { TailoredSheet } from "./TailoredSheet";
 
 /**
  * The Result screen: see the value → make 0–3 decisions → finish.
@@ -58,6 +58,14 @@ export function ResultScreen({
     [layout, operations, decisions, compare],
   );
 
+  // Always the tailored version, independent of the "Compare with original"
+  // toggle above — a download must reflect the user's decisions, not
+  // whichever preview mode they happen to be looking at.
+  const downloadLines = useMemo(
+    () => buildLines(layout, operations, decisions, false),
+    [layout, operations, decisions],
+  );
+
   const coverage = coverageOf(plan.matches, operations);
   const pending = pendingDecisions(operations);
   const total = plan.operations.filter((op) => op.needsDecision).length;
@@ -79,38 +87,37 @@ export function ResultScreen({
   }
 
   /**
-   * Write the decisions into the user's own file and hand it to them.
+   * Render the user's decisions into the one default Rezz template and hand
+   * them the PDF.
    *
-   * The plan goes up with each operation's `approved` flag set, and the server
-   * filters on it — a line that was skipped cannot arrive in the document by
-   * some later accident of state.
+   * v1 override (28 Sep 2026, see CLAUDE.md): this used to send the file
+   * itself to be edited in place. Now the client resolves the final content
+   * — skipped lines and lines dropped to fit are excluded here, so a line
+   * that was skipped cannot arrive in the document by some later accident of
+   * state — and only that resolved (kind, text) list crosses the wire.
    */
   async function download() {
     if (!resume) return;
     setDownloading(true);
     setDownloadError(null);
     try {
+      const blocks = downloadLines
+        .filter((line) => line.state !== "removed" && line.state !== "pending")
+        .map((line) => ({ kind: line.kind, text: line.text }));
+
       const response = await fetch("/api/download", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          resume,
-          plan: { ...plan, operations },
-          maxPages: layout.pages,
-        }),
+        body: JSON.stringify({ blocks }),
       });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error ?? "Could not write your file.");
 
       const bytes = Uint8Array.from(atob(body.file), (c) => c.charCodeAt(0));
-      const url = URL.createObjectURL(
-        new Blob([bytes], {
-          type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        }),
-      );
+      const url = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
       const link = document.createElement("a");
       link.href = url;
-      link.download = (filename ?? "resume.docx").replace(/\.docx$/i, "") + ` — ${company}.docx`;
+      link.download = (filename ?? "resume").replace(/\.(docx|pdf)$/i, "") + ` — ${company}.pdf`;
       link.click();
       URL.revokeObjectURL(url);
 
@@ -121,7 +128,7 @@ export function ResultScreen({
         company,
         role,
         pages: body.pages,
-        pagesBefore: body.pagesBefore,
+        pagesBefore: layout.pages,
         covered: coverage.covered,
         total: coverage.total,
         originalCovered: coverage.originalCovered,
@@ -260,7 +267,7 @@ export function ResultScreen({
           />
         </div>
 
-        <TailoredSheet
+        <DefaultTemplateSheet
           layout={layout}
           lines={lines}
           activeOpId={activeOpId}

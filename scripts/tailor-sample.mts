@@ -35,7 +35,7 @@ const resume = fs.readFileSync(RESUME).toString("base64");
 const jobDescription = fs.readFileSync(JD, "utf8");
 
 const started = Date.now();
-const result = await tailor(resume, jobDescription, (stage, detail) =>
+const result = await tailor(resume, jobDescription, path.basename(RESUME), (stage, detail) =>
   console.log(dim(`  ${stage}${detail ? ` — ${detail}` : ""}`)),
 );
 const planSeconds = ((Date.now() - started) / 1000).toFixed(1);

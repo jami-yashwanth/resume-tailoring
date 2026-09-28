@@ -1,4 +1,5 @@
 import { Wordmark } from "@/components/rezz/Wordmark";
+import { Badge } from "@/components/rezz/Badge";
 import { Button, ButtonLink } from "@/components/rezz/Button";
 import {
   ResumeSheet,
@@ -8,14 +9,58 @@ import {
   NotYours,
 } from "@/components/rezz/ResumeSheet";
 import { MarginColumn, type Mark } from "@/components/rezz/MarginColumn";
-import { PromiseStrip } from "@/components/rezz/PromiseStrip";
+/* PromiseStrip is deliberately not imported — see its file header. The four
+   promises are still made on this page, each where its objection actually
+   arises, and the footer still carries the line verbatim. */
 import { PassCard } from "@/components/rezz/PassCard";
 import { FaqItem } from "@/components/rezz/FaqItem";
 
-/* Written at 1440px. Below 1100 the margin column drops rather than squashing —
-   a floor so nothing breaks, not a phone design. Mobile is out of scope until
-   the owner says otherwise (CLAUDE.md). */
+/* Written at 1440px. Two floors, not one: the margin column drops at 1215 and
+   the hero stacks at 1100. Mobile is out of scope until the owner says
+   otherwise (CLAUDE.md) — these keep the desktop page from breaking, they are
+   not a phone design. */
 const wrap = "mx-auto max-w-[1312px] px-16 max-[1100px]:px-8 max-[680px]:px-4";
+
+/* ---------------------------------------------------------------------------
+   The landing page's skin (28 Sep 2026): black-on-white, 2px ink borders, hard
+   offset shadows. It is the marketing voice only — the app screens keep the
+   quiet hairline system, which is why nothing here is promoted into a token.
+
+   Three disciplines keep it from drifting into decoration:
+
+   1. A hard offset shadow is a DRAWN OUTLINE, not depth. That is the only
+      reading under which it may sit on a button at all, when the brand book
+      reserves real shadows for the resume and floating layers. So every one of
+      them is 0-blur, 0-spread, in a flat token colour, and interactive objects
+      press into their own offset on hover — the offset does something.
+   2. Exactly TWO offset steps: 4px for anything you act on, 8px for the three
+      page-scale objects (resume sheet, promise block, featured pass). An audit
+      found four steps in use — 3/4/5/8 — which is not a hierarchy, because
+      nobody can tell 4px from 5px at a glance.
+   3. `highlighter` still means exactly one thing. Yellow appears on this page
+      and never as decoration: behind the word "reworded" (the word that means
+      changed), behind the changed lines in the document, on the primary CTA's
+      offset, and on the two blocks that state the promise. Every other offset
+      is ink.
+   --------------------------------------------------------------------------- */
+const box = "border-2 border-ink";
+const hardInk = "shadow-[4px_4px_0_0_var(--ink)]";
+
+/* One scale, eight steps, after an audit found 29 distinct size/line-height
+   /weight combinations on this page — four different line-heights on 15px text
+   alone. Nobody chose those; they accumulated. Snap to a step or add one
+   deliberately, but do not invent a ninth by eye.
+
+     display  clamp(34,3.7vw,52)/1.08  700  -0.04em   h1
+     h2       clamp(32,3.2vw,46)/1.06  700  -0.04em   sections + prices
+     h3       20/28                    700  -0.02em   step titles
+     lead     18/29                    400/600/700    leads, FAQ Qs, promises
+     body     16/26                    400            bodies, answers, features
+     label    15/20                    600            buttons, nav
+     small    14/22                    400/500        meta, footer
+     mark     12/16 mono               500            margin marks, tags       */
+const h2 = "m-0 text-[clamp(32px,3.2vw,46px)] font-bold leading-[1.06] tracking-[-0.04em]";
+const lead = "text-lg leading-[29px] text-ink-muted";
 
 /* The example is fixed across every screen: Priya Sharma applying to Kosha
    Payments. Same person, same nine requirements, everywhere. */
@@ -30,161 +75,201 @@ const MARKS: Mark[] = [
   { anchor: "l-skills", label: "Reworded", note: "reordered for this job" },
 ];
 
+/* The heading promises "two steps the first time, one step after that" and this
+   used to render three numbered cards — so a reader counted three, read two, and
+   stalled. Downloading is not a step you perform to get the result, it IS the
+   result, so it loses the numeral and takes an arrow instead. Two numbered
+   things you do, one outcome: the count now matches the sentence above it. */
+const STEPS = [
+  {
+    n: "1",
+    title: "Upload your resume",
+    when: "First time only",
+    body: "PDF, DOCX, LaTeX or your LinkedIn PDF. We read your facts and never invent ones you didn't give us.",
+  },
+  {
+    n: "2",
+    title: "Add the job",
+    when: "Every job after that",
+    body: "Paste the description, upload a screenshot, or click the Rezz extension on a career page.",
+  },
+  {
+    n: "→",
+    outcome: true,
+    title: "Download",
+    when: "About fifteen seconds later",
+    body: "Your facts, tailored, in one clean template. Rewordings are already applied. Anything else waits for your OK.",
+  },
+];
+
 export default function LandingPage() {
   return (
-    <>
-      <header className="border-b border-line">
-        <div className={`${wrap} flex h-[72px] items-center justify-between max-[680px]:h-auto max-[680px]:flex-wrap max-[680px]:gap-3 max-[680px]:py-3`}>
-          <Wordmark />
-          <nav aria-label="Main" className="flex flex-wrap items-center gap-8 text-[15px] font-medium max-[680px]:gap-4">
-            <a href="#how" className="no-underline hover:underline hover:underline-offset-4">How it works</a>
-            <a href="#pricing" className="no-underline hover:underline hover:underline-offset-4">Pricing</a>
-            <a href="#faq" className="no-underline hover:underline hover:underline-offset-4">Questions</a>
-            <ButtonLink href="#extension" variant="secondary">Get the Chrome extension</ButtonLink>
+    /* The marketing ground is flat white, not `paper`. The grey ground exists to
+       sink the resume canvas in the app; here the separation is carried by ink
+       rules, and a grey behind a white sheet edged in 2px ink just muddies it. */
+    <div className="bg-paper-raised">
+      <header className="border-b-2 border-ink bg-paper-raised">
+        {/* `min-h-20`, not `h-20`. With a fixed height the bar could not grow
+            when the nav wrapped, so between ~681 and ~719px the nav became
+            three rows (120px) inside an 80px bar and — being `items-center` —
+            spilled 20px out of both the top and the bottom border. A minimum
+            holds the 80px bar at full width and lets it grow when it must. */}
+        <div className={`${wrap} flex min-h-20 flex-wrap items-center justify-between gap-3 py-3`}>
+          {/* Boxed, the way the reference boxes its mark: on a page drawn
+              entirely in 2px ink, an unboxed wordmark reads as unfinished. */}
+          <span className={`inline-flex items-center ${box} rounded-md bg-paper-raised px-3 py-1.5 ${hardInk}`}>
+            <Wordmark />
+          </span>
+          {/* py-3 on the links is a tap target, not spacing: at their natural
+              26px they were well under the 44px the brand book requires. */}
+          <nav aria-label="Main" className="flex flex-wrap items-center gap-8 text-[15px] font-semibold leading-5 max-[680px]:gap-4">
+            <a href="#how" className="py-3 no-underline hover:underline hover:underline-offset-4">How it works</a>
+            <a href="#pricing" className="py-3 no-underline hover:underline hover:underline-offset-4">Pricing</a>
+            <a href="#faq" className="py-3 no-underline hover:underline hover:underline-offset-4">Questions</a>
+            <ButtonLink href="#extension" variant="brutalGhost">Get the Chrome extension</ButtonLink>
           </nav>
         </div>
       </header>
 
       <main>
-        <section className={`${wrap} pt-16`}>
-          {/* Headline and document side by side. 1184px of content divides as
-              420 | 48 | (500 + 20 + 196). The sheet carries no card or grey well
-              around it: it is the artefact, not a screenshot of one. */}
-          <div className="grid grid-cols-[420px_minmax(0,1fr)] items-center gap-x-12 max-[1100px]:grid-cols-1 max-[1100px]:gap-y-12">
+        <section className={`${wrap} pt-20 max-[1100px]:pt-12`}>
+          {/* Headline and document side by side.
+
+              Both columns flex, and the margin column drops at 1215px rather
+              than 1100. The old geometry was all fixed px and needed 1302px of
+              viewport, but only fell back at 1100 — so between those two widths
+              the marks ran off the right edge, sliced mid-word. That band
+              contains 1280px, which is a 13" MacBook. Letting the headline
+              column shrink to 340 buys the side-by-side hero down to ~1212. */}
+          <div className="grid grid-cols-[minmax(340px,430px)_minmax(0,1fr)] items-center gap-x-12 max-[1100px]:grid-cols-1 max-[1100px]:gap-y-12">
             <div>
-              <h1 className="m-0 text-[clamp(32px,3.4vw,48px)] font-semibold leading-[1.06] tracking-[-0.03em]">
-                Your resume, reworded for the job you&rsquo;re applying to.
+              {/* Set heavier and tighter than the app's headings, with the chip
+                  rotated off the baseline — the one place on the page where
+                  something is deliberately out of square, because it is the one
+                  word the whole product is about. */}
+              <h1 className="m-0 text-[clamp(34px,3.7vw,52px)] font-bold leading-[1.08] tracking-[-0.04em]">
+                Your resume,{" "}
+                <span
+                  className={`mx-[-2px] inline-block -rotate-[2.5deg] rounded-md ${box} bg-highlighter px-3 py-0.5
+                              text-on-highlighter ${hardInk}`}
+                >
+                  reworded
+                </span>{" "}
+                for the job you&rsquo;re applying to.
               </h1>
-              <p className="mt-5 text-[17px] leading-[27px] text-ink-muted">
-                Upload your own Word, PDF or LaTeX file once. Paste any job. About fifteen seconds
-                later you get that same file back &mdash; your fonts, your layout, your design
-                &mdash; reworded for that job, with every change marked.
+              <p className={`mt-6 ${lead}`}>
+                Upload your own file once. Paste any job. About fifteen seconds later you get your
+                own facts back, reworded for that job, with every change marked.
               </p>
-              <div className="mt-7 flex flex-col items-start gap-4">
-                <ButtonLink href="/upload" size="lg">Upload your resume</ButtonLink>
-                <small className="text-sm leading-[21px] text-ink-muted">
-                  No sign-up to try.
-                  <br />
-                  One tailored resume a week is free.
-                </small>
+              <div className="mt-8 flex flex-col items-start gap-5">
+                <ButtonLink href="/upload" variant="brutal" size="lg">
+                  Upload your resume
+                </ButtonLink>
+                <div className="flex flex-wrap items-center gap-3">
+                  <Badge tone="brutal">No sign-up to try</Badge>
+                  <Badge tone="brutal">1 free resume a week</Badge>
+                </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-[500px_196px] items-start gap-x-5 max-[1100px]:grid-cols-1">
-            <ResumeSheet
-              name="Priya Sharma"
-              contact="Backend Engineer · Bengaluru · Notice period 30 days · priya.sharma@example.com"
-              pad="tight"
-            >
-              <SheetRule />
-              <p id="l-sum" className="m-0">
-                <mark>
-                  Backend engineer with 3 years building payment and ledger services in Java and
-                  Spring Boot on AWS.
-                </mark>
-              </p>
-              <SheetRule />
-              <SheetHeading>Experience</SheetHeading>
-              <SheetRole role="Razorfin — Software Engineer, Backend" dates="Aug 2024 – present" />
-              <ul className="mt-1.5 list-disc pl-4">
-                <li id="l-p95" className="my-[5px]">
-                  <mark style={{ animationDelay: "150ms" }}>
-                    Cut payment API p95 latency from 820&nbsp;ms to 310&nbsp;ms using async Spring
-                    Boot workers on AWS ECS.
+            <div className="grid grid-cols-[minmax(0,480px)_196px] items-start gap-x-5 max-[1215px]:grid-cols-1 max-[1100px]:justify-items-start">
+              {/* The sheet trades its soft lift for a drawn edge so it belongs to
+                  this page. `!` is load-bearing: ResumeSheet sets `shadow-sheet`
+                  in its own class string and two shadow utilities are resolved
+                  by Tailwind's generated order, not by ours. The Result screen's
+                  sheet is untouched — it keeps the real lift off the grey well. */}
+              <ResumeSheet
+                name="Priya Sharma"
+                contact="Backend Engineer · Bengaluru · Notice period 30 days · priya.sharma@example.com"
+                pad="tight"
+                className={`${box} shadow-[8px_8px_0_0_var(--ink)]!`}
+              >
+                <SheetRule />
+                <p id="l-sum" className="m-0">
+                  <mark>
+                    Backend engineer with 3 years building payment and ledger services in Java and
+                    Spring Boot on AWS.
                   </mark>
-                </li>
-                <li className="my-[5px]">
-                  Built a nightly reconciliation job that matches 2.1 lakh transactions against bank
-                  files.
-                </li>
-                <li id="l-split" className="my-[5px]">
-                  <mark style={{ animationDelay: "300ms" }}>
-                    Split the refunds module into 4 microservices, each deployed on its own.
+                </p>
+                <SheetRule />
+                {/* `as="div"`: here the sheet is an illustration, so its headings
+                    must stay out of the page outline. See SheetHeading. */}
+                <SheetHeading as="div">Experience</SheetHeading>
+                <SheetRole role="Razorfin — Software Engineer, Backend" dates="Aug 2024 – present" />
+                <ul className="mt-1.5 list-disc pl-4">
+                  <li id="l-p95" className="my-[5px]">
+                    <mark style={{ animationDelay: "150ms" }}>
+                      Cut payment API p95 latency from 820&nbsp;ms to 310&nbsp;ms using async Spring
+                      Boot workers on AWS ECS.
+                    </mark>
+                  </li>
+                  <li className="my-[5px]">
+                    Built a nightly reconciliation job that matches 2.1 lakh transactions against bank
+                    files.
+                  </li>
+                  <li id="l-split" className="my-[5px]">
+                    <mark style={{ animationDelay: "300ms" }}>
+                      Split the refunds module into 4 microservices, each deployed on its own.
+                    </mark>
+                  </li>
+                  <li id="l-kafka" className="my-[5px]">
+                    <NotYours>Consumed payment events from Kafka topics to update the ledger.</NotYours>
+                  </li>
+                </ul>
+                <SheetRule />
+                <SheetHeading as="div">Skills</SheetHeading>
+                <p id="l-skills" className="m-0">
+                  <mark style={{ animationDelay: "450ms" }}>
+                    Java, Spring Boot, AWS (ECS, SQS, RDS), microservices
                   </mark>
-                </li>
-                <li id="l-kafka" className="my-[5px]">
-                  <NotYours>Consumed payment events from Kafka topics to update the ledger.</NotYours>
-                </li>
-              </ul>
-              <SheetRule />
-              <SheetHeading>Skills</SheetHeading>
-              <p id="l-skills" className="m-0">
-                <mark style={{ animationDelay: "450ms" }}>
-                  Java, Spring Boot, AWS (ECS, SQS, RDS), microservices
-                </mark>
-                , PostgreSQL, Redis, Docker, Git
-              </p>
-            </ResumeSheet>
+                  , PostgreSQL, Redis, Docker, Git
+                </p>
+              </ResumeSheet>
 
-              <div className="max-[1100px]:hidden">
+              <div className="max-[1215px]:hidden">
                 <MarginColumn marks={MARKS} label="What changed" />
               </div>
             </div>
           </div>
         </section>
 
-        <div className={wrap}>
-          <PromiseStrip />
-        </div>
+        {/* Moved directly under the hero (28 Sep 2026). This is the only thing
+            on the page no competitor has — the real before/after, the source
+            tags, and the decision the user actually makes — and it was sitting
+            two screens down behind a promise strip that asserted the same thing
+            in four words. Show the mechanism first; the promises it implies stop
+            needing to be claimed.
 
-        <section id="how" className={`${wrap} pt-28 max-[1100px]:pt-16`}>
-          <h2 className="m-0 max-w-[20ch] text-[42px] font-semibold leading-[46px] tracking-[-0.03em]">
-            Two steps the first time. One step after that.
-          </h2>
-          {/* Numbered because it genuinely is a sequence. The numerals are set as
-              type, not dropped into chips. */}
-          <ol className="mt-12 grid list-none grid-cols-3 gap-12 p-0 max-[1100px]:grid-cols-1">
-            {[
-              {
-                n: "1",
-                title: "Upload your resume",
-                when: "First time only",
-                body: "PDF, DOCX, LaTeX or your LinkedIn PDF. We read your facts and keep your layout exactly as it is.",
-              },
-              {
-                n: "2",
-                title: "Add the job",
-                when: "For every job",
-                body: "Paste the description, upload a screenshot, or click the Rezz extension on a career page.",
-              },
-              {
-                n: "3",
-                title: "Download",
-                when: "About fifteen seconds later",
-                body: "Your file, your design, tailored. Rewordings of your own facts are already applied. Anything else waits for your OK.",
-              },
-            ].map((s) => (
-              <li key={s.n} className="border-t border-ink pt-4">
-                <div className="text-[34px] font-semibold leading-10 tracking-[-0.03em] tabular-nums">{s.n}</div>
-                <h3 className="my-2 text-xl font-semibold leading-[27px]">{s.title}</h3>
-                <p className="m-0 text-sm text-ink-muted">{s.when}</p>
-                <p className="m-0 mt-2 text-[15px] leading-6 text-ink-muted">{s.body}</p>
-              </li>
-            ))}
-          </ol>
-        </section>
-
-        <section className="mt-28 border-y border-line bg-paper-raised py-24 max-[1100px]:mt-16 max-[1100px]:py-16">
+            Separated by the 2px rule alone. It used to also carry a `paper`
+            fill, but #f7f8fa against #ffffff is a 3% difference — on a page
+            built from hard contrast that reads as a rendering accident rather
+            than a decision, and the rule already does the job. */}
+        <section className="mt-24 border-y-2 border-ink py-24 max-[1100px]:mt-16 max-[1100px]:py-16">
           <div className={`${wrap} grid grid-cols-[minmax(0,1fr)_560px] items-start gap-16 max-[1100px]:grid-cols-1 max-[1100px]:gap-8`}>
             <div>
-              <h2 className="m-0 max-w-[18ch] text-[42px] font-semibold leading-[46px] tracking-[-0.03em]">
-                Nothing added behind your back.
-              </h2>
-              <p className="mt-4 max-w-[58ch] text-lg leading-[29px] text-ink-muted">
+              <h2 className={`${h2} max-w-[18ch]`}>Nothing added behind your back.</h2>
+              <p className={`mt-6 max-w-[58ch] ${lead}`}>
                 Rezz rewords what you already did so it matches how this job describes it. Every
                 change shows the line you wrote, the line we propose, and which requirement it
                 answers.
               </p>
-              <p className="mt-4 max-w-[58ch] text-lg leading-[29px] text-ink-muted">
+              <p className={`mt-4 max-w-[58ch] ${lead}`}>
                 When the job asks for something that isn&rsquo;t in your resume, we draft the line
                 and mark it. It goes in only if you choose Add it &mdash; and we give you interview
                 prep for it.
               </p>
+              <p className={`mt-4 max-w-[58ch] ${lead}`}>
+                Your result comes back in one clean template &mdash; no gallery, no colour picker.
+                We picked one, so you don&rsquo;t have to.
+              </p>
             </div>
 
-            <div className="flex flex-col">
-              <div className="border-line py-6 pt-0">
-                <div className="font-doc text-sm leading-[21px] text-ink-muted line-through">
+            {/* Each change is its own drawn object rather than a ruled row, so
+                the third one — the one that asks — is visibly a thing you act
+                on, not a paragraph you scroll past. */}
+            <div className="flex flex-col gap-5">
+              <div className={`${box} ${hardInk} rounded-md bg-paper-raised p-6`}>
+                <div className="font-doc text-sm leading-[22px] text-ink-muted line-through">
                   Worked on backend APIs for payments.
                 </div>
                 <div className="mt-[5px] font-doc text-[15px] leading-[23px]">
@@ -193,13 +278,13 @@ export default function LandingPage() {
                     Boot workers on AWS ECS.
                   </mark>
                 </div>
-                <div className="mt-3 flex items-center gap-2 font-mark text-[11.5px] leading-4 text-verified before:h-px before:w-[18px] before:bg-verified before:content-['']">
+                <div className="mt-3 flex items-center gap-2 font-mark text-xs leading-4 text-verified before:h-[2px] before:w-[18px] before:bg-verified before:content-['']">
                   your Razorfin project, facts #2 and #4
                 </div>
               </div>
 
-              <div className="border-t border-line py-6">
-                <div className="font-doc text-sm leading-[21px] text-ink-muted line-through">
+              <div className={`${box} ${hardInk} rounded-md bg-paper-raised p-6`}>
+                <div className="font-doc text-sm leading-[22px] text-ink-muted line-through">
                   Mentored 2 junior engineers.
                 </div>
                 <div className="mt-[5px] font-doc text-[15px] leading-[23px]">
@@ -207,44 +292,79 @@ export default function LandingPage() {
                     Mentored 2 junior engineers through their first on-call rotations.
                   </mark>
                 </div>
-                <div className="mt-3 flex items-center gap-2 font-mark text-[11.5px] leading-4 text-verified before:h-px before:w-[18px] before:bg-verified before:content-['']">
+                <div className="mt-3 flex items-center gap-2 font-mark text-xs leading-4 text-verified before:h-[2px] before:w-[18px] before:bg-verified before:content-['']">
                   your Razorfin project, fact #9
                 </div>
               </div>
 
-              <div className="border-t border-line py-6">
-                <div className="text-[17px] font-semibold leading-[26px]">
+              {/* The one that needs the user is drawn in the corrector's red, not
+                  in ink, and is the only box on the page that carries a colour
+                  other than the highlighter. */}
+              <div className="rounded-md border-2 border-gap bg-paper-raised p-6 shadow-[4px_4px_0_0_var(--gap)]">
+                <div className="text-lg font-bold leading-[29px]">
                   Kafka is in the job, but not in your resume.
                 </div>
                 <div className="mt-[5px] font-doc text-[15px] leading-[23px] text-ink-muted">
                   &ldquo;Consumed payment events from Kafka topics to update the ledger.&rdquo;
                 </div>
-                <div className="mt-3 flex items-center gap-2 font-mark text-[11.5px] leading-4 text-gap before:h-px before:w-[18px] before:bg-gap before:content-['']">
+                <div className="mt-3 flex items-center gap-2 font-mark text-xs leading-4 text-gap before:h-[2px] before:w-[18px] before:bg-gap before:content-['']">
                   not in your resume — recruiters may ask about it
                 </div>
-                {/* Exactly two options, equal weight, nothing pre-selected. */}
-                <div className="mt-4 flex gap-3 max-[680px]:flex-col">
-                  <Button variant="secondary" className="flex-1">Skip</Button>
-                  <Button variant="secondary" className="flex-1">Add it</Button>
+                {/* Exactly two options, equal weight, nothing pre-selected. Both
+                    are brutalGhost for that reason: the moment one of them takes
+                    the primary fill, the page has picked for the user. */}
+                <div className="mt-5 flex gap-4 max-[680px]:flex-col">
+                  <Button variant="brutalGhost" className="flex-1">Skip</Button>
+                  <Button variant="brutalGhost" className="flex-1">Add it</Button>
                 </div>
               </div>
             </div>
           </div>
         </section>
 
+        <section id="how" className={`${wrap} pt-28 max-[1100px]:pt-16`}>
+          <h2 className={`${h2} max-w-[20ch]`}>Two steps the first time. One step after that.</h2>
+          {/* Numbered because it genuinely is a sequence. The numerals are set as
+              type in a drawn square — not a pastel icon circle, which is the
+              tell this page is trying hardest to avoid. The outcome card takes
+              the same square unfilled, so "things you do" and "what you get"
+              are told apart before either is read. */}
+          <ol className="mt-12 grid list-none grid-cols-3 gap-6 p-0 max-[1100px]:grid-cols-1">
+            {STEPS.map((s) => (
+              <li key={s.n} className={`${box} ${hardInk} rounded-md bg-paper-raised p-7`}>
+                <div
+                  aria-hidden
+                  className={`flex h-12 w-12 items-center justify-center rounded-md ${box}
+                              text-xl font-bold leading-none tabular-nums
+                              ${s.outcome ? "bg-paper-raised text-ink" : "bg-ink text-paper"}`}
+                >
+                  {s.n}
+                </div>
+                <h3 className="mt-5 mb-2 text-xl font-bold leading-7 tracking-[-0.02em]">{s.title}</h3>
+                <p className="m-0 font-mark text-xs font-medium leading-4 text-ink-muted">{s.when}</p>
+                <p className="m-0 mt-3 text-base leading-[26px] text-ink-muted">{s.body}</p>
+              </li>
+            ))}
+          </ol>
+          {/* Sits here rather than up in the changes section: this is the point
+              where a reader has understood the product and has furthest to
+              scroll before the next chance to act. */}
+          <ButtonLink href="/upload" variant="brutal" size="lg" className="mt-12">
+            Upload your resume
+          </ButtonLink>
+        </section>
+
         <section id="pricing" className={`${wrap} pt-28 max-[1100px]:pt-16`}>
-          <h2 className="m-0 max-w-[20ch] text-[42px] font-semibold leading-[46px] tracking-[-0.03em]">
-            Paid once. Does not renew.
-          </h2>
-          <p className="mt-4 max-w-[58ch] text-lg leading-[29px] text-ink-muted">
+          <h2 className={`${h2} max-w-[20ch]`}>Paid once. Does not renew.</h2>
+          <p className={`mt-6 max-w-[58ch] ${lead}`}>
             Pay by UPI. No card on file, no autopay mandate. When a pass ends, it just ends.
           </p>
-          <div className="mt-12 grid grid-cols-3 items-stretch gap-6 max-[1100px]:grid-cols-1">
+          <div className="mt-12 grid grid-cols-3 items-stretch gap-8 max-[1100px]:grid-cols-1">
             <PassCard
               name="Free"
               price="₹0"
               per="One tailored resume a week"
-              features={["One tailored resume a week", "Honest check included", "Your own design"]}
+              features={["One tailored resume a week", "Honest check included", "One clean template"]}
               cta="Start free"
             />
             <PassCard
@@ -271,7 +391,7 @@ export default function LandingPage() {
 
         <section id="faq" className={`${wrap} pt-28 max-[1100px]:pt-16`}>
           <div className="grid grid-cols-[340px_minmax(0,1fr)] gap-16 max-[1100px]:grid-cols-1 max-[1100px]:gap-8">
-            <h2 className="m-0 text-[42px] font-semibold leading-[46px] tracking-[-0.03em]">Questions</h2>
+            <h2 className={h2}>Questions</h2>
             <div>
               <FaqItem question="Will it add skills I don't have?" defaultOpen>
                 Only if you say so. When a job asks for a skill that isn&rsquo;t in your resume, we
@@ -284,8 +404,9 @@ export default function LandingPage() {
                 requirements it covers.
               </FaqItem>
               <FaqItem question="Will my resume look different?">
-                No. We edit your own file and keep its fonts and layout. You download it as PDF or
-                DOCX.
+                Yes, for now. Your result comes back in one clean Rezz template &mdash; no gallery,
+                no colour picker, just one layout we picked so nothing breaks. Keeping your own
+                file&rsquo;s design in place is what we&rsquo;re building toward next.
               </FaqItem>
               <FaqItem question="Does the pass renew?">
                 No. You pay once by UPI. When the 30 or 90 days are over, it stops. There is nothing
@@ -295,33 +416,60 @@ export default function LandingPage() {
                 Not to try. You sign in with your phone number and a one-time code only when you
                 download.
               </FaqItem>
+              {/* TODO(owner): storage region and deletion time are still unconfirmed, so this
+                  answer deliberately does not state them. Add them here once they are settled —
+                  do not put the reminder back in the copy: it shipped as a visible
+                  "[Draft: …]" note inside the one answer about handling people's personal data. */}
               <FaqItem question="What happens to my resume data?">
                 Your resume is used only to tailor your resumes. It is stored encrypted, never sold,
                 and never used to train AI models. You can delete everything from Settings at any
-                time. [Draft: confirm storage region and deletion time.]
+                time.
               </FaqItem>
+            </div>
+          </div>
+        </section>
+
+        {/* The page used to end on the FAQ, so a reader who scrolled the whole
+            thing arrived at the footer with nothing to do. */}
+        <section className={`${wrap} pt-28 max-[1100px]:pt-16`}>
+          <div className={`${box} rounded-md bg-paper-raised px-12 py-14 shadow-[8px_8px_0_0_var(--highlighter)] max-[680px]:px-6`}>
+            <h2 className={`${h2} max-w-[18ch]`}>Try it on the job you&rsquo;re looking at now.</h2>
+            <p className={`mt-5 max-w-[52ch] ${lead}`}>
+              One resume a week is free, and you don&rsquo;t need an account to see what changes.
+            </p>
+            <div className="mt-8 flex flex-wrap items-center gap-5">
+              <ButtonLink href="/upload" variant="brutal" size="lg">
+                Upload your resume
+              </ButtonLink>
+              <Badge tone="brutal">No sign-up to try</Badge>
             </div>
           </div>
         </section>
       </main>
 
-      <footer className="mt-28 border-t border-line bg-paper-raised py-12 max-[1100px]:mt-16">
+      {/* Closes on the same inversion the promise strip opens with, so the page
+          is bracketed by the two places Rezz speaks in its own voice.
+          --focus is ink, which would draw an invisible ring on an ink ground.
+          Flip it for this block the same way .sheet flips its tokens. */}
+      <footer className="mt-28 border-t-2 border-ink bg-ink py-14 text-paper [--focus:var(--paper)] max-[1100px]:mt-16">
         <div className={`${wrap} flex items-start justify-between gap-16 max-[680px]:flex-col max-[680px]:gap-6`}>
           <div>
-            <Wordmark />
-            <p className="mt-3 max-w-[46ch] text-sm leading-[22px] text-ink-muted">
+            <span className="inline-flex items-center rounded-md border-2 border-paper bg-paper px-3 py-1.5">
+              <Wordmark />
+            </span>
+            <p className="mt-4 max-w-[46ch] text-sm leading-[22px] text-paper/70">
               Your resume, tailored to each job. Nothing added behind your back. No fake ATS score.
               No auto-renew.
             </p>
           </div>
-          <nav aria-label="Footer" className="flex gap-6 text-sm">
-            <a href="#pricing">Pricing</a>
-            <a href="#privacy">Privacy</a>
-            <a href="#terms">Terms</a>
-            <a href="#contact">Contact</a>
+          <nav aria-label="Footer" className="flex gap-6 text-sm font-medium leading-[22px]">
+            <a href="#pricing" className="py-3 text-paper">Pricing</a>
+            <a href="#privacy" className="py-3 text-paper">Privacy</a>
+            <a href="#terms" className="py-3 text-paper">Terms</a>
+            <a href="#contact" className="py-3 text-paper">Contact</a>
           </nav>
         </div>
       </footer>
-    </>
+    </div>
   );
 }
