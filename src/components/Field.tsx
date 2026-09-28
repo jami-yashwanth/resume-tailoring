@@ -23,17 +23,19 @@ export function Field({
     <label className="flex flex-col gap-2">
       <span className="flex items-baseline justify-between">
         <span className="text-sm font-medium text-ink">{label}</span>
-        <span className="text-xs tabular-nums text-muted">
+        <span className="text-xs tabular-nums text-ink-muted">
           {words} {words === 1 ? "word" : "words"}
         </span>
       </span>
-      {hint ? <span className="-mt-1 text-xs text-muted">{hint}</span> : null}
+      {hint ? <span className="-mt-1 text-xs text-ink-muted">{hint}</span> : null}
+      {/* Focus is the global outline ring, not a border+ring recolour: the
+          brand book asks for one focus treatment everywhere. */}
       <textarea
         value={value}
         rows={rows}
         placeholder={placeholder}
         onChange={(event) => onChange(event.target.value)}
-        className="w-full resize-y rounded-lg border border-line bg-white p-3 font-mono text-[13px] leading-relaxed text-ink outline-none placeholder:text-muted/60 focus:border-accent focus:ring-2 focus:ring-accent/15"
+        className="w-full resize-y rounded-md border border-line-strong bg-paper-raised p-3 font-mark text-[13px] leading-relaxed text-ink placeholder:text-ink-muted"
       />
     </label>
   );
