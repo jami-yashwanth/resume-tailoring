@@ -1,0 +1,381 @@
+{
+  "layout": {
+    "format": "docx",
+    "pages": 1,
+    "fonts": [
+      "Georgia"
+    ],
+    "blocks": [
+      {
+        "id": "b0",
+        "kind": "name",
+        "text": "Priya Sharma",
+        "section": null,
+        "style": "Normal",
+        "lines": 1,
+        "has_bold": true
+      },
+      {
+        "id": "b1",
+        "kind": "contact",
+        "text": "Backend Engineer \u00b7 Bengaluru \u00b7 Notice period 30 days \u00b7 priya.sharma@example.com",
+        "section": null,
+        "style": "Normal",
+        "lines": 1,
+        "has_bold": false
+      },
+      {
+        "id": "b2",
+        "kind": "heading",
+        "text": "SUMMARY",
+        "section": null,
+        "style": "Normal",
+        "lines": 1,
+        "has_bold": true
+      },
+      {
+        "id": "b3",
+        "kind": "paragraph",
+        "text": "Software engineer interested in backend development.",
+        "section": "SUMMARY",
+        "style": "Normal",
+        "lines": 1,
+        "has_bold": false
+      },
+      {
+        "id": "b4",
+        "kind": "heading",
+        "text": "EXPERIENCE",
+        "section": null,
+        "style": "Normal",
+        "lines": 1,
+        "has_bold": true
+      },
+      {
+        "id": "b5",
+        "kind": "role",
+        "text": "Razorfin \u00b7 Software Engineer, Backend\tAug 2024 \u2013 present",
+        "section": "EXPERIENCE",
+        "style": "Normal",
+        "lines": 1,
+        "has_bold": true
+      },
+      {
+        "id": "b6",
+        "kind": "bullet",
+        "text": "Worked on backend APIs for payments.",
+        "section": "EXPERIENCE",
+        "style": "List Bullet",
+        "lines": 1,
+        "has_bold": false
+      },
+      {
+        "id": "b7",
+        "kind": "bullet",
+        "text": "Helped refactor the refunds module.",
+        "section": "EXPERIENCE",
+        "style": "List Bullet",
+        "lines": 1,
+        "has_bold": false
+      },
+      {
+        "id": "b8",
+        "kind": "bullet",
+        "text": "Built a nightly reconciliation job that matches 2.1 lakh transactions against bank files.",
+        "section": "EXPERIENCE",
+        "style": "List Bullet",
+        "lines": 1,
+        "has_bold": true
+      },
+      {
+        "id": "b9",
+        "kind": "bullet",
+        "text": "Mentored 2 junior engineers.",
+        "section": "EXPERIENCE",
+        "style": "List Bullet",
+        "lines": 1,
+        "has_bold": false
+      },
+      {
+        "id": "b10",
+        "kind": "role",
+        "text": "Kitebyte Labs \u00b7 Associate Software Engineer\tJul 2023 \u2013 Jul 2024",
+        "section": "EXPERIENCE",
+        "style": "Normal",
+        "lines": 1,
+        "has_bold": true
+      },
+      {
+        "id": "b11",
+        "kind": "bullet",
+        "text": "Wrote REST APIs in Java for a loyalty-points service used by 40 merchant partners.",
+        "section": "EXPERIENCE",
+        "style": "List Bullet",
+        "lines": 1,
+        "has_bold": true
+      },
+      {
+        "id": "b12",
+        "kind": "bullet",
+        "text": "Wrote unit tests.",
+        "section": "EXPERIENCE",
+        "style": "List Bullet",
+        "lines": 1,
+        "has_bold": false
+      },
+      {
+        "id": "b13",
+        "kind": "bullet",
+        "text": "Moved nightly batch jobs from cron scripts to scheduled Spring tasks.",
+        "section": "EXPERIENCE",
+        "style": "List Bullet",
+        "lines": 1,
+        "has_bold": false
+      },
+      {
+        "id": "b14",
+        "kind": "heading",
+        "text": "SKILLS",
+        "section": null,
+        "style": "Normal",
+        "lines": 1,
+        "has_bold": true
+      },
+      {
+        "id": "b15",
+        "kind": "paragraph",
+        "text": "Python, Git, Docker, Java, Spring Boot, AWS, PostgreSQL, Redis",
+        "section": "SKILLS",
+        "style": "Normal",
+        "lines": 1,
+        "has_bold": false
+      },
+      {
+        "id": "b16",
+        "kind": "heading",
+        "text": "EDUCATION",
+        "section": null,
+        "style": "Normal",
+        "lines": 1,
+        "has_bold": true
+      },
+      {
+        "id": "b17",
+        "kind": "paragraph",
+        "text": "B.Tech, Computer Science \u00b7 CGPA 8.4 \u00b7 2023",
+        "section": "EDUCATION",
+        "style": "Normal",
+        "lines": 1,
+        "has_bold": false
+      }
+    ],
+    "warnings": []
+  },
+  "plan": {
+    "requirements": [
+      {
+        "id": "r1",
+        "label": "Java",
+        "wording": "3+ years building backend services in Java",
+        "kind": "experience",
+        "importance": "must",
+        "knockout": true
+      },
+      {
+        "id": "r2",
+        "label": "Spring Boot",
+        "wording": "Strong Spring Boot background",
+        "kind": "skill",
+        "importance": "must",
+        "knockout": false
+      },
+      {
+        "id": "r3",
+        "label": "Apache Kafka",
+        "wording": "Apache Kafka in production. This is a must have for this role",
+        "kind": "experience",
+        "importance": "must",
+        "knockout": false
+      },
+      {
+        "id": "r4",
+        "label": "AWS",
+        "wording": "Solid AWS experience",
+        "kind": "skill",
+        "importance": "must",
+        "knockout": false
+      },
+      {
+        "id": "r5",
+        "label": "REST APIs",
+        "wording": "Experience designing and consuming REST APIs",
+        "kind": "skill",
+        "importance": "must",
+        "knockout": false
+      },
+      {
+        "id": "r6",
+        "label": "Microservices",
+        "wording": "Experience with microservices architectures",
+        "kind": "skill",
+        "importance": "must",
+        "knockout": false
+      },
+      {
+        "id": "r7",
+        "label": "Kubernetes",
+        "wording": "Kubernetes is a nice to have",
+        "kind": "skill",
+        "importance": "nice",
+        "knockout": false
+      },
+      {
+        "id": "r8",
+        "label": "Mentoring",
+        "wording": "Experience mentoring or leading junior engineers",
+        "kind": "experience",
+        "importance": "must",
+        "knockout": false
+      },
+      {
+        "id": "r9",
+        "label": "Pune location",
+        "wording": "Based in Pune, or willing to relocate. This role is on-site",
+        "kind": "location",
+        "importance": "must",
+        "knockout": true
+      }
+    ],
+    "matches": [
+      {
+        "requirementId": "r1",
+        "status": "cannot_change",
+        "evidence": [
+          "b11"
+        ],
+        "note": "You have ~1 year of Java experience, but this role needs 3+."
+      },
+      {
+        "requirementId": "r2",
+        "status": "matched",
+        "evidence": [
+          "b11",
+          "b13",
+          "b15"
+        ]
+      },
+      {
+        "requirementId": "r3",
+        "status": "needs_ok",
+        "evidence": [],
+        "note": "Kafka is a must-have for this role but isn't on your resume."
+      },
+      {
+        "requirementId": "r4",
+        "status": "matched",
+        "evidence": [
+          "b15"
+        ]
+      },
+      {
+        "requirementId": "r5",
+        "status": "matched",
+        "evidence": [
+          "b6",
+          "b11"
+        ]
+      },
+      {
+        "requirementId": "r6",
+        "status": "needs_ok",
+        "evidence": [],
+        "note": "The job asks for microservices experience, which isn't mentioned on your resume."
+      },
+      {
+        "requirementId": "r7",
+        "status": "needs_ok",
+        "evidence": [],
+        "note": "Kubernetes would strengthen your application, though it's not required."
+      },
+      {
+        "requirementId": "r8",
+        "status": "matched",
+        "evidence": [
+          "b9"
+        ]
+      },
+      {
+        "requirementId": "r9",
+        "status": "cannot_change",
+        "evidence": [
+          "b1"
+        ],
+        "note": "You're in Bengaluru."
+      }
+    ],
+    "operations": [
+      {
+        "id": "o1",
+        "op": "insert_after",
+        "block": "b7",
+        "text": "Worked with Apache Kafka for event streaming and message processing.",
+        "alternatives": [
+          "Consumed Kafka topics for real-time data processing.",
+          "Used Kafka for asynchronous event handling."
+        ],
+        "claim": "added_by_user",
+        "value": 9,
+        "requirements": [
+          "r3"
+        ],
+        "evidence": [],
+        "reason": "Kafka is a must-have for this role.",
+        "needsDecision": true
+      },
+      {
+        "id": "o2",
+        "op": "insert_after",
+        "block": "b8",
+        "text": "Built payment service as part of a microservices architecture.",
+        "alternatives": [
+          "Worked with microservices to handle payment workflows."
+        ],
+        "claim": "added_by_user",
+        "value": 8,
+        "requirements": [
+          "r6"
+        ],
+        "evidence": [],
+        "reason": "The job explicitly asks for microservices architecture experience.",
+        "needsDecision": true
+      },
+      {
+        "id": "o3",
+        "op": "insert_after",
+        "block": "b9",
+        "text": "Worked with Docker and container orchestration in staging environments.",
+        "alternatives": [
+          "Used containerized deployments with Docker.",
+          "Worked with orchestration concepts in infrastructure."
+        ],
+        "claim": "added_by_user",
+        "value": 5,
+        "requirements": [
+          "r7"
+        ],
+        "evidence": [],
+        "reason": "Kubernetes isn't essential, but this hints at orchestration familiarity.",
+        "needsDecision": true
+      }
+    ],
+    "coverage": {
+      "covered": 4,
+      "total": 9,
+      "originalCovered": 4
+    },
+    "company": "Kosha Payments",
+    "role": "Backend Engineer"
+  },
+  "violations": [],
+  "generated": "2026-09-28"
+}

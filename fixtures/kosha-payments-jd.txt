@@ -1,0 +1,28 @@
+Backend Engineer — Kosha Payments
+Pune (on-site, 5 days a week)
+
+About the role
+Kosha Payments processes UPI and card settlements for merchants across India.
+We are looking for a backend engineer to join the payments platform team.
+
+What you will do
+- Build and maintain payment and settlement services in Java and Spring Boot.
+- Own REST APIs used by merchant-facing products and internal tooling.
+- Work on our event-driven ledger, which runs on Kafka.
+- Run services on AWS, deployed as microservices on ECS and EKS.
+- Mentor junior engineers on the team and review their code.
+
+What we are looking for
+- 3+ years building backend services in Java.
+- Strong Spring Boot background.
+- Solid AWS experience.
+- Experience designing and consuming REST APIs.
+- Experience with microservices architectures.
+- Apache Kafka in production. This is a must have for this role.
+- Kubernetes is a nice to have.
+- Experience mentoring or leading junior engineers.
+- Based in Pune, or willing to relocate. This role is on-site.
+
+Benefits
+Health insurance for you and your family, an annual learning budget, and
+catered lunch. Kosha Payments is an equal opportunity employer.
