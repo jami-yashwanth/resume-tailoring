@@ -1,0 +1,386 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Result · review · desktop</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/rezz/components/bundle.css">
+<script src="ds/rezz/components/bundle.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&amp;family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+.rz{--paper:#f7f8fa;--paper-raised:#ffffff;--paper-sunken:#eef0f4;--line:#dce0e7;--line-strong:#8a94a6;--ink:#152033;--ink-muted:#4f5b6e;--highlighter:#e4f264;--highlighter-soft:#f4f9c8;--on-highlighter:#152033;--verified:#0b6e5f;--verified-soft:#ddf1ec;--gap:#a83e2a;--gap-soft:#fbe6e1;--action:#152033;--on-action:#ffffff;--link:#2a4fa8;--focus:#2a4fa8;--font-serif:"Bricolage Grotesque",system-ui,sans-serif;--font-sans:"Geist",system-ui,sans-serif;--font-mono:"Geist Mono",ui-monospace,monospace;--space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-6:24px;--space-8:32px;--radius-sm:4px;--radius-md:8px;--radius-lg:14px;--radius-full:9999px;--shadow-sheet:0 1px 2px #1520330f,0 8px 24px -8px #15203329;--shadow-float:0 4px 12px #1520331a,0 16px 40px -8px #15203333;--focus-ring:0 0 0 2px #f7f8fa,0 0 0 4px #2a4fa8;font-family:var(--font-sans);color:var(--ink);background:var(--paper);font-size:16px;line-height:26px}
+.rz.t-dark{--paper:#0f131a;--paper-raised:#171c25;--paper-sunken:#0b0e13;--line:#2a3140;--line-strong:#5c6880;--ink:#e8ecf2;--ink-muted:#a3aebf;--highlighter:#d6ea4f;--highlighter-soft:#353b12;--verified:#4cc7b2;--verified-soft:#12332d;--gap:#f08a74;--gap-soft:#3a1c16;--action:#d6ea4f;--on-action:#152033;--link:#8fb0ff;--focus:#8fb0ff;--shadow-sheet:0 1px 2px #00000080,0 12px 32px -8px #000000b3;--shadow-float:0 16px 40px -8px #000000cc;--focus-ring:0 0 0 2px #0f131a,0 0 0 4px #8fb0ff}
+.rz a{color:var(--link)}
+.rz .eb{font-family:var(--font-mono);font-size:11px;line-height:16px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-muted)}
+.rz button{font:inherit;cursor:pointer}
+.rz button:focus-visible,.rz a:focus-visible{outline:2px solid transparent;box-shadow:var(--focus-ring)}
+.rz .tgl{display:inline-flex;align-items:center;gap:8px;font-size:14px;line-height:20px;font-weight:500;color:var(--ink);background:var(--paper-raised);border:1px solid var(--line-strong);border-radius:var(--radius-full);padding:6px 12px 6px 6px;min-height:36px}
+.rz .tgl i{width:28px;height:16px;border-radius:9999px;background:var(--line-strong);position:relative}
+.rz .tgl i::after{content:"";position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:9999px;background:#ffffff}
+.rz .tgl[aria-pressed="true"] i{background:var(--verified)}
+.rz .tgl[aria-pressed="true"] i::after{left:14px}
+.rz .jobp{width:280px;flex-shrink:0;display:flex;flex-direction:column;gap:14px}
+.rz .gain{padding:16px;background:var(--paper-raised);border:1px solid var(--line);border-radius:var(--radius-lg);display:flex;flex-direction:column;gap:4px}
+.rz .gain b{font-family:var(--font-serif);font-size:30px;line-height:34px;font-weight:700;letter-spacing:-0.02em}
+.rz .req{display:grid;grid-template-columns:22px minmax(0,1fr);gap:0 8px;align-items:start;width:100%;text-align:left;background:none;border:0;border-radius:var(--radius-md);padding:7px 8px;color:var(--ink);font-size:15px;line-height:22px}
+.rz button.req:hover{background:var(--paper-raised)}
+.rz .req small{grid-column:2;font-size:12px;line-height:16px;color:var(--ink-muted)}
+.rz .ic{width:20px;height:20px;border-radius:9999px;display:grid;place-items:center;font-size:12px;line-height:1;font-weight:700;margin-top:1px}
+.rz .ic.ok{background:var(--verified-soft);color:var(--verified)}
+.rz .ic.ask{background:var(--gap-soft);color:var(--gap)}
+.rz .ic.no{background:var(--paper-sunken);color:var(--ink-muted);border:1px solid var(--line-strong)}
+.rz .docw{position:relative}
+.rz .paper{position:absolute;left:0;top:0;bottom:0;width:620px;background:#ffffff;border-radius:2px;box-shadow:var(--shadow-sheet)}
+.rz .row{position:relative;display:grid;grid-template-columns:620px 280px;column-gap:24px;align-items:start;transition:opacity 150ms}
+.rz .row.dim .cell{opacity:.45}
+.rz .cell{position:relative;z-index:1;padding:0 48px;font-family:Georgia,"Times New Roman",serif;font-size:13px;line-height:20px;color:#1b2230}
+.rz .cell h4{margin:14px 0 4px;font-size:12px;letter-spacing:.06em;text-transform:uppercase}
+.rz .role{display:flex;justify-content:space-between;gap:8px;margin-top:8px}
+.rz .line{display:grid;grid-template-columns:14px minmax(0,1fr);width:100%;text-align:left;background:none;border:0;padding:3px 0;margin:0;color:inherit;font:inherit;border-radius:2px}
+.rz .line.nob{grid-template-columns:0 minmax(0,1fr)}
+.rz .line.pl{cursor:default}
+.rz .line .bl::before{content:"\2022"}
+.rz .line mark{background:var(--highlighter);color:#1b2230;border-radius:2px;padding:0 2px}
+.rz .line .pend{outline:1.5px dashed #a83e2a;outline-offset:3px;border-radius:2px;background:#fbe6e1;color:#1b2230}
+.rz .line .gone{color:#8a94a6;text-decoration:line-through}
+.rz .line.sel{box-shadow:0 0 0 2px #2a4fa8;border-radius:3px}
+.rz .gut{position:relative;padding:3px 0 6px}
+.rz .row.top{z-index:5}
+.rz .lab{display:inline-flex;align-items:center;gap:6px;font-family:var(--font-mono);font-size:11px;line-height:16px;font-weight:500;letter-spacing:.04em;color:var(--ink-muted);padding-top:2px}
+.rz .lab::before{content:"";width:10px;height:10px;border-radius:2px;background:var(--highlighter);border:1px solid #1b2230}
+.rz .lab.ask{color:var(--gap)}
+.rz .lab.ask::before{content:"!";width:14px;height:14px;display:grid;place-items:center;font-size:10px;line-height:1;background:var(--gap-soft);border:1px solid var(--gap);border-radius:9999px;color:var(--gap)}
+.rz .lab.cut::before{background:none;border:1px solid var(--line-strong)}
+.rz .pop{position:absolute;left:0;top:0;width:300px;z-index:3;display:flex;flex-direction:column;gap:10px;padding:14px 16px;background:var(--paper-raised);border:1px solid var(--line);border-radius:var(--radius-lg);box-shadow:var(--shadow-float);font-size:14px;line-height:21px;color:var(--ink)}
+.rz .pop .top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.rz .pop .x{width:32px;height:32px;border:0;background:none;color:var(--ink-muted);border-radius:var(--radius-md);font-size:18px;line-height:1}
+.rz .pop q{display:block;quotes:none;font-size:13px;line-height:19px;color:var(--ink-muted);padding:6px 10px;background:var(--paper-sunken);border-radius:var(--radius-md)}
+.rz .acts{display:flex;flex-wrap:wrap;gap:6px 14px}
+.rz .lk{background:none;border:0;padding:0;color:var(--ink);font-size:14px;line-height:20px;font-weight:500;text-decoration:underline;text-underline-offset:3px;min-height:28px}
+.rz .opt{display:grid;grid-template-columns:18px minmax(0,1fr);gap:8px;align-items:start;width:100%;text-align:left;background:var(--paper);border:1px solid var(--line);border-radius:var(--radius-md);padding:8px 10px;font-size:13px;line-height:19px;color:var(--ink)}
+.rz .opt i{width:14px;height:14px;border-radius:9999px;border:1.5px solid var(--line-strong);margin-top:2px}
+.rz .opt[aria-pressed="true"]{border-color:var(--ink)}
+.rz .opt[aria-pressed="true"] i{border:4px solid var(--ink)}
+.rz .dbar{display:flex;align-items:center;gap:20px;padding:16px 32px;background:var(--paper-raised);border-top:1px solid var(--line);box-shadow:0 -8px 24px -12px #15203326}
+.rz .dq{flex-grow:1;display:flex;flex-direction:column;gap:2px;min-width:0}
+.rz .dq q{quotes:none;font-family:Georgia,"Times New Roman",serif;font-size:14px;line-height:20px;color:var(--ink-muted)}
+.rz .eq{min-width:120px;min-height:44px;padding:0 20px;border-radius:var(--radius-md);border:1px solid var(--line-strong);background:var(--paper-raised);color:var(--ink);font-size:15px;line-height:20px;font-weight:600}
+.rz .meter{display:flex;align-items:center;gap:8px;font-size:13px;line-height:18px;color:var(--ink-muted)}
+.rz .meter span.bar{width:80px;height:6px;border-radius:9999px;background:var(--paper-sunken);border:1px solid var(--line);overflow:hidden;display:block}
+.rz .meter span.bar span{display:block;height:100%;background:var(--verified)}
+.rz .steps{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:12px}
+.rz .steps li{display:grid;grid-template-columns:22px minmax(0,1fr);gap:10px;align-items:center;font-size:16px;line-height:24px}
+.rz .steps li.w{color:var(--ink-muted)}
+.rz .spin{width:16px;height:16px;border-radius:9999px;border:2px solid var(--line);border-top-color:var(--ink);animation:rzspin 900ms linear infinite}
+@keyframes rzspin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion: reduce){.rz .spin{animation:none}.rz .row{transition:none}}
+.rz .sk{height:9px;border-radius:4px;background:#eef0f4}
+</style>
+</helmet>
+<div class="rz t-{{theme}}" style="width: 1440px; height: 1180px; display: flex; flex-direction: column; background: var(--paper); overflow: hidden">
+
+<header style="display: flex; align-items: center; gap: 20px; padding: 12px 32px; background: var(--paper-raised); border-bottom: 1px solid var(--line)">
+<x-import component-from-global-scope="Rezz.Wordmark" size="{{wm}}"></x-import>
+<nav aria-label="Breadcrumb" style="flex-grow: 1; display: flex; align-items: center; gap: 8px; font-size: 15px; line-height: 20px">
+<a href="WebTracker.dc.html" style="color: var(--ink-muted)">Your resumes</a>
+<span aria-hidden="true" style="color: var(--ink-muted)">/</span>
+<span style="font-weight: 600">Backend Engineer · Kosha Payments, Pune</span>
+</nav>
+<sc-if value="{{isReviewable}}" hint-placeholder-val="{{ true }}">
+<button type="button" class="tgl" aria-pressed="{{compareStr}}" onClick="{{toggleCompare}}"><i aria-hidden="true"></i>Compare with original</button>
+<a href="WebGaps.dc.html" class="{{dlClass}}" style="text-decoration: none">Download resume</a>
+</sc-if>
+</header>
+
+<sc-if value="{{isGenerating}}" hint-placeholder-val="{{ false }}">
+<main style="flex-grow: 1; background: var(--paper-sunken); display: flex; justify-content: center; align-items: flex-start; gap: 48px; padding: 72px 32px 0">
+<section aria-labelledby="gt" style="width: 440px; display: flex; flex-direction: column; gap: 24px; padding: 32px; background: var(--paper-raised); border: 1px solid var(--line); border-radius: var(--radius-lg)">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<span class="eb">Tailoring · usually about 15 seconds</span>
+<h1 id="gt" style="margin: 0; font-family: var(--font-serif); font-size: 28px; line-height: 34px; font-weight: 700; letter-spacing: -0.02em">Fitting your resume to Backend Engineer at Kosha Payments</h1>
+</div>
+<div role="progressbar" aria-label="Tailoring progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="64" style="height: 8px; border-radius: 9999px; background: var(--paper-sunken); border: 1px solid var(--line); overflow: hidden"><div style="width: 64%; height: 100%; background: var(--ink)"></div></div>
+<ol class="steps" aria-live="polite">
+<li><span class="ic ok" aria-hidden="true">✓</span><span>Read the job: 9 requirements found</span></li>
+<li><span class="ic ok" aria-hidden="true">✓</span><span>Matched 6 of them to your experience</span></li>
+<li><span class="spin" aria-hidden="true"></span><span>Rewording 7 lines in your own layout</span></li>
+<li class="w"><span class="ic no" aria-hidden="true"></span><span>Checking it still fits on 1 page</span></li>
+</ol>
+<p style="margin: 0; font-size: 14px; line-height: 22px; color: var(--ink-muted)">We only use what's in your resume. Anything else is shown to you before it goes in.</p>
+</section>
+<div aria-hidden="true" style="width: 520px; height: 680px; background: #ffffff; border-radius: 2px; box-shadow: var(--shadow-sheet); padding: 40px 44px; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px; opacity: .7">
+<div class="sk" style="width: 40%; height: 16px"></div><div class="sk" style="width: 70%"></div>
+<div class="sk" style="width: 100%; margin-top: 16px"></div><div class="sk" style="width: 92%"></div>
+<div class="sk" style="width: 30%; margin-top: 16px"></div><div class="sk" style="width: 96%"></div><div class="sk" style="width: 88%"></div><div class="sk" style="width: 94%"></div><div class="sk" style="width: 80%"></div>
+<div class="sk" style="width: 30%; margin-top: 16px"></div><div class="sk" style="width: 90%"></div><div class="sk" style="width: 84%"></div>
+</div>
+</main>
+</sc-if>
+
+<sc-if value="{{isReviewable}}" hint-placeholder-val="{{ true }}">
+<div style="display: flex; align-items: center; gap: 16px; padding: 10px 32px; background: var(--paper-raised); border-bottom: 1px solid var(--line); min-height: 40px">
+<span style="font-size: 14px; line-height: 20px; font-weight: 600">{{summaryText}}</span>
+<div role="status" aria-live="polite" style="flex-grow: 1; display: flex; align-items: center; gap: 10px; font-size: 14px; line-height: 20px; color: var(--ink-muted)">
+<sc-if value="{{hasToast}}" hint-placeholder-val="{{ false }}"><span>{{toastText}}</span><button type="button" class="lk" onClick="{{undoLast}}">Undo</button></sc-if>
+</div>
+<div class="meter"><span class="bar" aria-hidden="true"><span style="width: {{fillPct}}"></span></span><span>{{pageText}}</span></div>
+</div>
+
+<div style="flex-grow: 1; min-height: 0; display: flex; gap: 32px; padding: 24px 32px 0; background: var(--paper-sunken); overflow: hidden">
+<aside class="jobp" aria-label="This job's requirements">
+<div class="gain">
+<span class="eb">This job</span>
+<b>{{coverText}}</b>
+<span style="font-size: 14px; line-height: 20px; color: var(--ink-muted)">{{wasText}}</span>
+</div>
+<div style="display: flex; flex-direction: column">
+<sc-for list="{{reqs}}" as="q" hint-placeholder-count="9">
+<sc-if value="{{q.linked}}" hint-placeholder-val="{{ true }}">
+<button type="button" class="req" onClick="{{q.pick}}"><span class="{{q.icClass}}" aria-hidden="true">{{q.icon}}</span><span>{{q.name}}</span><small>{{q.note}}</small></button>
+</sc-if>
+<sc-if value="{{q.unlinked}}" hint-placeholder-val="{{ false }}">
+<div class="req"><span class="{{q.icClass}}" aria-hidden="true">{{q.icon}}</span><span>{{q.name}}</span><small>{{q.note}}</small></div>
+</sc-if>
+</sc-for>
+</div>
+<p style="margin: 0; font-size: 13px; line-height: 19px; color: var(--ink-muted)">Tap a requirement to see its line in your resume.</p>
+</aside>
+
+<div class="docw" aria-label="Your resume">
+<div class="paper" aria-hidden="true"></div>
+<div class="row"><div class="cell" style="padding-top: 40px">
+<div style="font-size: 22px; line-height: 28px; font-weight: 700">Priya Sharma</div>
+<div style="color: #4a5263">Backend Engineer · Bengaluru · Notice period 30 days · priya.sharma@example.com</div>
+<hr style="border: 0; border-top: 1px solid #e3e6eb; margin: 12px 0 8px">
+</div><div class="gut"></div></div>
+
+<sc-for list="{{rows}}" as="r" hint-placeholder-count="14">
+<div class="{{r.rowClass}}">
+<div class="cell">
+<sc-if value="{{r.isHeading}}" hint-placeholder-val="{{ false }}"><h4>{{r.text}}</h4></sc-if>
+<sc-if value="{{r.isRole}}" hint-placeholder-val="{{ false }}"><div class="role"><strong>{{r.text}}</strong><span>{{r.right}}</span></div></sc-if>
+<sc-if value="{{r.isLine}}" hint-placeholder-val="{{ true }}">
+<button type="button" class="{{r.lineClass}}" onClick="{{r.pick}}" aria-label="{{r.aria}}"><span class="{{r.bulletClass}}" aria-hidden="true"></span><span>
+<sc-if value="{{r.vMark}}" hint-placeholder-val="{{ true }}"><mark>{{r.text}}</mark></sc-if>
+<sc-if value="{{r.vPlain}}" hint-placeholder-val="{{ false }}">{{r.text}}</sc-if>
+<sc-if value="{{r.vPend}}" hint-placeholder-val="{{ false }}"><span class="pend">{{r.text}}</span></sc-if>
+<sc-if value="{{r.vGone}}" hint-placeholder-val="{{ false }}"><span class="gone">{{r.text}}</span></sc-if>
+<sc-if value="{{r.isSkills}}" hint-placeholder-val="{{ false }}"><sc-if value="{{r.skMark}}" hint-placeholder-val="{{ true }}"><mark>Java, Spring Boot, AWS (ECS, SQS, RDS), microservices</mark>, PostgreSQL, Redis, Docker, Git, Python</sc-if><sc-if value="{{r.skOrig}}" hint-placeholder-val="{{ false }}">Python, Git, Docker, Java, Spring Boot, AWS, PostgreSQL, Redis</sc-if><sc-if value="{{r.kubePend}}" hint-placeholder-val="{{ true }}">, <span class="pend">Kubernetes</span></sc-if><sc-if value="{{r.kubeAdd}}" hint-placeholder-val="{{ false }}">, <mark>Kubernetes</mark></sc-if></sc-if>
+</span></button>
+</sc-if>
+</div>
+<div class="gut">
+<sc-if value="{{r.showLab}}" hint-placeholder-val="{{ true }}"><span class="{{r.labClass}}">{{r.lab}}</span></sc-if>
+<sc-if value="{{r.popRew}}" hint-placeholder-val="{{ false }}">
+<div class="pop" role="dialog" aria-label="Why this line changed">
+<div class="top"><span class="eb">Reworded for this job</span><button type="button" class="x" aria-label="Close" onClick="{{r.pick}}">×</button></div>
+<span style="font-weight: 600">{{r.reason}}</span>
+<div style="display: flex; flex-direction: column; gap: 4px"><span class="eb">Based on your line</span><q>{{r.orig}}</q></div>
+<div style="display: flex; flex-direction: column; gap: 4px"><span class="eb">The job says</span><q>{{r.jd}}</q></div>
+<x-import component-from-global-scope="Rezz.SourceTag" from="{{r.src}}"></x-import>
+<div class="acts"><button type="button" class="lk" onClick="{{r.revert}}">Undo</button><button type="button" class="lk">Try another wording</button><button type="button" class="lk">Edit</button></div>
+</div>
+</sc-if>
+<sc-if value="{{r.popRev}}" hint-placeholder-val="{{ false }}">
+<div class="pop" role="dialog" aria-label="Original line">
+<div class="top"><span class="eb">Back to your original</span><button type="button" class="x" aria-label="Close" onClick="{{r.pick}}">×</button></div>
+<span>This line is exactly as you wrote it.</span>
+<div class="acts"><button type="button" class="lk" onClick="{{r.revert}}">Use the reworded line again</button></div>
+</div>
+</sc-if>
+<sc-if value="{{r.popAdd}}" hint-placeholder-val="{{ false }}">
+<div class="pop" role="dialog" aria-label="Line you added">
+<div class="top"><x-import component-from-global-scope="Rezz.Badge" tone="gap">Added by you</x-import><button type="button" class="x" aria-label="Close" onClick="{{r.pick}}">×</button></div>
+<span>Not from your resume. Recruiters may ask about Kafka, so we'll give you interview prep after download.</span>
+<span class="eb">To keep 1 page</span>
+<button type="button" class="opt" aria-pressed="{{fitCron}}" onClick="{{fitToCron}}"><i aria-hidden="true"></i><span>Remove "Moved nightly batch jobs…" <span style="color: var(--ink-muted)">(least relevant)</span></span></button>
+<button type="button" class="opt" aria-pressed="{{fitRest}}" onClick="{{fitToRest}}"><i aria-hidden="true"></i><span>Remove "Wrote REST APIs in Java…"</span></button>
+<button type="button" class="opt" aria-pressed="{{fitTwo}}" onClick="{{fitToTwo}}"><i aria-hidden="true"></i><span>Keep everything, allow 2 pages</span></button>
+<div class="acts"><button type="button" class="lk" onClick="{{undoKafka}}">Remove the Kafka line</button></div>
+</div>
+</sc-if>
+<sc-if value="{{r.popCut}}" hint-placeholder-val="{{ false }}">
+<div class="pop" role="dialog" aria-label="Removed line">
+<div class="top"><span class="eb">Removed to keep 1 page</span><button type="button" class="x" aria-label="Close" onClick="{{r.pick}}">×</button></div>
+<span>We took out this line to make room for the Kafka line. It stays in your profile for other jobs.</span>
+<div class="acts"><button type="button" class="lk" onClick="{{fitToTwo}}">Keep it, allow 2 pages</button></div>
+</div>
+</sc-if>
+</div>
+</div>
+</sc-for>
+<div class="row"><div class="cell" style="padding-bottom: 40px"><h4>Education</h4><div class="role" style="margin-top: 0"><span>B.Tech, Computer Science · CGPA 8.4</span><span>2023</span></div></div><div class="gut"></div></div>
+</div>
+</div>
+
+<sc-if value="{{hasDecision}}" hint-placeholder-val="{{ true }}">
+<section class="dbar" aria-label="Decision needed" aria-live="polite">
+<span class="ic ask" aria-hidden="true" style="width: 32px; height: 32px; font-size: 16px">!</span>
+<div class="dq">
+<span class="eb">{{dCount}}</span>
+<span style="font-size: 17px; line-height: 24px; font-weight: 600">{{dTitle}}</span>
+<q>{{dLine}}</q>
+<span style="font-size: 13px; line-height: 18px; color: var(--ink-muted)">Recruiters may ask you about it. Nothing is added unless you choose Add it.</span>
+</div>
+<button type="button" class="eq" aria-label="{{dSkipAria}}" onClick="{{dSkip}}">Skip</button>
+<button type="button" class="eq" aria-label="{{dAddAria}}" onClick="{{dAdd}}">Add it</button>
+</section>
+</sc-if>
+<sc-if value="{{isReady}}" hint-placeholder-val="{{ false }}">
+<section class="dbar" aria-label="Ready to download">
+<span class="ic ok" aria-hidden="true" style="width: 32px; height: 32px; font-size: 16px">✓</span>
+<div class="dq">
+<span style="font-size: 17px; line-height: 24px; font-weight: 600">Ready. {{readyText}}</span>
+<span style="font-size: 14px; line-height: 20px; color: var(--ink-muted)">PDF or DOCX, in your original layout. Uses your free resume for this week.</span>
+</div>
+<a href="WebGaps.dc.html" class="sc-btn sc-btn--primary sc-btn--lg" style="text-decoration: none; min-width: 220px">Download resume</a>
+</section>
+</sc-if>
+</sc-if>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["light","dark"],"default":"light"},"stage":{"editor":"enum","options":["generating","review"],"default":"review"},"kafkaStart":{"editor":"enum","options":["pending","added","skipped"],"default":"pending"},"kubeStart":{"editor":"enum","options":["pending","added","skipped"],"default":"pending"},"$preview":{"width":1440,"height":1180}}'>
+class Component extends DCLogic {
+constructor(props) {
+super(props);
+this.state = { kafka: null, kube: null, sel: null, compare: false, rev: {}, fit: 'cron', last: null };
+}
+renderVals() {
+var st = this.state, p = this.props;
+var stage = p.stage || 'review';
+var kafka = st.kafka || p.kafkaStart || 'pending';
+var kube = st.kube || p.kubeStart || 'pending';
+var cmp = st.compare, fit = st.fit, sel = st.sel;
+var self = this;
+var pick = function (id) { return function () { self.setState({ sel: st.sel === id ? null : id }); }; };
+var revert = function (id) { return function () { var r = Object.assign({}, st.rev); r[id] = !r[id]; self.setState({ rev: r }); }; };
+var pendingIds = [];
+if (kafka === 'pending') pendingIds.push('kafka');
+if (kube === 'pending') pendingIds.push('skills');
+var current = cmp ? null : (pendingIds[0] || null);
+var focus = sel;
+var cut = kafka === 'added' && fit !== 'two' ? (fit === 'rest' ? 'k1' : 'k3') : null;
+
+var R = [
+{ id: 'summary', kind: 'line', nob: true, text: 'Backend engineer with 3 years building payment and ledger services in Java and Spring Boot on AWS.', orig: 'Software engineer interested in backend development.', reason: 'The job leads with Java and Spring Boot', jd: 'Strong Java and Spring Boot on AWS', src: 'your summary + Razorfin › fact #1' },
+{ id: 'hx', kind: 'heading', text: 'Experience' },
+{ id: 'razor', kind: 'role', text: 'Razorfin · Software Engineer, Backend', right: 'Aug 2024 – present' },
+{ id: 'b1', kind: 'line', text: 'Cut payment API p95 latency from 820 ms to 310 ms using async Spring Boot workers on AWS ECS.', orig: 'Worked on backend APIs for payments.', reason: 'The job asks for high-throughput payment APIs', jd: 'Build high-throughput payment APIs', src: 'Razorfin › facts #2, #4' },
+{ id: 'b2', kind: 'line', text: 'Split the refunds module into 4 microservices, each deployed on its own.', orig: 'Helped refactor the refunds module.', reason: 'Microservices is a must have', jd: 'Experience with microservices architecture', src: 'Razorfin › fact #6' },
+{ id: 'kafka', kind: 'line', flag: true, text: 'Consumed payment events from Kafka topics to update the ledger.' },
+{ id: 'b3', kind: 'line', plain: true, text: 'Built a nightly reconciliation job that matches 2.1 lakh transactions against bank files.' },
+{ id: 'b4', kind: 'line', text: 'Mentored 2 junior engineers through their first on-call rotations.', orig: 'Mentored 2 junior engineers.', reason: 'The job asks you to mentor others', jd: 'Mentor junior engineers', src: 'Razorfin › fact #9' },
+{ id: 'kite', kind: 'role', text: 'Kitebyte Labs · Associate Software Engineer', right: 'Jul 2023 – Jul 2024' },
+{ id: 'k1', kind: 'line', plain: true, text: 'Wrote REST APIs in Java for a loyalty-points service used by 40 merchant partners.' },
+{ id: 'k2', kind: 'line', text: 'Added JUnit and Testcontainers integration tests to the loyalty-points service.', orig: 'Wrote unit tests.', reason: 'The job asks for well-tested production code', jd: 'Write tested, production-grade code', src: 'Kitebyte › fact #3' },
+{ id: 'k3', kind: 'line', plain: true, text: 'Moved nightly batch jobs from cron scripts to scheduled Spring tasks.' },
+{ id: 'hs', kind: 'heading', text: 'Skills' },
+{ id: 'skills', kind: 'line', nob: true, skills: true, orig: 'Python, Git, Docker, Java, Spring Boot, AWS, PostgreSQL, Redis', reason: 'The job’s must-haves moved first. Nothing added.', jd: 'Java, Spring Boot, AWS, microservices', src: 'your skills section' }
+];
+
+var rows = [];
+R.forEach(function (d) {
+var isLine = d.kind === 'line';
+if (d.id === 'kafka' && (cmp || kafka === 'skipped')) return;
+var reverted = !!st.rev[d.id];
+var reworded = isLine && !d.plain && !d.flag && !d.skills;
+var isCut = d.id === cut;
+if (isCut && cmp) isCut = false;
+var r = {
+isHeading: d.kind === 'heading', isRole: d.kind === 'role', isLine: isLine, isSkills: !!d.skills,
+text: d.text, right: d.right || '', orig: d.orig || '', reason: d.reason || '', jd: d.jd || '', src: d.src || '',
+bulletClass: d.nob ? '' : 'bl', pick: pick(d.id), revert: revert(d.id),
+vMark: false, vPlain: false, vPend: false, vGone: false, skMark: false, skOrig: false, kubePend: false, kubeAdd: false,
+showLab: false, lab: '', labClass: 'lab', popRew: false, popRev: false, popAdd: false, popCut: false, aria: d.text || 'Skills line'
+};
+var clickable = false;
+if (reworded) {
+if (cmp || reverted) { r.vPlain = true; r.text = d.orig; } else { r.vMark = true; r.showLab = true; r.lab = 'Reworded'; }
+clickable = !cmp;
+r.popRew = !cmp && sel === d.id && !reverted;
+r.popRev = !cmp && sel === d.id && reverted;
+if (reverted && !cmp) { r.showLab = !r.popRev; r.lab = 'Your original'; r.labClass = 'lab cut'; }
+} else if (d.flag) {
+if (kafka === 'pending') { r.vPend = true; r.showLab = true; r.lab = 'Needs your OK'; r.labClass = 'lab ask'; }
+else { r.vMark = true; r.showLab = sel !== 'kafka'; r.lab = 'Added by you'; r.labClass = 'lab ask'; clickable = true; r.popAdd = sel === 'kafka'; }
+} else if (d.skills) {
+if (cmp || reverted) { r.skOrig = true; } else { r.skMark = true; }
+r.kubePend = !cmp && kube === 'pending';
+r.kubeAdd = !cmp && kube === 'added';
+if (!cmp) { clickable = true; r.showLab = sel !== 'skills'; r.lab = kube === 'pending' ? 'Needs your OK' : 'Reordered'; r.labClass = kube === 'pending' ? 'lab ask' : 'lab'; r.popRew = sel === 'skills' && !reverted; r.popRev = sel === 'skills' && reverted; }
+} else if (isCut) {
+r.vGone = true; r.showLab = sel !== d.id; r.lab = 'Removed to fit'; r.labClass = 'lab cut'; clickable = true; r.popCut = sel === d.id;
+} else if (isLine) {
+r.vPlain = true;
+}
+if (r.popRew || r.popRev || r.popAdd || r.popCut) r.showLab = false;
+r.lineClass = 'line' + (d.nob ? ' nob' : '') + (clickable ? '' : ' pl') + (sel === d.id ? ' sel' : '');
+if (!clickable) r.pick = function () {};
+r.rowClass = 'row' + (focus && focus !== d.id && isLine ? ' dim' : '') + ((r.popRew || r.popRev || r.popAdd || r.popCut) ? ' top' : '');
+rows.push(r);
+});
+
+var matched = 6 + (kafka === 'added' ? 1 : 0) + (kube === 'added' ? 1 : 0);
+var reqDefs = [
+['Java', 'ok', 'summary'], ['Spring Boot', 'ok', 'b1'], ['AWS', 'ok', 'b1'], ['Microservices', 'ok', 'b2'], ['REST APIs', 'ok', 'k1'], ['Mentoring', 'ok', 'b4'],
+['Kafka', kafka === 'added' ? 'added' : (kafka === 'pending' ? 'ask' : 'skip'), 'kafka'],
+['Kubernetes', kube === 'added' ? 'added' : (kube === 'pending' ? 'ask' : 'skip'), 'skills'],
+['Based in Pune, on-site', 'no', null]
+];
+var reqs = reqDefs.map(function (q) {
+var s = q[1];
+var icon = s === 'ok' || s === 'added' ? '✓' : (s === 'ask' ? '!' : '–');
+var ic = s === 'ok' ? 'ic ok' : (s === 'added' ? 'ic ask' : (s === 'ask' ? 'ic ask' : 'ic no'));
+var note = s === 'ok' ? 'In your resume' : s === 'added' ? 'Added by you' : s === 'ask' ? 'Not in your resume · needs your OK' : s === 'skip' ? 'Skipped' : 'You’re in Bengaluru. We never change this.';
+var linked = !!q[2] && !cmp && !(s === 'skip' && q[2] === 'kafka');
+return { name: q[0], icon: icon, icClass: ic, note: note, linked: linked, unlinked: !linked, pick: q[2] ? function () { self.setState({ sel: q[2] }); } : function () {} };
+});
+
+var decisions = { kafka: { title: 'Kafka isn’t in your resume. Add this line to your Razorfin role?', line: '“Consumed payment events from Kafka topics to update the ledger.”', key: 'kafka', name: 'Kafka line' },
+skills: { title: 'Kubernetes isn’t in your resume. Add it to your Skills line?', line: 'Skills: …, Git, Python, Kubernetes', key: 'kube', name: 'Kubernetes' } };
+var dcur = current ? decisions[current] : null;
+var decidedCount = 2 - pendingIds.length;
+var decide = function (key, val) { return function () {
+var o = { last: { key: key, val: val } };
+o[key] = val;
+o.sel = key === 'kafka' && val === 'added' ? 'kafka' : null;
+self.setState(o);
+}; };
+var last = st.last;
+var toast = last ? ((last.key === 'kafka' ? 'Kafka line ' : 'Kubernetes ') + (last.val === 'added' ? 'added.' : 'skipped.') + (pendingIds.length ? ' ' + pendingIds.length + ' decision left.' : ' All decisions made.')) : '';
+var pages = kafka === 'added' && fit === 'two' ? '2 pages' : 'Page 1 of 1';
+var fill = kafka === 'added' ? (fit === 'two' ? '100%' : '96%') : '92%';
+var reworded = 7 - Object.keys(st.rev).filter(function (k) { return st.rev[k]; }).length;
+
+return {
+theme: p.theme ?? 'light', wm: 24,
+isGenerating: stage === 'generating', isReviewable: stage !== 'generating',
+compareStr: String(cmp), toggleCompare: function () { self.setState({ compare: !cmp, sel: null }); },
+dlClass: pendingIds.length ? 'sc-btn sc-btn--secondary' : 'sc-btn sc-btn--primary',
+summaryText: cmp ? 'Showing your original resume' : (reworded + ' lines reworded' + (pendingIds.length ? ' · ' + pendingIds.length + ' need your OK' : '')),
+hasToast: !!last && !cmp, toastText: toast,
+undoLast: function () { if (!last) return; var o = { last: null, sel: null }; o[last.key] = 'pending'; self.setState(o); },
+fillPct: fill, pageText: pages + (pages === 'Page 1 of 1' ? ' · ' + fill + ' full' : ''),
+coverText: 'Covers ' + matched + ' of 9',
+wasText: 'job requirements. Your original covered 3.',
+reqs: reqs, rows: rows,
+hasDecision: !!dcur && stage !== 'generating', isReady: !dcur && !cmp && stage !== 'generating',
+dCount: dcur ? (decidedCount + 1) + ' of 2 · needs your OK' : '',
+dTitle: dcur ? dcur.title : '', dLine: dcur ? dcur.line : '',
+dAdd: dcur ? decide(dcur.key, 'added') : function () {}, dSkip: dcur ? decide(dcur.key, 'skipped') : function () {},
+dAddAria: dcur ? 'Add ' + dcur.name + ' to my resume' : 'Add', dSkipAria: dcur ? 'Skip ' + dcur.name : 'Skip',
+readyText: 'Covers ' + matched + ' of 9 requirements · ' + (pages === '2 pages' ? '2 pages' : '1 page') + '.',
+fitCron: String(fit === 'cron'), fitRest: String(fit === 'rest'), fitTwo: String(fit === 'two'),
+fitToCron: function () { self.setState({ fit: 'cron' }); }, fitToRest: function () { self.setState({ fit: 'rest' }); }, fitToTwo: function () { self.setState({ fit: 'two', sel: kafka === 'added' ? 'kafka' : null }); },
+undoKafka: function () { self.setState({ kafka: 'pending', sel: null, last: null }); }
+};
+}
+}
+</script>
+</body>
+</html>

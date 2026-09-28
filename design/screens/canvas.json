@@ -1,0 +1,328 @@
+{
+  "v": 3,
+  "attachments": {},
+  "boards": {
+    "AddJob.dc.html": {
+      "h": 800,
+      "page": "mobile",
+      "title": "04 Add a job · empty",
+      "w": 360,
+      "x": 440,
+      "y": 4380
+    },
+    "AddJobRead.dc.html": {
+      "h": 960,
+      "page": "mobile",
+      "title": "04b Add a job · requirements read",
+      "w": 360,
+      "x": 880,
+      "y": 4380
+    },
+    "Desktop.dc.html": {
+      "h": 1180,
+      "page": "web",
+      "title": "01 Result · review (try Add it / Skip in Play)",
+      "w": 1440,
+      "x": 0,
+      "y": 0,
+      "is_interactive": true
+    },
+    "Extension.dc.html": {
+      "h": 800,
+      "page": "web",
+      "title": "11 Chrome extension side panel",
+      "w": 1280,
+      "x": 6080,
+      "y": 5480
+    },
+    "Gaps.dc.html": {
+      "h": 1040,
+      "page": "mobile",
+      "title": "06 Gaps · after download",
+      "w": 360,
+      "x": 1760,
+      "y": 4380
+    },
+    "HonestCheck.dc.html": {
+      "h": 1760,
+      "page": "mobile",
+      "title": "07 Honest check",
+      "w": 360,
+      "x": 2200,
+      "y": 4380
+    },
+    "LandingDesktop.dc.html": {
+      "h": 3500,
+      "page": "web",
+      "title": "02 Landing · D: Bricolage Grotesque + Geist (chosen)",
+      "w": 1440,
+      "x": 1520,
+      "y": 0
+    },
+    "LandingTypeSource.dc.html": {
+      "h": 3500,
+      "page": "web",
+      "title": "02 Landing · B: Source Serif 4 + Source Sans 3",
+      "w": 1440,
+      "x": 3040,
+      "y": 0
+    },
+    "LandingTypeInstrument.dc.html": {
+      "h": 3500,
+      "page": "web",
+      "title": "02 Landing · C: Instrument Serif + Instrument Sans",
+      "w": 1440,
+      "x": 4560,
+      "y": 0
+    },
+    "LandingTypeBricolage.dc.html": {
+      "h": 3500,
+      "page": "web",
+      "title": "02 Landing · A: Literata + Hind (previous)",
+      "w": 1440,
+      "x": 6080,
+      "y": 0
+    },
+    "LandingMobile.dc.html": {
+      "h": 4000,
+      "page": "mobile",
+      "title": "02 Landing · mobile",
+      "w": 360,
+      "x": 880,
+      "y": 0
+    },
+    "Main.dc.html": {
+      "h": 800,
+      "page": "mobile",
+      "title": "01 Result · mobile",
+      "w": 360,
+      "x": 0,
+      "y": 0
+    },
+    "Pass.dc.html": {
+      "h": 1040,
+      "page": "mobile",
+      "title": "08b Choose a pass · UPI",
+      "w": 360,
+      "x": 3080,
+      "y": 4380
+    },
+    "ResultDark.dc.html": {
+      "h": 800,
+      "page": "mobile",
+      "title": "01b Result · mobile, dark theme",
+      "w": 360,
+      "x": 440,
+      "y": 0
+    },
+    "SeeChanges.dc.html": {
+      "h": 1320,
+      "page": "mobile",
+      "title": "05 See changes",
+      "w": 360,
+      "x": 1320,
+      "y": 4380
+    },
+    "SignIn.dc.html": {
+      "h": 800,
+      "page": "mobile",
+      "title": "08 Sign in · phone OTP",
+      "w": 360,
+      "x": 2640,
+      "y": 4380
+    },
+    "Tracker.dc.html": {
+      "h": 900,
+      "page": "mobile",
+      "title": "09 Tracker",
+      "w": 360,
+      "x": 3520,
+      "y": 4380
+    },
+    "Upload.dc.html": {
+      "h": 800,
+      "page": "mobile",
+      "title": "03 Upload",
+      "w": 360,
+      "x": 0,
+      "y": 4380
+    },
+    "WebAddJob.dc.html": {
+      "h": 900,
+      "page": "web",
+      "title": "04 Add a job",
+      "w": 1440,
+      "x": 1520,
+      "y": 3880
+    },
+    "WebChanges.dc.html": {
+      "h": 1180,
+      "page": "web",
+      "title": "05 Result · ready (all decisions made)",
+      "w": 1440,
+      "x": 4560,
+      "y": 3880,
+      "is_interactive": true
+    },
+    "WebGaps.dc.html": {
+      "h": 960,
+      "page": "web",
+      "title": "06 Finish · your resume is ready",
+      "w": 1440,
+      "x": 6080,
+      "y": 3880
+    },
+    "WebHonestCheck.dc.html": {
+      "h": 1120,
+      "page": "web",
+      "title": "07 Honest check",
+      "w": 1440,
+      "x": 0,
+      "y": 5480
+    },
+    "WebPass.dc.html": {
+      "h": 900,
+      "page": "web",
+      "title": "08b Choose a pass · UPI",
+      "w": 1440,
+      "x": 3040,
+      "y": 5480
+    },
+    "WebSignIn.dc.html": {
+      "h": 900,
+      "page": "web",
+      "title": "08 Sign in · phone OTP",
+      "w": 1440,
+      "x": 1520,
+      "y": 5480
+    },
+    "WebTracker.dc.html": {
+      "h": 900,
+      "page": "web",
+      "title": "09 Tracker",
+      "w": 1440,
+      "x": 4560,
+      "y": 5480
+    },
+    "WebUpload.dc.html": {
+      "h": 900,
+      "page": "web",
+      "title": "03 Upload",
+      "w": 1440,
+      "x": 0,
+      "y": 3880
+    },
+    "WebGenerating.dc.html": {
+      "h": 1180,
+      "page": "web",
+      "title": "04b Tailoring in progress",
+      "w": 1440,
+      "x": 3040,
+      "y": 3880
+    }
+  },
+  "createdOnFiles": {
+    "at": "2026-09-25T11:05:18.180Z",
+    "v": 1
+  },
+  "designSystems": [
+    {
+      "artifact": "https://claude.ai/artifact/UkzvkLtWcFWGrd8eczPW4q",
+      "copiedAt": "2026-09-25T11:15:00Z",
+      "namespace": "rezz",
+      "title": "Rezz",
+      "version": "1790334182-cc24"
+    }
+  ],
+  "launch": {
+    "page": "web",
+    "view": "canvas"
+  },
+  "notes": {
+    "row1": {
+      "kind": "title1",
+      "maxW": 1240,
+      "page": "mobile",
+      "text": "Mobile, for later",
+      "w": 240,
+      "x": 0,
+      "y": -300
+    },
+    "row2": {
+      "kind": "title1",
+      "maxW": 3880,
+      "page": "mobile",
+      "text": "App flow on a 360 px phone",
+      "w": 240,
+      "x": 0,
+      "y": 4080
+    },
+    "web1": {
+      "kind": "title1",
+      "maxW": 7520,
+      "page": "web",
+      "text": "Result and landing page (D chosen; B, C, A kept to compare)",
+      "w": 240,
+      "x": 0,
+      "y": -300
+    },
+    "web2": {
+      "kind": "title1",
+      "maxW": 7520,
+      "page": "web",
+      "text": "Web app flow: upload → job → tailoring → ready → finish",
+      "w": 240,
+      "x": 0,
+      "y": 3580
+    },
+    "web3": {
+      "kind": "title1",
+      "maxW": 7360,
+      "page": "web",
+      "text": "Checks, sign-in and pay, tracker, extension",
+      "w": 240,
+      "x": 0,
+      "y": 5180
+    }
+  },
+  "order": [
+    "Desktop.dc.html",
+    "LandingDesktop.dc.html",
+    "LandingTypeSource.dc.html",
+    "LandingTypeInstrument.dc.html",
+    "LandingTypeBricolage.dc.html",
+    "WebUpload.dc.html",
+    "WebAddJob.dc.html",
+    "WebGenerating.dc.html",
+    "WebChanges.dc.html",
+    "WebGaps.dc.html",
+    "WebHonestCheck.dc.html",
+    "WebSignIn.dc.html",
+    "WebPass.dc.html",
+    "WebTracker.dc.html",
+    "Extension.dc.html",
+    "Main.dc.html",
+    "ResultDark.dc.html",
+    "LandingMobile.dc.html",
+    "Upload.dc.html",
+    "AddJob.dc.html",
+    "AddJobRead.dc.html",
+    "SeeChanges.dc.html",
+    "Gaps.dc.html",
+    "HonestCheck.dc.html",
+    "SignIn.dc.html",
+    "Pass.dc.html",
+    "Tracker.dc.html"
+  ],
+  "pages": [
+    {
+      "id": "web",
+      "name": "Website"
+    },
+    {
+      "id": "mobile",
+      "name": "Mobile (later)"
+    }
+  ],
+  "title": "Rezz app screens"
+}

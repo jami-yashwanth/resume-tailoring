@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Landing · desktop</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/rezz/components/bundle.css">
+<script src="ds/rezz/components/bundle.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,500;7..72,600&amp;family=Hind:wght@400;500;600&amp;family=IBM+Plex+Mono:wght@400;500&amp;display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,500;8..60,600&amp;family=Source+Sans+3:wght@400;500;600&amp;family=Source+Code+Pro:wght@400;500&amp;family=Instrument+Serif&amp;family=Instrument+Sans:wght@400;500;600&amp;family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&amp;family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+.rz{--paper:#f7f8fa;--paper-raised:#ffffff;--paper-sunken:#eef0f4;--line:#dce0e7;--line-strong:#8a94a6;--ink:#152033;--ink-muted:#4f5b6e;--sheet:#ffffff;--sheet-ink:#1b2230;--sheet-line:#e3e6eb;--highlighter:#e4f264;--highlighter-soft:#f4f9c8;--on-highlighter:#152033;--verified:#0b6e5f;--verified-soft:#ddf1ec;--gap:#a83e2a;--gap-soft:#fbe6e1;--action:#152033;--on-action:#ffffff;--link:#2a4fa8;--focus:#2a4fa8;--font-serif:Literata,Georgia,"Times New Roman",serif;--font-sans:Hind,system-ui,-apple-system,"Segoe UI",sans-serif;--font-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;--space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-6:24px;--space-8:32px;--space-12:48px;--space-16:64px;--radius-sm:4px;--radius-md:8px;--radius-lg:14px;--radius-sheet:2px;--radius-full:9999px;--shadow-sheet:0 1px 2px #1520330f,0 8px 24px -8px #15203329;--shadow-float:0 4px 12px #1520331a,0 16px 40px -8px #15203333;--focus-ring:0 0 0 2px #f7f8fa,0 0 0 4px #2a4fa8;font-family:var(--font-sans);color:var(--ink);background:var(--paper);font-size:16px;line-height:26px}
+.rz a{color:var(--link)}.rz a:hover{color:var(--ink)}
+.rz .eb{font-family:var(--font-mono);font-size:11px;line-height:16px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-muted)}
+.rz button:focus-visible,.rz a:focus-visible,.rz summary:focus-visible{outline:2px solid transparent;box-shadow:var(--focus-ring)}
+.rz details{border-bottom:1px solid var(--line);padding:16px 0}
+.rz summary{font-size:18px;line-height:28px;font-weight:600;cursor:pointer;border-radius:var(--radius-sm)}
+.rz details p{margin:8px 0 0;font-size:16px;line-height:26px;color:var(--ink-muted)}
+.rz .anno{display:flex;align-items:center;gap:8px}
+.rz .anno::before{content:"";width:28px;height:1px;background:var(--verified)}
+.rz.f-source{--font-serif:"Source Serif 4",Georgia,serif;--font-sans:"Source Sans 3",system-ui,sans-serif;--font-mono:"Source Code Pro",ui-monospace,monospace;font-size:17px;line-height:28px}
+.rz.f-source h1{letter-spacing:-0.025em!important}
+.rz.f-instrument{--font-serif:"Instrument Serif",Georgia,serif;--font-sans:"Instrument Sans",system-ui,sans-serif;--font-mono:"IBM Plex Mono",ui-monospace,monospace}
+.rz.f-instrument h1,.rz.f-instrument h2{font-weight:400!important;letter-spacing:-0.01em!important}
+.rz.f-instrument h1{font-size:76px!important;line-height:76px!important}
+.rz.f-instrument h2{font-size:54px!important;line-height:58px!important}
+.rz.f-instrument .sc-pass__price{font-weight:400;font-size:48px}
+.rz.f-bricolage{--font-serif:"Bricolage Grotesque",system-ui,sans-serif;--font-sans:"Geist",system-ui,sans-serif;--font-mono:"Geist Mono",ui-monospace,monospace}
+.rz.f-bricolage h1{font-weight:700!important;letter-spacing:-0.035em!important}
+.rz.f-bricolage h2{letter-spacing:-0.03em!important}
+</style>
+</helmet>
+<div class="rz f-{{pairing}}" style="width: 1440px; height: 3500px; display: flex; flex-direction: column; background: var(--paper); overflow: hidden">
+<header style="display: flex; align-items: center; justify-content: space-between; padding: 20px 64px; border-bottom: 1px solid var(--line)">
+<x-import component-from-global-scope="Rezz.Wordmark" size="{{wm}}"></x-import>
+<nav aria-label="Main" style="display: flex; align-items: center; gap: 32px">
+<a href="#how" style="font-size: 15px; font-weight: 600; color: var(--ink); text-decoration: none">How it works</a>
+<a href="#pricing" style="font-size: 15px; font-weight: 600; color: var(--ink); text-decoration: none">Pricing</a>
+<a href="#faq" style="font-size: 15px; font-weight: 600; color: var(--ink); text-decoration: none">Questions</a>
+<x-import component-from-global-scope="Rezz.Button" variant="secondary">Get the Chrome extension</x-import>
+</nav>
+</header>
+
+<section style="padding: 72px 64px 64px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 64px; align-items: center">
+<div style="display: flex; flex-direction: column; gap: 24px; max-width: 560px">
+<span class="eb">For job seekers in India</span>
+<h1 style="margin: 0; font-family: var(--font-serif); font-size: 56px; line-height: 60px; font-weight: 600; letter-spacing: -0.02em">Your resume. Tailored to every job.</h1>
+<p style="margin: 0; font-size: 18px; line-height: 28px; color: var(--ink-muted)">Upload your own Word, PDF or LaTeX resume once. Paste any job. About 15 seconds later you get it back, rewritten for that job, in your own design. Every change is marked, and nothing goes in without your OK.</p>
+<div style="display: flex; align-items: center; gap: 16px">
+<x-import component-from-global-scope="Rezz.Button" variant="primary" size="lg">Upload your resume</x-import>
+<span style="font-size: 14px; line-height: 22px; color: var(--ink-muted)">No sign-up to try.<br>1 tailored resume a week is free.</span>
+</div>
+</div>
+<div aria-label="Example of a tailored resume" style="position: relative; background: var(--paper-sunken); border-radius: var(--radius-lg); padding: 40px 40px 40px 40px; display: flex; flex-direction: column; gap: 16px">
+<div style="display: flex; justify-content: space-between; align-items: center">
+<span class="eb">Tailored for Backend Engineer, Kosha Payments, Pune</span>
+<x-import component-from-global-scope="Rezz.Badge" tone="changed">6 lines changed</x-import>
+</div>
+<x-import component-from-global-scope="Rezz.ResumeSheet" name="Priya Sharma" role="Backend Engineer · Bengaluru · Notice period 30 days">
+<p style="margin: 0"><mark class="sc-hl sc-hl--sweep">Backend engineer with 3 years building payment and ledger services in Java and Spring Boot on AWS.</mark></p>
+<hr class="sc-sheet__rule">
+<h4>Experience</h4>
+<div style="display: flex; justify-content: space-between"><strong>Razorfin · Software Engineer, Backend</strong><span>Aug 2024 – present</span></div>
+<ul style="margin-top: 6px">
+<li><del class="sc-was">Worked on backend APIs for payments.</del> <mark class="sc-hl sc-hl--sweep" style="animation-delay: 150ms">Cut payment API p95 latency from 820 ms to 310 ms using async Spring Boot workers on AWS ECS.</mark>
+<div class="anno" style="margin: 6px 0 4px"><x-import component-from-global-scope="Rezz.SourceTag" from="your Razorfin project › facts #2, #4"></x-import></div></li>
+<li><mark class="sc-hl sc-hl--sweep" style="animation-delay: 300ms">Split the refunds module into 4 microservices, each deployed on its own.</mark>
+<div class="anno" style="margin: 6px 0 4px"><x-import component-from-global-scope="Rezz.SourceTag" from="Razorfin › fact #6"></x-import></div></li>
+<li>Built a nightly reconciliation job that matches 2.1 lakh transactions against bank files.</li>
+</ul>
+<hr class="sc-sheet__rule">
+<h4>Skills</h4>
+<p style="margin: 0"><mark class="sc-hl sc-hl--sweep" style="animation-delay: 450ms">Java, Spring Boot, AWS (ECS, SQS, RDS), microservices</mark>, PostgreSQL, Redis, Docker, Git</p>
+</x-import>
+<p style="margin: 0; font-size: 14px; line-height: 22px; color: var(--ink-muted)">Highlighted lines changed. Everything else is exactly as you wrote it.</p>
+</div>
+</section>
+
+<div style="padding: 0 64px">
+<x-import component-from-global-scope="Rezz.PromiseStrip"></x-import>
+</div>
+
+<section id="how" style="padding: 96px 64px 0; display: flex; flex-direction: column; gap: 40px">
+<h2 style="margin: 0; font-family: var(--font-serif); font-size: 40px; line-height: 46px; font-weight: 600; letter-spacing: -0.015em">How it works</h2>
+<ol style="margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 48px">
+<li style="display: flex; flex-direction: column; gap: 8px; padding-top: 20px; border-top: 1px solid var(--ink)">
+<span style="font-family: var(--font-mono); font-size: 12px; line-height: 16px; color: var(--ink-muted)">01 · First time only</span>
+<div style="font-size: 20px; line-height: 28px; font-weight: 600">Upload your resume</div>
+<p style="margin: 0; color: var(--ink-muted)">PDF, DOCX, LaTeX or your LinkedIn PDF. We read your facts and keep your layout. No sign-up to try.</p>
+</li>
+<li style="display: flex; flex-direction: column; gap: 8px; padding-top: 20px; border-top: 1px solid var(--ink)">
+<span style="font-family: var(--font-mono); font-size: 12px; line-height: 16px; color: var(--ink-muted)">02 · For every job</span>
+<div style="font-size: 20px; line-height: 28px; font-weight: 600">Add the job</div>
+<p style="margin: 0; color: var(--ink-muted)">Paste the description, share it from the Naukri or LinkedIn app, upload a screenshot, or click the Rezz extension on a career page.</p>
+</li>
+<li style="display: flex; flex-direction: column; gap: 8px; padding-top: 20px; border-top: 1px solid var(--ink)">
+<span style="font-family: var(--font-mono); font-size: 12px; line-height: 16px; color: var(--ink-muted)">03 · About 15 seconds later</span>
+<div style="font-size: 20px; line-height: 28px; font-weight: 600">Download your resume</div>
+<p style="margin: 0; color: var(--ink-muted)">Your own file, in your own design, tailored to that job. Changes from your own facts are applied for you. Anything not from your resume waits for your OK.</p>
+</li>
+</ol>
+</section>
+
+<section style="margin-top: 96px; padding: 80px 64px; background: var(--paper-raised); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 64px; align-items: start">
+<div style="display: flex; flex-direction: column; gap: 16px; max-width: 520px">
+<span class="eb">What changes, and why</span>
+<h2 style="margin: 0; font-family: var(--font-serif); font-size: 40px; line-height: 46px; font-weight: 600; letter-spacing: -0.015em">Nothing added behind your back.</h2>
+<p style="margin: 0; font-size: 18px; line-height: 28px; color: var(--ink-muted)">Rezz rewords what you already did, so it matches how the job describes it. Each change shows the old line, the new line, where it came from and why the job needed it.</p>
+<p style="margin: 0; font-size: 18px; line-height: 28px; color: var(--ink-muted)">If the job asks for a skill that isn't in your resume, Rezz drafts the line and marks it. It goes in only if you choose Add it.</p>
+</div>
+<div style="display: flex; flex-direction: column; gap: 16px">
+<div style="border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 8px 24px">
+<x-import component-from-global-scope="Rezz.ChangeLine" text="Cut payment API p95 latency from 820 ms to 310 ms using async Spring Boot workers on AWS ECS." was="Worked on backend APIs for payments." from="Razorfin › facts #2, #4" reason="Job asks for high-throughput payments" on-undo="{{noop}}"></x-import>
+<x-import component-from-global-scope="Rezz.ChangeLine" text="Mentored 2 junior engineers through their first on-call rotations." was="Mentored 2 junior engineers." from="Razorfin › fact #9" reason="Job asks for mentoring" on-undo="{{noop}}"></x-import>
+</div>
+<div style="border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 20px 24px; display: flex; align-items: center; gap: 16px">
+<x-import component-from-global-scope="Rezz.Badge" tone="gap">Needs your OK</x-import>
+<div style="flex-grow: 1">
+<div style="font-size: 18px; line-height: 26px; font-weight: 600">Kafka is in the job but not in your resume.</div>
+<div style="font-size: 14px; line-height: 22px; color: var(--ink-muted)">We draft a line and mark it. It goes in only if you choose Add it.</div>
+</div>
+</div>
+</div>
+</section>
+
+<section id="pricing" style="padding: 96px 64px 0; display: flex; flex-direction: column; gap: 40px; align-items: center">
+<div style="display: flex; flex-direction: column; gap: 12px; align-items: center; text-align: center">
+<h2 style="margin: 0; font-family: var(--font-serif); font-size: 40px; line-height: 46px; font-weight: 600; letter-spacing: -0.015em">Paid once. Does not renew.</h2>
+<p style="margin: 0; font-size: 18px; line-height: 28px; color: var(--ink-muted)">Pay by UPI. No card, no autopay mandate. When the pass ends, it just ends.</p>
+</div>
+<div style="display: flex; gap: 24px; align-items: stretch">
+<x-import component-from-global-scope="Rezz.PassCard" name="Free" price="₹0" per="Every week" features="{{free}}" cta="Start free" note="No payment. No sign-up to try."></x-import>
+<x-import component-from-global-scope="Rezz.PassCard" name="Sprint" price="₹149" per="30 days" features="{{sprint}}" featured="{{yes}}" cta="Buy Sprint with UPI"></x-import>
+<x-import component-from-global-scope="Rezz.PassCard" name="Job-hunt" price="₹399" per="90 days" features="{{hunt}}" cta="Buy Job-hunt with UPI"></x-import>
+</div>
+</section>
+
+<section id="faq" style="padding: 96px 64px 0; display: grid; grid-template-columns: 360px minmax(0, 1fr); gap: 64px">
+<h2 style="margin: 0; font-family: var(--font-serif); font-size: 40px; line-height: 46px; font-weight: 600; letter-spacing: -0.015em">Questions</h2>
+<div style="border-top: 1px solid var(--line)">
+<details open="">
+<summary>Will it add skills I don't have?</summary>
+<p>Only if you say so. When the job asks for a skill that isn't in your resume, we draft the line, mark it "Not in your resume" and ask. It goes in only if you choose Add it, and we give you interview prep for it.</p>
+</details>
+<details>
+<summary>Do you give an ATS score?</summary>
+<p>No. Applicant tracking systems don't publish a score, so any number would be made up. We show whether your file parses cleanly and which of the job's keywords it contains.</p>
+</details>
+<details>
+<summary>Will my resume look different?</summary>
+<p>No. We edit your own file and keep its fonts and layout. You download it as PDF or DOCX.</p>
+</details>
+<details>
+<summary>Does the pass renew?</summary>
+<p>No. You pay once by UPI. When 30 or 90 days are over, it stops. There is nothing to cancel.</p>
+</details>
+<details>
+<summary>Do I need to sign up?</summary>
+<p>Not to try. You sign in with your phone number and a one-time code only when you download.</p>
+</details>
+<details>
+<summary>What happens to my resume data?</summary>
+<p>Your resume is used only to tailor your resumes. It is stored encrypted, never sold, and never used to train AI models. You can delete everything from Settings at any time. [Draft: confirm storage region and deletion time with your hosting and legal setup.]</p>
+</details>
+</div>
+</section>
+
+<footer style="margin-top: 96px; flex-grow: 1; padding: 40px 64px; background: var(--paper-raised); border-top: 1px solid var(--line); display: flex; justify-content: space-between; align-items: flex-start">
+<div style="display: flex; flex-direction: column; gap: 12px">
+<x-import component-from-global-scope="Rezz.Wordmark" size="{{wm}}"></x-import>
+<p style="margin: 0; font-size: 14px; line-height: 22px; color: var(--ink-muted)">Your resume, tailored to each job. Nothing added behind your back. No fake ATS score. No auto-renew.</p>
+</div>
+<nav aria-label="Footer" style="display: flex; gap: 24px; font-size: 14px; line-height: 22px">
+<a href="#pricing">Pricing</a><a href="#privacy">Privacy</a><a href="#terms">Terms</a><a href="#contact">Contact</a>
+</nav>
+</footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"pairing":{"editor":"enum","options":["literata","source","instrument","bricolage"],"default":"bricolage"},"$preview":{"width":1440,"height":3500}}'>
+class Component extends DCLogic {
+renderVals() {
+return {
+pairing: this.props.pairing ?? 'bricolage',
+yes: true, wm: 30, noop: function () {},
+sprint: ['15 tailored resumes', 'Honest check on each one', 'Interview prep and tracker'],
+hunt: ['Unlimited tailored resumes (fair use)', 'Honest check on each one', 'Interview prep and tracker'],
+free: ['1 tailored resume a week', 'Honest check included', 'Your own design']
+};
+}
+}
+</script>
+</body>
+</html>

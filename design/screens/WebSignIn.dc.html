@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sign in to download · web</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/rezz/components/bundle.css">
+<script src="ds/rezz/components/bundle.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&amp;family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500&amp;display=swap">
+<style>.rz h1{font-weight:700!important;letter-spacing:-0.035em!important}</style>
+<style>
+body{margin:0}
+.rz{--paper:#f7f8fa;--paper-raised:#ffffff;--paper-sunken:#eef0f4;--line:#dce0e7;--line-strong:#8a94a6;--ink:#152033;--ink-muted:#4f5b6e;--highlighter:#e4f264;--verified:#0b6e5f;--verified-soft:#ddf1ec;--gap:#a83e2a;--gap-soft:#fbe6e1;--action:#152033;--on-action:#ffffff;--link:#2a4fa8;--focus:#2a4fa8;--font-serif:"Bricolage Grotesque",system-ui,sans-serif;--font-sans:"Geist",system-ui,sans-serif;--font-mono:"Geist Mono",ui-monospace,monospace;--space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-6:24px;--radius-sm:4px;--radius-md:8px;--radius-lg:14px;--radius-full:9999px;--shadow-float:0 4px 12px #1520331a,0 16px 40px -8px #15203333;--focus-ring:0 0 0 2px #f7f8fa,0 0 0 4px #2a4fa8;font-family:var(--font-sans);color:var(--ink);font-size:16px;line-height:26px}
+.rz a{color:var(--link)}.rz a:hover{color:var(--ink)}
+.rz button:focus-visible,.rz a:focus-visible,.rz input:focus-visible{outline:2px solid transparent;box-shadow:var(--focus-ring)}
+.rz .otp{width:48px;height:56px;box-sizing:border-box;text-align:center;font-family:var(--font-mono);font-size:20px;color:var(--ink);background:var(--paper-sunken);border:1px solid var(--line-strong);border-radius:var(--radius-md)}
+</style>
+</helmet>
+<div class="rz" style="position: relative; width: 1440px; height: 900px; overflow: hidden">
+<div aria-hidden="true" style="position: absolute; inset: 0">
+<dc-import name="Desktop" hint-size="1440px,900px"></dc-import>
+</div>
+<div aria-hidden="true" style="position: absolute; inset: 0; background: #15203380"></div>
+<section role="dialog" aria-modal="true" aria-labelledby="t" style="position: absolute; left: 500px; top: 170px; width: 440px; box-sizing: border-box; padding: 28px; background: var(--paper-raised); border-radius: var(--radius-lg); box-shadow: var(--shadow-float); display: flex; flex-direction: column; gap: 20px">
+<div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px">
+<div style="display: flex; flex-direction: column; gap: 4px">
+<h2 id="t" style="margin: 0; font-size: 20px; line-height: 28px; font-weight: 600">Sign in to download</h2>
+<p style="margin: 0; font-size: 14px; line-height: 22px; color: var(--ink-muted)">Your phone number keeps your resumes and pass together. No password.</p>
+</div>
+<button type="button" aria-label="Close" style="width: 44px; height: 44px; flex-shrink: 0; display: grid; place-items: center; margin: -10px -12px 0 0; border: 0; background: transparent; color: var(--ink); border-radius: var(--radius-md)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg></button>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px">
+<label for="ph" style="font-size: 15px; line-height: 20px; font-weight: 600">Phone number</label>
+<div style="display: flex; align-items: center; height: 48px; background: var(--paper-sunken); border: 1px solid var(--line-strong); border-radius: var(--radius-md); overflow: hidden">
+<span style="padding: 0 12px; font-size: 16px; line-height: 48px; color: var(--ink-muted); border-right: 1px solid var(--line)">+91</span>
+<input id="ph" type="tel" inputmode="numeric" value="98765 43210" style="flex-grow: 1; min-width: 0; height: 46px; padding: 0 12px; border: 0; background: transparent; font-family: var(--font-sans); font-size: 16px; color: var(--ink)">
+<a href="#change" style="padding: 0 12px; font-size: 14px">Change</a>
+</div>
+</div>
+<fieldset style="margin: 0; padding: 0; border: 0; display: flex; flex-direction: column; gap: 8px">
+<legend style="padding: 0; margin-bottom: 8px; font-size: 15px; line-height: 20px; font-weight: 600">6-digit code sent by SMS</legend>
+<div style="display: flex; gap: 8px">
+<input class="otp" aria-label="Digit 1" inputmode="numeric" maxlength="1" value="4">
+<input class="otp" aria-label="Digit 2" inputmode="numeric" maxlength="1" value="8">
+<input class="otp" aria-label="Digit 3" inputmode="numeric" maxlength="1" value="2">
+<input class="otp" aria-label="Digit 4" inputmode="numeric" maxlength="1" value="">
+<input class="otp" aria-label="Digit 5" inputmode="numeric" maxlength="1" value="">
+<input class="otp" aria-label="Digit 6" inputmode="numeric" maxlength="1" value="">
+</div>
+<div style="font-size: 14px; line-height: 22px; color: var(--ink-muted)">Didn't get it? <a href="#resend">Send the code again</a></div>
+</fieldset>
+<x-import component-from-global-scope="Rezz.Button" variant="primary" size="lg" block="{{yes}}">Verify and download</x-import>
+<p style="margin: 0; font-size: 12px; line-height: 16px; font-weight: 500; letter-spacing: .02em; color: var(--ink-muted); text-align: center">You sign in once. Your next downloads go straight through.</p>
+</section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+renderVals() { return { yes: true }; }
+}
+</script>
+</body>
+</html>
