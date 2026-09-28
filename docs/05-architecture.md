@@ -66,6 +66,8 @@ Prototype findings (`prototypes/in-place-editing/`):
 
 Other problems to handle: mixed formatting inside a line, two-column layouts (fit each column), headers/footers with contact info, hidden white text (warn), ATS-hostile templates (offer an ATS-safe second download).
 
+**v1 override (28 Sep 2026):** the "ATS-safe second download" above was scoped as a *fallback* for ATS-hostile source files. For v1 it is promoted to the primary path for every result, not just hostile-format cases — see `CLAUDE.md`'s dated override. Every tailored result renders into one default Rezz template (structured `Layout.blocks` in, fixed template out) rather than editing the original file in place, which sidesteps the subset-font and page-fit problems above entirely for this pipeline (they resurface if/when in-place editing is revisited). In-place editing (the table above) stays documented as the longer-term direction, not deleted.
+
 ## AI model and cost
 
 - Use the Claude API (the Claude Max subscription is for personal use and can't serve other users).

@@ -13,12 +13,14 @@ import { session } from "@/lib/session";
  * browser and sent to be parsed — which is also the honest check's first job.
  * A file we cannot read is named here, not fifteen seconds into a tailoring.
  *
- * DOCX only for now, said on the screen rather than accepted and failed later:
- * the in-place editor is proven on Word files, and a resume that comes back
- * subtly broken is worse than one that was never accepted.
+ * Word or PDF. v1 renders every result into the one default Rezz template
+ * (see CLAUDE.md's dated override) rather than editing the file in place, so
+ * only the file's *content* matters here, not its original formatting —
+ * which is what makes accepting PDF safe without the subset-font problems
+ * `docs/05-architecture.md` describes for in-place PDF editing.
  */
 
-const ACCEPTED = ".docx";
+const ACCEPTED = ".docx,.pdf";
 const MAX_BYTES = 10 * 1024 * 1024;
 
 type Check = { pages: number; fonts: string[]; warnings: string[]; name: string | null };
@@ -47,10 +49,10 @@ export default function UploadPage() {
     if (!file) return;
     setCheck(null);
 
-    if (!file.name.toLowerCase().endsWith(ACCEPTED)) {
+    const lower = file.name.toLowerCase();
+    if (!lower.endsWith(".docx") && !lower.endsWith(".pdf")) {
       setError(
-        `Rezz edits Word files today, so it needs a .docx. “${file.name}” isn’t one. ` +
-          "PDF and LaTeX are coming.",
+        `Rezz reads Word or PDF resumes today, so it needs a .docx or .pdf. “${file.name}” isn’t one. `,
       );
       return;
     }
@@ -66,7 +68,7 @@ export default function UploadPage() {
       const response = await fetch("/api/parse", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ file: base64 }),
+        body: JSON.stringify({ file: base64, filename: file.name }),
       });
       const body = await response.json();
 
@@ -123,8 +125,8 @@ export default function UploadPage() {
           </ul>
 
           <p className="mt-6 max-w-[58ch] text-sm leading-[22px] text-ink-muted">
-            None of this stops us. We keep your layout either way — it just means some parts of
-            your file are harder for an employer’s system to read, whoever wrote it.
+            None of this stops us — we read your facts either way and set them in our own
+            resume layout.
           </p>
 
           <div className="mt-8 flex items-center gap-4 max-[680px]:flex-col max-[680px]:items-stretch">
@@ -155,8 +157,8 @@ export default function UploadPage() {
           Upload your resume.
         </h1>
         <p className="mt-4 max-w-[54ch] text-[17px] leading-7 text-ink-muted">
-          We read your facts and keep your layout exactly as it is. You only do this once —
-          after that, every job takes one step.
+          We read your facts and reword them for the job — nothing invented. You only do this
+          once — after that, every job takes one step.
         </p>
 
         <div
@@ -176,7 +178,7 @@ export default function UploadPage() {
           <p className="m-0 text-[17px] leading-7">
             {busy ? "Reading your resume…" : "Drop your resume here"}
           </p>
-          <p className="m-0 mt-1 text-sm leading-[21px] text-ink-muted">Word (.docx), up to 10 MB</p>
+          <p className="m-0 mt-1 text-sm leading-[21px] text-ink-muted">Word (.docx) or PDF, up to 10 MB</p>
           <div className="mt-6 flex justify-center">
             <Button onClick={() => inputRef.current?.click()} disabled={busy}>
               Choose a file

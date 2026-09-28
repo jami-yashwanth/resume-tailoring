@@ -22,7 +22,7 @@ export async function POST(request: Request) {
     return Response.json({ error: MISSING_CREDENTIALS }, { status: 500 });
   }
 
-  let body: { resume?: unknown; jobDescription?: unknown };
+  let body: { resume?: unknown; jobDescription?: unknown; filename?: unknown };
   try {
     body = await request.json();
   } catch {
@@ -32,6 +32,7 @@ export async function POST(request: Request) {
   const resume = typeof body.resume === "string" ? body.resume : "";
   const jobDescription =
     typeof body.jobDescription === "string" ? body.jobDescription.trim() : "";
+  const filename = typeof body.filename === "string" ? body.filename : undefined;
 
   if (!resume) {
     return Response.json({ error: "Upload your resume first." }, { status: 400 });
@@ -50,7 +51,7 @@ export async function POST(request: Request) {
         controller.enqueue(encoder.encode(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`));
 
       try {
-        const result = await tailor(resume, jobDescription, (stage, detail) =>
+        const result = await tailor(resume, jobDescription, filename, (stage, detail) =>
           send("progress", { stage, detail }),
         );
         send("done", { layout: result.layout, plan: result.plan });

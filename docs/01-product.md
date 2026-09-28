@@ -2,7 +2,7 @@
 
 ## What Rezz is
 
-An India-first AI resume tailor. The user uploads their **own** resume once (Word, PDF, LaTeX or LinkedIn PDF). For every job they add, Rezz gives back **their own file, in their own design**, reworded for that job.
+An India-first AI resume tailor. The user uploads their **own** resume once (Word, PDF, LaTeX or LinkedIn PDF). For every job they add, Rezz gives back ~~their own file, in their own design~~ reworded for that job, rendered into v1's one default template — see the promise section and decision log below.
 
 "Rezz" is the product name. "Sach" was an earlier working name and is no longer used. The product is **English only**.
 
@@ -10,17 +10,19 @@ An India-first AI resume tailor. The user uploads their **own** resume once (Wor
 
 **Nothing added behind your back · No fake ATS score · No auto-renew · Your own design**
 
+*(v1 override, 28 Sep 2026: "Your own design" doesn't hold while results render into one fixed template — see below. Replacement wording for the promise strip is not yet decided; the landing page currently reads "One clean template, no gallery" in its place — confirm or revise.)*
+
 - Rewordings of the user's own facts are applied automatically and can be undone.
 - A line with a skill that isn't in the user's resume (e.g. Kafka) is drafted and shown as **"Not in your resume"**. It goes in only if the user taps **Add it**. Exactly two options: **Add it / Skip**, equal visual weight, nothing pre-selected.
 - No 0–100 "ATS score". Show checkable facts instead: "Covers 7 of 9 job requirements (your original covered 3)", parse check, keywords found.
 - Passes are paid once by UPI and never renew.
-- The user's design is kept. Rezz never moves their resume into its own template without asking.
+- The user's design is kept. Rezz never moves their resume into its own template without asking. **v1 override (28 Sep 2026):** suspended for now — see the decision log below and `CLAUDE.md`.
 
 Earlier wording was "Never invents". It changed on 28 Sep 2026 when the Add it flow was decided; don't use "Never invents" or "We added nothing you didn't do" anywhere.
 
 ## Why this can win
 
-- ~13 of 15 mainstream tools (Teal, Rezi, Kickresume, Enhancv, Huntr, Careerflow, Jobright, Simplify, Indeed, Naukri, Zety, Resume.io…) re-import the resume into their own templates. Only Jobscan claims to keep layout (untested). **Tailoring the user's own file in place is an open gap.**
+- ~13 of 15 mainstream tools (Teal, Rezi, Kickresume, Enhancv, Huntr, Careerflow, Jobright, Simplify, Indeed, Naukri, Zety, Resume.io…) re-import the resume into their own templates. Only Jobscan claims to keep layout (untested). **Tailoring the user's own file in place is an open gap** — v1 doesn't claim this gap yet (see decision log, 28 Sep 2026), it's the differentiator to return to once in-place editing is solved.
 - No tool asks before inserting a skill the user lacks. Scoring-first tools insert keywords in one click; honesty advice sits in blogs.
 - Users distrust the category: invented skills, fake ATS scores, generic AI voice, billing traps. Rezz answers each one directly.
 
@@ -40,7 +42,7 @@ Earlier wording was "Never invents". It changed on 28 Sep 2026 when the Add it f
 
 | Pass | Price | What you get |
 | --- | --- | --- |
-| Free | ₹0 | 1 tailored resume a week, honest check, your own design |
+| Free | ₹0 | 1 tailored resume a week, honest check ~~, your own design~~ (v1: one clean template, see decision log) |
 | Sprint | ₹149 | 15 tailored resumes, 30 days |
 | Job-hunt | ₹399 | Unlimited tailored resumes (fair use), 90 days |
 
@@ -62,6 +64,8 @@ Earlier wording was "Never invents". It changed on 28 Sep 2026 when the Add it f
 | 25 Sep 2026 | Visual direction "paper and highlighter"; design system built. |
 | 28 Sep 2026 | Rezz may draft lines with skills the user lacks, shown as "Not in your resume", inserted only on **Add it**. Two options only: Add it / Skip. |
 | 28 Sep 2026 | Promise wording: "Nothing added behind your back". |
+| 28 Sep 2026 | Reconsidered offering standard templates for badly-formatted source resumes; kept the own-design rule. Scoped the ATS-safe second download (see 05-architecture.md) as separate future work rather than a general template catalogue. |
+| 28 Sep 2026 | **Supersedes the row above, same day.** Reviewed Kickresume's dashboard/editor (see `09-competitor-kickresume.md`'s editor walkthrough) while scoping a resume library; decided to ship v1 simpler instead — upload → job → result, where the result renders into **one** default Rezz template with tailoring changes applied, rather than editing the user's file in place. Own-design rule suspended, not deleted; see `CLAUDE.md`'s dated override. No template gallery, no multi-resume library, no accounts — that's all shelved for a later pass. Revisit the own-design rule once in-place editing (subset PDF fonts, LibreOffice page-fit, per `05-architecture.md`) is solved. |
 | 28 Sep 2026 | Result screen = resume in the centre with change marks, job checklist on the left, one-at-a-time decision bar at the bottom. "Compare with original" toggle approved. |
 | 28 Sep 2026 | Web first; no mobile work until decided. |
 | 28 Sep 2026 | ₹399 pass = unlimited (fair use) for 90 days. |

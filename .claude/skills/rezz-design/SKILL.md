@@ -48,6 +48,12 @@ drama belongs to the document, not the headline.
 Rules: mono marks evidence only. Body text is never below 16px. Never use a
 `--font-*` token for the wrong voice — app chrome in `--font-doc` is a bug.
 
+**v1 override (28 Sep 2026):** the tailored result renders into one default Rezz
+template instead of the user's own file, so `--font-doc` ("the user's own font")
+has nothing to attach to for that render — the default template's resume canvas
+uses `--font-ui` (Geist) throughout, same as the app chrome. Temporary; revisit
+alongside the templating override below and in `CLAUDE.md`.
+
 ## Colour
 
 Use the named tokens, never raw hex. Grounds: `paper` → `paper-raised` (cards,
@@ -138,7 +144,9 @@ with a gradient-filled headline · three equal feature cards each with a pastel
 icon circle · coloured left-border accent cards · `shadow-lg` on everything ·
 oversized pill radii on every surface · filler stats nobody measured · fake
 scores, countdown timers, pre-ticked renewals or any payment dark pattern ·
-moving the user's resume into a Rezz template without asking.
+~~moving the user's resume into a Rezz template without asking~~ (suspended for
+v1 — see the type-system override above and `CLAUDE.md`; still applies to any
+second template beyond the one default).
 
 If a layout would look at home in any AI-generated SaaS landing page, it is wrong
 for Rezz. The distinctive move is the document itself: a real white sheet on a

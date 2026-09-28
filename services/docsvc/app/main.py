@@ -18,7 +18,9 @@ from pydantic import BaseModel
 from . import render
 from .docx_ops import parse_docx
 from .fitter import fit
-from .models import ApplyRequest, ApplyResponse, Layout
+from .models import ApplyRequest, ApplyResponse, BlockKind, Layout
+from .pdf_ops import parse_pdf
+from .template_render import render_template
 
 app = FastAPI(title="docsvc", version="0.1.0")
 
@@ -83,26 +85,57 @@ def health() -> dict:
 
 
 class ParseRequest(BaseModel):
-    file: str  # base64 docx
+    file: str  # base64 docx or pdf
+    #: Picks the parser. Defaults to docx so older callers that never sent
+    #: this keep working unchanged.
+    filename: str | None = None
 
 
 @app.post("/parse", response_model=Layout, dependencies=[Depends(require_token)])
 def parse(request: ParseRequest) -> Layout:
     """Read the user's file into blocks the planner can address by id."""
-    path = _decode(request.file, ".docx")
+    is_pdf = (request.filename or "").lower().endswith(".pdf")
+    path = _decode(request.file, ".pdf" if is_pdf else ".docx")
     try:
-        blocks, fonts, warnings = parse_docx(path)
-    except Exception as exc:  # python-docx raises a grab-bag on malformed files
-        raise HTTPException(status_code=422, detail=f"could not read this DOCX: {exc}") from exc
-
-    if render.available():
-        pages = render.count_pages(path)
-    else:
-        pages = 1
-        warnings.append("LibreOffice not available; page count is a guess.")
+        if is_pdf:
+            blocks, fonts, warnings, pages = parse_pdf(path)
+        else:
+            blocks, fonts, warnings = parse_docx(path)
+            if render.available():
+                pages = render.count_pages(path)
+            else:
+                pages = 1
+                warnings.append("LibreOffice not available; page count is a guess.")
+    except Exception as exc:  # the parser libraries raise a grab-bag on malformed files
+        kind = "PDF" if is_pdf else "DOCX"
+        raise HTTPException(status_code=422, detail=f"could not read this {kind}: {exc}") from exc
 
     Path(path).unlink(missing_ok=True)
-    return Layout(format="docx", pages=pages, fonts=fonts, blocks=blocks, warnings=warnings)
+    return Layout(
+        format="pdf" if is_pdf else "docx", pages=pages, fonts=fonts, blocks=blocks, warnings=warnings
+    )
+
+
+class TemplateBlock(BaseModel):
+    kind: BlockKind
+    text: str
+
+
+class RenderTemplateRequest(BaseModel):
+    blocks: list[TemplateBlock]
+
+
+@app.post("/render-template", dependencies=[Depends(require_token)])
+def render_template_endpoint(request: RenderTemplateRequest) -> dict:
+    """Render the tailored content into the one default Rezz template.
+
+    v1 override (28 Sep 2026, see CLAUDE.md): every download comes through
+    here instead of `/apply` + `/export`. The web app has already resolved
+    the plan and the user's Add it / Skip decisions into a final ordered
+    list of (kind, text) pairs — nothing here touches an original file.
+    """
+    data, pages = render_template([b.model_dump() for b in request.blocks])
+    return {"file": base64.b64encode(data).decode(), "pages": pages, "format": "pdf"}
 
 
 @app.post("/apply", response_model=ApplyResponse, dependencies=[Depends(require_token)])

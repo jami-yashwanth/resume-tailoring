@@ -1,40 +1,35 @@
-import { applyPlan } from "@/lib/tailor/pipeline";
-import { DocsvcError } from "@/lib/tailor/docsvc";
-import type { TailorPlan } from "@/lib/tailor/types";
+import { DocsvcError, type TemplateBlock, renderTemplate } from "@/lib/tailor/docsvc";
 
 /**
- * Write the user's decisions into their own file and hand it back.
+ * Render the user's decisions into the one default Rezz template and hand
+ * back a PDF.
  *
- * The plan crosses the wire from the browser, so `applyPlan` is what decides
- * what actually reaches the document: `toDocsvcOps` drops anything the user
- * has not approved and pins anything they have. A tampered plan can only
- * remove its own changes, never smuggle one in — the guardrails already ran
- * server-side, and an unapproved line is filtered here regardless.
+ * v1 override (28 Sep 2026, see CLAUDE.md): this used to call `applyPlan` to
+ * edit the user's own file in place. The client has already resolved the
+ * plan and the user's Add it / Skip decisions into a final ordered list of
+ * (kind, text) pairs — skipped and dropped lines are excluded there — so
+ * there is no original file to touch here, and no plan/resume to re-check
+ * against: the guardrails already ran when the plan was built, and a line
+ * the client excluded simply isn't in `blocks`.
  */
 export const runtime = "nodejs";
-export const maxDuration = 120;
+export const maxDuration = 60;
 
 export async function POST(request: Request) {
-  let body: { resume?: string; plan?: TailorPlan; maxPages?: number | null };
+  let body: { blocks?: TemplateBlock[] };
   try {
     body = await request.json();
   } catch {
     return Response.json({ error: "Invalid JSON body." }, { status: 400 });
   }
 
-  if (!body.resume || !body.plan) {
+  if (!body.blocks?.length) {
     return Response.json({ error: "Nothing to download yet." }, { status: 400 });
   }
 
   try {
-    const applied = await applyPlan(body.resume, body.plan, body.maxPages ?? null);
-    return Response.json({
-      file: applied.file,
-      pages: applied.pages,
-      pagesBefore: applied.pages_before,
-      applied: applied.applied,
-      warnings: applied.warnings,
-    });
+    const rendered = await renderTemplate(body.blocks);
+    return Response.json({ file: rendered.file, pages: rendered.pages });
   } catch (error) {
     const message =
       error instanceof DocsvcError

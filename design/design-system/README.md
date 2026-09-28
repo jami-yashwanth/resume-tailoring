@@ -57,5 +57,5 @@ Rezz tailors a person's own resume to each job and never adds anything behind th
 
 - Purple-to-blue gradients, glowing "AI" effects, sparkle icons.
 - Coloured left-border accent cards, emoji section markers, filler stats.
-- Moving the user's resume into our template without asking. Their design is the default.
+- ~~Moving the user's resume into our template without asking. Their design is the default.~~ **v1 override (28 Sep 2026):** the tailored result now renders into one default Rezz template rather than the user's original design — see `CLAUDE.md` and `docs/09-competitor-kickresume.md`. One fixed template, no gallery. Revisit this Don't once in-place editing is solved; it still holds for any second/third template idea in the meantime.
 - Fake scores, countdown timers, pre-ticked renewals, or any dark pattern around payment.

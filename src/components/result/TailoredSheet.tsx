@@ -8,6 +8,10 @@ import { type RenderedLine, groupIntoBlocks } from "@/lib/tailor/view";
 /**
  * The user's document, with its changes marked.
  *
+ * Currently unused by `ResultScreen` — v1 renders into `DefaultTemplateSheet`
+ * instead (see CLAUDE.md's dated override). Kept, not deleted: this is what
+ * the Result screen goes back to once in-place editing is revisited.
+ *
  * Drawn from the runs docsvc parsed out of the file, not from a template that
  * resembles a resume. The first version hardcoded a rule above every heading,
  * rendered headings as grey tracked capitals, and flattened every paragraph to

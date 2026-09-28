@@ -13,7 +13,7 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 export async function POST(request: Request) {
-  let body: { file?: string };
+  let body: { file?: string; filename?: string };
   try {
     body = await request.json();
   } catch {
@@ -25,7 +25,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const layout = await parseResume(body.file);
+    const layout = await parseResume(body.file, body.filename);
     return Response.json({
       pages: layout.pages,
       fonts: layout.fonts,

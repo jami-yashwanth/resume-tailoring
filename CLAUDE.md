@@ -4,7 +4,8 @@ India-first AI resume tailor. Start with `docs/README.md`; the decisions there a
 
 ## Product rules (don't break these without the owner's OK)
 
-- Tailor the user's OWN file in place and keep their design. Never move their resume into a Rezz template without asking.
+- **v1 override (28 Sep 2026):** tailored results render into one default Rezz template instead of editing the user's own file in place. This is temporary and tracked for revisit — see `docs/09-competitor-kickresume.md` (Kickresume research) and the decision log in `docs/01-product.md`. One template only: no gallery, no color/layout picker. The underlying rule below still holds in spirit — nothing is added behind the user's back, and this gets revisited once the in-place editing problems (subset PDF fonts, LibreOffice page-fit) are solved.
+- ~~Tailor the user's OWN file in place and keep their design. Never move their resume into a Rezz template without asking.~~ (suspended for v1, see override above)
 - Rewordings of the user's own facts apply automatically with undo. A line with a skill that isn't in the resume is drafted, marked "Not in your resume", and inserted only on **Add it**. Exactly two options: Add it / Skip, equal weight, nothing pre-selected.
 - Never invent numbers or outcomes; never fake knockouts (location, years, degree); never rewrite job titles or dates.
 - No 0–100 ATS score. Show checkable counts ("Covers 7 of 9 job requirements").

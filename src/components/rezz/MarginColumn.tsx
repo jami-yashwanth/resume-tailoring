@@ -23,22 +23,25 @@ export function MarginColumn({ marks, label }: { marks: Mark[]; label: string })
 
   return (
     <div ref={ref} aria-label={label} className="relative font-mark">
+      {/* 2px connectors, not hairlines: on the brutalist landing the rest of the
+          page is drawn in 2px ink, and a 1px rule here would make the signature
+          element the quietest thing on the screen. */}
       {marks.map((m) => (
         <p
           key={m.anchor}
           data-anchor={m.anchor}
           className={`absolute left-0 right-0 m-0 flex items-start gap-2.5 text-xs font-medium leading-4
-                      before:mt-2 before:h-px before:w-[22px] before:flex-none before:content-['']
+                      before:mt-[7px] before:h-[2px] before:w-[22px] before:flex-none before:content-['']
                       ${
                         m.ask
                           ? "text-gap before:bg-gap"
                           : m.cut
-                            ? "text-ink-muted before:bg-line-strong"
-                            : "text-ink before:bg-line-strong"
+                            ? "text-ink-muted before:bg-ink"
+                            : "text-ink before:bg-ink"
                       }`}
         >
           <span>
-            <b className="font-medium">{m.label}</b>
+            <b className="font-semibold">{m.label}</b>
             <span className={`mt-[3px] block font-normal ${m.ask ? "text-gap opacity-85" : "text-ink-muted"}`}>
               {m.note}
             </span>

@@ -34,6 +34,7 @@ export function ResumeSheet({
   children,
   pad = "page",
   className = "",
+  font = "doc",
 }: {
   name?: string;
   contact?: string;
@@ -41,12 +42,18 @@ export function ResumeSheet({
   children: ReactNode;
   pad?: keyof typeof pads;
   className?: string;
+  /**
+   * "doc" (default) is the user's own font, parsed out of their file.
+   * "ui" is Geist — used only by the v1 default-template render, which has
+   * no original file to keep a font from (see CLAUDE.md's dated override).
+   */
+  font?: "doc" | "ui";
 }) {
   return (
     <article
       aria-label={label ?? (name ? `${name}'s resume, tailored` : "Your resume, tailored")}
       className={`sheet rounded-sheet bg-sheet text-sheet-ink shadow-sheet
-                  font-doc text-[13.5px] leading-[21px] ${pads[pad]} ${className}`}
+                  ${font === "ui" ? "font-ui" : "font-doc"} text-[13.5px] leading-[21px] ${pads[pad]} ${className}`}
     >
       {name ? (
         <div className="text-[21px] font-bold leading-[26px] tracking-[-0.01em]">{name}</div>
@@ -61,11 +68,19 @@ export function SheetRule() {
   return <hr className="my-3 mt-4 border-0 border-t border-sheet-line" />;
 }
 
-export function SheetHeading({ children }: { children: ReactNode }) {
+/**
+ * `as` exists for the landing page, where the sheet is an illustration rather
+ * than the user's actual document. As an <h4> its "Experience" and "Skills"
+ * landed in the page outline between the <h1> and the first <h2>, so anyone
+ * navigating by heading heard the sample's structure as the page's structure.
+ * On the Result screen the sheet IS the document and the heading is real, so
+ * that stays the default.
+ */
+export function SheetHeading({ children, as: Tag = "h4" }: { children: ReactNode; as?: "h4" | "div" }) {
   return (
-    <h4 className="mb-1.5 mt-0 text-[11px] font-bold uppercase leading-[14px] tracking-[0.1em] text-ink-muted">
+    <Tag className="mb-1.5 mt-0 text-[11px] font-bold uppercase leading-[14px] tracking-[0.1em] text-ink-muted">
       {children}
-    </h4>
+    </Tag>
   );
 }
 

@@ -38,6 +38,7 @@ export type TailorOutcome = {
 export async function tailor(
   resumeBase64: string,
   jobDescription: string,
+  filename: string | undefined,
   onProgress: Progress = () => {},
 ): Promise<TailorOutcome> {
   const credentials = resolveCredentials();
@@ -46,7 +47,7 @@ export async function tailor(
   const usage = emptyUsage();
 
   onProgress("reading_resume");
-  const layout = await docsvc.parseResume(resumeBase64);
+  const layout = await docsvc.parseResume(resumeBase64, filename);
 
   onProgress("reading_job");
   const jd = await extractRequirements(client, jobDescription);
@@ -88,6 +89,10 @@ export async function tailor(
 
 /**
  * Write the user's decisions into their file.
+ *
+ * Currently unused — `/api/download` calls `docsvc.renderTemplate` directly
+ * for v1 (see CLAUDE.md's dated override). Kept, not deleted: this is the
+ * in-place path to come back to once that override is revisited.
  *
  * `toDocsvcOps` is what enforces the promise at this boundary: a drafted line
  * the user has not approved is not sent, and one they have approved is pinned
