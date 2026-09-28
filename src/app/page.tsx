@@ -61,7 +61,7 @@ export default function LandingPage() {
                 &mdash; reworded for that job, with every change marked.
               </p>
               <div className="mt-7 flex flex-col items-start gap-4">
-                <ButtonLink href="#upload" size="lg">Upload your resume</ButtonLink>
+                <ButtonLink href="/upload" size="lg">Upload your resume</ButtonLink>
                 <small className="text-sm leading-[21px] text-ink-muted">
                   No sign-up to try.
                   <br />

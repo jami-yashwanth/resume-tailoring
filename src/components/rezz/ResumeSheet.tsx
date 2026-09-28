@@ -21,27 +21,37 @@ const pads = {
   tight: "px-10 pt-9 pb-11",
 } as const;
 
+/**
+ * `name` and `contact` are the shorthand the landing page uses, where the
+ * document is an illustration. The Result screen passes neither: it renders
+ * every line, including those two, from the runs parsed out of the real file,
+ * because there the sheet has to *be* the document rather than look like one.
+ */
 export function ResumeSheet({
   name,
   contact,
+  label,
   children,
   pad = "page",
   className = "",
 }: {
-  name: string;
-  contact: string;
+  name?: string;
+  contact?: string;
+  label?: string;
   children: ReactNode;
   pad?: keyof typeof pads;
   className?: string;
 }) {
   return (
     <article
-      aria-label={`${name}'s resume, tailored`}
+      aria-label={label ?? (name ? `${name}'s resume, tailored` : "Your resume, tailored")}
       className={`sheet rounded-sheet bg-sheet text-sheet-ink shadow-sheet
                   font-doc text-[13.5px] leading-[21px] ${pads[pad]} ${className}`}
     >
-      <div className="text-[21px] font-bold leading-[26px] tracking-[-0.01em]">{name}</div>
-      <div className="text-[12.5px] text-ink-muted">{contact}</div>
+      {name ? (
+        <div className="text-[21px] font-bold leading-[26px] tracking-[-0.01em]">{name}</div>
+      ) : null}
+      {contact ? <div className="text-[12.5px] text-ink-muted">{contact}</div> : null}
       {children}
     </article>
   );
