@@ -11,6 +11,8 @@ Everything decided and researched so far (25–28 Sep 2026), so building can pic
 | [05-architecture.md](05-architecture.md) | Tailoring pipeline, claim levels, page fitting, in-place file editing, Chrome extension, AI costs |
 | [06-links.md](06-links.md) | Links to the design system, design canvas and blueprint artifacts |
 | [07-open-items.md](07-open-items.md) | What's still undecided or unverified |
+| [08-competitor-jobowl.md](08-competitor-jobowl.md) | Teardown of jobowl.co — ₹999/month, opposite choices on nearly every axis |
+| [09-competitor-kickresume.md](09-competitor-kickresume.md) | Teardown of kickresume.com — the incumbent builder: 40+ templates, an ATS score, no India pricing |
 
 Other folders:
 
