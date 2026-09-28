@@ -18,6 +18,10 @@ India-first AI resume tailor. Start with `docs/README.md`; the decisions there a
 
 Follow `design/design-system/README.md` and `tokens.json`. Screens: `design/screens/` (live canvas in `docs/06-links.md`).
 
+Before writing or reviewing any UI, load the **`rezz-design`** skill (`.claude/skills/rezz-design/`) — it holds the house style
+("paper and highlighter"): tokens, the Bricolage Grotesque + Geist type pairing, the ten `window.Rezz` components, the copy rules
+and the banned generic-AI patterns. Pair it with the **`frontend-design`** skill for general craft.
+
 ## AI
 
 Claude API via `@anthropic-ai/sdk`, server-side only. See `docs/05-architecture.md` for the pipeline, claim levels and cost estimates.
