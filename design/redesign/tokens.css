@@ -1,0 +1,143 @@
+/* Rezz v2 tokens. See PLAN.md.
+   Changes from v1: --link retired (links are ink + underline), --focus is ink,
+   dark --action no longer borrows the highlighter, font tokens renamed to say
+   what they carry rather than what shape they are. */
+
+:root {
+  --paper:        #f7f8fa;
+  --paper-raised: #ffffff;
+  --paper-sunken: #eef0f4;
+  --line:         #dce0e7;
+  --line-strong:  #8a94a6;
+  --ink:          #152033;
+  --ink-muted:    #4f5b6e;
+
+  /* the document. always paper-white, both themes. */
+  --sheet:           #ffffff;
+  --sheet-ink:       #1b2230;
+  --sheet-ink-muted: #5a6273;
+  --sheet-line:      #e3e6eb;
+
+  /* means exactly one thing: this text changed. */
+  --highlighter:      #e4f264;
+  --highlighter-soft: #f4f9c8;
+  --on-highlighter:   #152033;
+
+  --verified:      #0b6e5f;
+  --verified-soft: #ddf1ec;
+
+  /* the corrector's mark: anything that needs the user. */
+  --gap:      #a83e2a;
+  --gap-soft: #fbe6e1;
+
+  --action:    #152033;
+  --on-action: #ffffff;
+  --focus:     #152033;
+
+  /* sans is Rezz talking; serif is what you wrote; mono marks the margin. */
+  --font-ui:   "Geist", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-doc:  Georgia, "Times New Roman", serif;
+  --font-mark: "Geist Mono", ui-monospace, Menlo, monospace;
+
+  --space-1: 4px;  --space-2: 8px;   --space-3: 12px;  --space-4: 16px;
+  --space-6: 24px; --space-8: 32px;  --space-12: 48px; --space-16: 64px;
+
+  --radius-sm: 4px; --radius-md: 8px; --radius-lg: 14px;
+  --radius-sheet: 2px; --radius-full: 9999px;
+
+  --shadow-sheet: 0 1px 2px #1520330f, 0 8px 24px -8px #15203329;
+  --shadow-float: 0 4px 12px #1520331a, 0 16px 40px -8px #15203333;
+}
+
+:root[data-theme="dark"],
+html.dark {
+  --paper:        #0f131a;
+  --paper-raised: #171c25;
+  --paper-sunken: #0b0e13;
+  --line:         #2a3140;
+  --line-strong:  #5c6880;
+  --ink:          #e8ecf2;
+  --ink-muted:    #a3aebf;
+
+  --highlighter:      #d6ea4f;
+  --highlighter-soft: #353b12;
+
+  --verified:      #4cc7b2;
+  --verified-soft: #12332d;
+  --gap:           #f08a74;
+  --gap-soft:      #3a1c16;
+
+  /* inverted, NOT the highlighter — that colour is reserved for change. */
+  --action:    #e8ecf2;
+  --on-action: #0f131a;
+  --focus:     #e8ecf2;
+
+  --shadow-sheet: 0 1px 2px #00000080, 0 12px 32px -8px #000000b3;
+  --shadow-float: 0 16px 40px -8px #000000cc;
+}
+
+/* The document is paper-white in BOTH themes, so it re-declares every token it
+   uses rather than inheriting the app's. Without this the dark theme leaks onto
+   a white sheet — gap-soft (#3a1c16) turns a "not in your resume" line into
+   dark-on-dark, and the highlighter shifts hue between themes. */
+.sheet {
+  --ink:       var(--sheet-ink);
+  --ink-muted: var(--sheet-ink-muted);
+  --line:      var(--sheet-line);
+
+  --highlighter:      #e4f264;
+  --highlighter-soft: #f4f9c8;
+  --on-highlighter:   #152033;
+  --gap:              #a83e2a;
+  --gap-soft:         #fbe6e1;
+  --verified:         #0b6e5f;
+
+  /* Same bug as --gap-soft one step further on: in dark theme --focus is
+     #e8ecf2, a near-white ring on white paper. The sheet is focusable on the
+     Result screen, so pin it dark. */
+  --focus: #152033;
+}
+
+/* Deliberately NOT re-declared above: --shadow-sheet / --shadow-float. Those
+   fall on the app's ground, not the paper, so they must follow the theme. */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: 16px;
+  line-height: 26px;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
+a:hover { text-decoration-thickness: 2px; }
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* the one signature motion: the highlighter drawn left to right, once. */
+mark {
+  background-color: transparent;
+  background-image: linear-gradient(var(--highlighter), var(--highlighter));
+  background-repeat: no-repeat;
+  background-size: 0% 100%;
+  color: var(--on-highlighter);
+  border-radius: 2px;
+  padding: 0 2px;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  animation: sweep 450ms cubic-bezier(.22,.61,.36,1) forwards;
+}
+@keyframes sweep { to { background-size: 100% 100%; } }
+
+@media (prefers-reduced-motion: reduce) {
+  mark { animation: none; background-size: 100% 100%; }
+  * { transition: none !important; }
+}

@@ -1,0 +1,405 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rezz — your resume, reworded for the job</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="tokens.css">
+<style>
+.wrap { max-width: 1312px; margin: 0 auto; padding: 0 var(--space-16); }
+
+/* ---- header ---- */
+.top { border-bottom: 1px solid var(--line); }
+.top .wrap { display: flex; align-items: center; justify-content: space-between; height: 72px; }
+.mark { font-size: 26px; font-weight: 600; letter-spacing: -0.04em; position: relative; display: inline-block; isolation: isolate; }
+.mark::before { content: ""; position: absolute; left: -3px; right: -3px; bottom: 3px; height: 9px;
+  background: var(--highlighter); z-index: -1; }
+.top nav { display: flex; align-items: center; gap: var(--space-8); font-size: 15px; font-weight: 500; }
+.top nav a { text-decoration: none; }
+.top nav a:hover { text-decoration: underline; text-underline-offset: 4px; }
+
+/* ---- buttons ---- */
+.btn { display: inline-flex; align-items: center; justify-content: center; min-height: 44px;
+  padding: 0 var(--space-6); border: 1px solid transparent; border-radius: var(--radius-md);
+  font: 600 15px/20px var(--font-ui); cursor: pointer; text-decoration: none;
+  transition: background-color 150ms, color 150ms, border-color 150ms; }
+.btn--primary { background: var(--action); color: var(--on-action); }
+.btn--primary:hover { background: #24344f; }
+.btn--secondary { background: transparent; color: var(--ink); border-color: var(--line-strong); }
+.btn--secondary:hover { border-color: var(--ink); }
+.btn--lg { min-height: 52px; padding: 0 var(--space-8); font-size: 17px; }
+
+/* ---- hero ---- */
+/* 1184px of content divides as 420 | 48 | (500 + 20 + 196). The sheet carries no
+   card or grey well: it is the artefact, not a screenshot of one. */
+.hero { padding: var(--space-16) 0 0; display: grid;
+  grid-template-columns: 420px minmax(0, 1fr); gap: 0 var(--space-12); align-items: center; }
+.hero h1 { margin: 0; font-size: clamp(32px, 3.4vw, 48px);
+  line-height: 1.06; font-weight: 600; letter-spacing: -0.03em; }
+.hero .sub { margin: 20px 0 0; font-size: 17px; line-height: 27px; color: var(--ink-muted); }
+.hero .cta { margin-top: 28px; display: flex; flex-direction: column; align-items: flex-start;
+  gap: var(--space-4); }
+.hero .cta small { font-size: 14px; line-height: 21px; color: var(--ink-muted); }
+
+/* ---- the document + its margin ---- */
+.proof { display: grid; grid-template-columns: 500px 196px; gap: 0 20px; align-items: start; }
+.sheet { background: var(--sheet); color: var(--sheet-ink); border-radius: var(--radius-sheet);
+  box-shadow: var(--shadow-sheet); padding: 36px 40px 44px; font-family: var(--font-doc);
+  font-size: 13.5px; line-height: 21px; }
+.sheet .who { font-size: 21px; line-height: 26px; font-weight: 700; letter-spacing: -0.01em; }
+.sheet .contact { color: #5a6273; font-size: 12.5px; }
+.sheet hr { border: 0; border-top: 1px solid var(--sheet-line); margin: 16px 0 12px; }
+.sheet h4 { margin: 0 0 6px; font-size: 11px; line-height: 14px; letter-spacing: .1em;
+  text-transform: uppercase; color: #5a6273; font-family: var(--font-doc); font-weight: 700; }
+.sheet .role { display: flex; justify-content: space-between; gap: 12px; font-weight: 700; }
+.sheet .role span + span { white-space: nowrap; flex-shrink: 0; }
+.sheet ul { margin: 6px 0 0; padding-left: 16px; }
+.sheet li { margin: 5px 0; }
+.sheet .pend { outline: 1.5px dashed var(--gap); outline-offset: 3px; border-radius: 2px;
+  background: var(--gap-soft); }
+
+/* margin marks: the signature. a rule reaches back to the line it describes. */
+.margin { position: relative; font-family: var(--font-mark); }
+.mk { position: absolute; left: 0; display: flex; align-items: flex-start; gap: 10px;
+  font-size: 12px; line-height: 16px; font-weight: 500; color: var(--ink); }
+.mk::before { content: ""; flex: 0 0 22px; height: 1px; margin-top: 8px; background: var(--line-strong); }
+.mk b { font-weight: 500; display: block; }
+.mk span { display: block; color: var(--ink-muted); font-weight: 400; margin-top: 3px; }
+.mk--ask { color: var(--gap); }
+.mk--ask::before { background: var(--gap); }
+.mk--ask span { color: var(--gap); opacity: .85; }
+
+/* ---- promise: four statements, ruled, not dot-joined ---- */
+.promise { margin-top: 120px; border-top: 1px solid var(--ink); }
+.promise ul { margin: 0; padding: 0; list-style: none; display: grid;
+  grid-template-columns: repeat(4, 1fr); }
+.promise li { padding: var(--space-6) var(--space-6) var(--space-8) 0; border-right: 1px solid var(--line);
+  font-size: 17px; line-height: 25px; font-weight: 500; }
+.promise li:last-child { border-right: 0; }
+.promise li em { display: block; font-style: normal; font-size: 14px; line-height: 21px;
+  color: var(--ink-muted); font-weight: 400; margin-top: var(--space-2); }
+
+/* ---- sections ---- */
+.sec { padding: 112px 0 0; }
+.sec h2 { margin: 0; font-size: 42px; line-height: 46px; font-weight: 600; letter-spacing: -0.03em;
+  max-width: 20ch; }
+.sec .lede { margin: var(--space-4) 0 0; max-width: 58ch; font-size: 18px; line-height: 29px;
+  color: var(--ink-muted); }
+
+/* how it works: a real sequence, so it is numbered — numerals as type, not chips */
+.steps { margin: var(--space-12) 0 0; padding: 0; list-style: none;
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-12); }
+.steps li { border-top: 1px solid var(--ink); padding-top: var(--space-4); }
+.steps .n { font-size: 34px; line-height: 40px; font-weight: 600; letter-spacing: -0.03em;
+  color: var(--ink); font-variant-numeric: tabular-nums; }
+.steps h3 { margin: var(--space-2) 0 var(--space-2); font-size: 20px; line-height: 27px; font-weight: 600; }
+.steps p { margin: 0; color: var(--ink-muted); font-size: 15px; line-height: 24px; }
+.steps .when { color: var(--ink-muted); font-size: 14px; }
+
+/* the honesty section */
+.honest { margin-top: 112px; padding: 96px 0; background: var(--paper-raised);
+  border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.honest .wrap { display: grid; grid-template-columns: minmax(0,1fr) 560px; gap: var(--space-16);
+  align-items: start; }
+.demo { display: flex; flex-direction: column; }
+.demo .item { padding: var(--space-6) 0; border-top: 1px solid var(--line); }
+.demo .item:first-child { border-top: 0; padding-top: 0; }
+.demo .was { font-family: var(--font-doc); font-size: 14px; line-height: 21px; color: var(--ink-muted);
+  text-decoration: line-through; }
+.demo .now { font-family: var(--font-doc); font-size: 15px; line-height: 23px; margin-top: 5px; }
+.demo .src { margin-top: var(--space-3); font-family: var(--font-mark); font-size: 11.5px;
+  line-height: 16px; color: var(--verified); display: flex; align-items: center; gap: 7px; }
+.demo .src::before { content: ""; width: 18px; height: 1px; background: var(--verified); }
+.demo .ask { margin-top: var(--space-3); font-family: var(--font-mark); font-size: 11.5px;
+  line-height: 16px; color: var(--gap); display: flex; align-items: center; gap: 7px; }
+.demo .ask::before { content: ""; width: 18px; height: 1px; background: var(--gap); }
+.demo .choose { margin-top: var(--space-4); display: flex; gap: var(--space-3); }
+.demo .choose .btn { min-height: 40px; font-size: 14px; padding: 0 var(--space-4); flex: 1; }
+
+/* pricing — the one place a bordered box is allowed: a thing you can buy */
+.passes { margin: var(--space-12) 0 0; display: grid; grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-6); align-items: stretch; }
+.pass { border: 1px solid var(--line); border-radius: var(--radius-lg); padding: var(--space-8);
+  background: var(--paper-raised); display: flex; flex-direction: column; gap: var(--space-4); }
+.pass--pick { border-color: var(--ink); }
+.pass .nm { font-size: 15px; font-weight: 600; }
+.pass .pr { font-size: 46px; line-height: 50px; font-weight: 600; letter-spacing: -0.035em;
+  font-variant-numeric: tabular-nums; }
+.pass .pr small { display: block; font-size: 14px; line-height: 21px; font-weight: 400;
+  letter-spacing: 0; color: var(--ink-muted); margin-top: var(--space-1); }
+.pass ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column;
+  gap: var(--space-2); font-size: 15px; line-height: 23px; color: var(--ink-muted); flex-grow: 1; }
+.pass li { display: grid; grid-template-columns: 18px minmax(0,1fr); gap: var(--space-2); }
+.pass li::before { content: "\2713"; color: var(--verified); font-size: 13px; line-height: 23px; }
+
+/* faq */
+.faq { display: grid; grid-template-columns: 340px minmax(0,1fr); gap: var(--space-16); }
+.faq details { border-bottom: 1px solid var(--line); padding: var(--space-4) 0; }
+.faq details:first-of-type { border-top: 1px solid var(--ink); }
+.faq summary { font-size: 18px; line-height: 27px; font-weight: 600; cursor: pointer;
+  list-style: none; display: flex; justify-content: space-between; gap: var(--space-4); }
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary::after { content: "+"; color: var(--ink-muted); font-weight: 400; }
+.faq details[open] summary::after { content: "\2013"; }
+.faq p { margin: var(--space-3) 0 0; max-width: 68ch; color: var(--ink-muted);
+  font-size: 16px; line-height: 26px; }
+
+footer { margin-top: 112px; padding: var(--space-12) 0; border-top: 1px solid var(--line);
+  background: var(--paper-raised); }
+footer .wrap { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-16); }
+footer p { margin: var(--space-3) 0 0; max-width: 46ch; font-size: 14px; line-height: 22px;
+  color: var(--ink-muted); }
+footer nav { display: flex; gap: var(--space-6); font-size: 14px; }
+
+@media (max-width: 1100px) {
+  .wrap { padding: 0 var(--space-8); }
+  .hero { grid-template-columns: minmax(0,1fr); gap: var(--space-12) 0; }
+  .proof { grid-template-columns: minmax(0,1fr); }
+  .margin { display: none; }
+  .promise ul, .steps, .passes { grid-template-columns: 1fr; }
+  .promise li { border-right: 0; border-bottom: 1px solid var(--line); padding-right: 0; }
+  .promise li:last-child { border-bottom: 0; }
+  .honest .wrap, .faq { grid-template-columns: minmax(0,1fr); gap: var(--space-8); }
+  .sec, .hero { padding-top: var(--space-16); }
+  .honest { margin-top: var(--space-16); padding: var(--space-16) 0; }
+}
+
+/* Below this the layout only has to stay intact and readable — mobile is
+   deliberately out of scope (see CLAUDE.md), so this is a graceful floor,
+   not a phone design. */
+@media (max-width: 680px) {
+  .wrap { padding: 0 var(--space-4); }
+  .top .wrap { height: auto; padding-top: var(--space-3); padding-bottom: var(--space-3);
+    flex-wrap: wrap; gap: var(--space-3); }
+  .top nav { gap: var(--space-4); font-size: 14px; flex-wrap: wrap; }
+  .hero .cta { flex-direction: column; align-items: stretch; gap: var(--space-4); }
+  .hero .cta .btn { width: 100%; }
+  .hero .sub, .sec .lede { font-size: 17px; line-height: 27px; }
+  .sheet { font-size: 12.5px; line-height: 20px; }
+  .sheet .role { flex-direction: column; gap: 0; }
+  .demo .choose { flex-direction: column; }
+  footer .wrap { flex-direction: column; gap: var(--space-6); }
+}
+
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <span class="mark">rezz</span>
+    <nav aria-label="Main">
+      <a href="#how">How it works</a>
+      <a href="#pricing">Pricing</a>
+      <a href="#faq">Questions</a>
+      <a class="btn btn--secondary" href="#extension">Get the Chrome extension</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+<section class="hero wrap">
+  <div>
+  <h1>Your resume, reworded for the job you're applying to.</h1>
+  <p class="sub">Upload your own Word, PDF or LaTeX file once. Paste any job. About fifteen
+    seconds later you get that same file back &mdash; your fonts, your layout, your design &mdash;
+    reworded for that job, with every change marked.</p>
+  <div class="cta">
+    <a class="btn btn--primary btn--lg" href="#upload">Upload your resume</a>
+    <small>No sign-up to try.<br>One tailored resume a week is free.</small>
+  </div>
+  </div>
+
+  <div class="proof">
+    <article class="sheet" aria-label="Example: Priya Sharma's resume, tailored for Kosha Payments">
+      <div class="who">Priya Sharma</div>
+      <div class="contact">Backend Engineer &middot; Bengaluru &middot; Notice period 30 days &middot; priya.sharma@example.com</div>
+      <hr>
+      <p id="l-sum" style="margin:0"><mark>Backend engineer with 3 years building payment and ledger services in Java and Spring Boot on AWS.</mark></p>
+      <hr>
+      <h4>Experience</h4>
+      <div class="role"><span>Razorfin &mdash; Software Engineer, Backend</span><span>Aug 2024 &ndash; present</span></div>
+      <ul>
+        <li id="l-p95"><mark style="animation-delay:150ms">Cut payment API p95 latency from 820&nbsp;ms to 310&nbsp;ms using async Spring Boot workers on AWS ECS.</mark></li>
+        <li>Built a nightly reconciliation job that matches 2.1 lakh transactions against bank files.</li>
+        <li id="l-split"><mark style="animation-delay:300ms">Split the refunds module into 4 microservices, each deployed on its own.</mark></li>
+        <li id="l-kafka"><span class="pend">Consumed payment events from Kafka topics to update the ledger.</span></li>
+      </ul>
+      <hr>
+      <h4>Skills</h4>
+      <p id="l-skills" style="margin:0"><mark style="animation-delay:450ms">Java, Spring Boot, AWS (ECS, SQS, RDS), microservices</mark>, PostgreSQL, Redis, Docker, Git</p>
+    </article>
+
+    <div class="margin" aria-label="What changed">
+      <p class="mk" data-for="l-sum"><span><b>Reworded</b><span>from your summary</span></span></p>
+      <p class="mk" data-for="l-p95"><span><b>Reworded</b><span>your facts #2 and #4</span></span></p>
+      <p class="mk" data-for="l-split"><span><b>Reworded</b><span>your fact #6</span></span></p>
+      <p class="mk mk--ask" data-for="l-kafka"><span><b>Needs your OK</b><span>not in your resume</span></span></p>
+      <p class="mk" data-for="l-skills"><span><b>Reworded</b><span>reordered for this job</span></span></p>
+    </div>
+  </div>
+</section>
+
+<section class="promise wrap" aria-label="What Rezz promises">
+  <ul>
+    <li>Nothing added behind your back<em>Anything not already in your resume waits for you to choose Add it.</em></li>
+    <li>No fake ATS score<em>Counts you can check, not a number we invented.</em></li>
+    <li>No auto-renew<em>Passes are paid once by UPI. There is nothing to cancel.</em></li>
+    <li>Your own design<em>We edit your file. We never move you into our template.</em></li>
+  </ul>
+</section>
+
+<section class="sec wrap" id="how">
+  <h2>Two steps the first time. One step after that.</h2>
+  <ol class="steps">
+    <li>
+      <div class="n">1</div>
+      <h3>Upload your resume</h3>
+      <p class="when">First time only</p>
+      <p>PDF, DOCX, LaTeX or your LinkedIn PDF. We read your facts and keep your layout exactly as it is.</p>
+    </li>
+    <li>
+      <div class="n">2</div>
+      <h3>Add the job</h3>
+      <p class="when">For every job</p>
+      <p>Paste the description, upload a screenshot, or click the Rezz extension on a career page.</p>
+    </li>
+    <li>
+      <div class="n">3</div>
+      <h3>Download</h3>
+      <p class="when">About fifteen seconds later</p>
+      <p>Your file, your design, tailored. Rewordings of your own facts are already applied. Anything else waits for your OK.</p>
+    </li>
+  </ol>
+</section>
+
+<section class="honest">
+  <div class="wrap">
+    <div>
+      <h2 style="margin:0;font-size:42px;line-height:46px;font-weight:600;letter-spacing:-0.03em;max-width:18ch">Nothing added behind your back.</h2>
+      <p class="lede">Rezz rewords what you already did so it matches how this job describes it.
+        Every change shows the line you wrote, the line we propose, and which requirement it answers.</p>
+      <p class="lede">When the job asks for something that isn't in your resume, we draft the line
+        and mark it. It goes in only if you choose Add it &mdash; and we give you interview prep for it.</p>
+    </div>
+    <div class="demo">
+      <div class="item">
+        <div class="was">Worked on backend APIs for payments.</div>
+        <div class="now"><mark>Cut payment API p95 latency from 820&nbsp;ms to 310&nbsp;ms using async Spring Boot workers on AWS ECS.</mark></div>
+        <div class="src">your Razorfin project, facts #2 and #4</div>
+      </div>
+      <div class="item">
+        <div class="was">Mentored 2 junior engineers.</div>
+        <div class="now"><mark style="animation-delay:200ms">Mentored 2 junior engineers through their first on-call rotations.</mark></div>
+        <div class="src">your Razorfin project, fact #9</div>
+      </div>
+      <div class="item">
+        <div class="now" style="font-family:var(--font-ui);font-size:17px;line-height:26px;font-weight:600">Kafka is in the job, but not in your resume.</div>
+        <div class="now" style="font-family:var(--font-doc);font-size:15px;color:var(--ink-muted)">&ldquo;Consumed payment events from Kafka topics to update the ledger.&rdquo;</div>
+        <div class="ask">not in your resume &mdash; recruiters may ask about it</div>
+        <div class="choose">
+          <button class="btn btn--secondary" type="button">Skip</button>
+          <button class="btn btn--secondary" type="button">Add it</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="sec wrap" id="pricing">
+  <h2>Paid once. Does not renew.</h2>
+  <p class="lede">Pay by UPI. No card on file, no autopay mandate. When a pass ends, it just ends.</p>
+  <div class="passes">
+    <div class="pass">
+      <div class="nm">Free</div>
+      <div class="pr">&#8377;0<small>One tailored resume a week</small></div>
+      <ul><li>One tailored resume a week</li><li>Honest check included</li><li>Your own design</li></ul>
+      <a class="btn btn--secondary" href="#upload">Start free</a>
+    </div>
+    <div class="pass pass--pick">
+      <div class="nm">Sprint</div>
+      <div class="pr">&#8377;149<small>15 resumes, 30 days</small></div>
+      <ul><li>15 tailored resumes</li><li>Honest check on each one</li><li>Interview prep and tracker</li></ul>
+      <a class="btn btn--primary" href="#pay">Buy Sprint with UPI</a>
+    </div>
+    <div class="pass">
+      <div class="nm">Job-hunt</div>
+      <div class="pr">&#8377;399<small>Unlimited, 90 days</small></div>
+      <ul><li>Unlimited tailored resumes (fair use)</li><li>Honest check on each one</li><li>Interview prep and tracker</li></ul>
+      <a class="btn btn--secondary" href="#pay">Buy Job-hunt with UPI</a>
+    </div>
+  </div>
+</section>
+
+<section class="sec wrap" id="faq">
+  <div class="faq">
+    <h2>Questions</h2>
+    <div>
+      <details open><summary>Will it add skills I don't have?</summary>
+        <p>Only if you say so. When a job asks for a skill that isn't in your resume, we draft the line,
+          mark it &ldquo;Not in your resume&rdquo; and ask. It goes in only if you choose Add it, and we
+          give you interview prep for it afterwards.</p></details>
+      <details><summary>Do you give an ATS score?</summary>
+        <p>No. Applicant tracking systems don't publish a score, so any number would be invented. We show
+          whether your file parses cleanly and which of the job's requirements it covers.</p></details>
+      <details><summary>Will my resume look different?</summary>
+        <p>No. We edit your own file and keep its fonts and layout. You download it as PDF or DOCX.</p></details>
+      <details><summary>Does the pass renew?</summary>
+        <p>No. You pay once by UPI. When the 30 or 90 days are over, it stops. There is nothing to cancel.</p></details>
+      <details><summary>Do I need to sign up?</summary>
+        <p>Not to try. You sign in with your phone number and a one-time code only when you download.</p></details>
+      <details><summary>What happens to my resume data?</summary>
+        <p>Your resume is used only to tailor your resumes. It is stored encrypted, never sold, and never
+          used to train AI models. You can delete everything from Settings at any time.
+          [Draft: confirm storage region and deletion time.]</p></details>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div>
+      <span class="mark">rezz</span>
+      <p>Your resume, tailored to each job. Nothing added behind your back. No fake ATS score. No auto-renew.</p>
+    </div>
+    <nav aria-label="Footer">
+      <a href="#pricing">Pricing</a><a href="#privacy">Privacy</a><a href="#terms">Terms</a><a href="#contact">Contact</a>
+    </nav>
+  </div>
+</footer>
+<script>
+/* Marks are annotations on specific lines, so they are positioned from those
+   lines rather than from hand-tuned offsets that drift the moment copy changes. */
+function alignMarks() {
+  document.querySelectorAll(".margin").forEach(function (margin) {
+    var base = margin.getBoundingClientRect().top;
+
+    // floating layers sit exactly on their line
+    margin.querySelectorAll(".pop[data-for]").forEach(function (el) {
+      var t = document.getElementById(el.dataset.for);
+      if (t) el.style.top = (t.getBoundingClientRect().top - base) + "px";
+    });
+
+    // marks sit on their line, then are pushed down just enough not to overlap
+    // the mark above — two annotated lines can be one line apart.
+    var floor = -Infinity;
+    margin.querySelectorAll(".mk[data-for]").forEach(function (mk) {
+      var t = document.getElementById(mk.dataset.for);
+      if (!t) return;
+      var want = t.getBoundingClientRect().top - base;
+      var top = Math.max(want, floor);
+      mk.style.top = top + "px";
+      floor = top + mk.offsetHeight + 8;
+    });
+  });
+}
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(alignMarks);
+else window.addEventListener("load", alignMarks);
+window.addEventListener("resize", alignMarks);
+</script>
+</body>
+</html>

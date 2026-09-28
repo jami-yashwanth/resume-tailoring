@@ -66,6 +66,9 @@ Earlier wording was "Never invents". It changed on 28 Sep 2026 when the Add it f
 | 28 Sep 2026 | Web first; no mobile work until decided. |
 | 28 Sep 2026 | ₹399 pass = unlimited (fair use) for 90 days. |
 | 28 Sep 2026 | Web type pairing chosen on the canvas: Bricolage Grotesque (headlines) + Geist (UI) + Geist Mono. The design-system tokens still list Literata / Hind / IBM Plex Mono and need updating to match. |
+| 28 Sep 2026 | **Supersedes the row above.** Bricolage Grotesque dropped. One family for the app (Geist + Geist Mono); the serif is reserved for the user's own document. The rule is "sans is Rezz talking, serif is what you wrote", so the type system carries the promise. |
+| 28 Sep 2026 | `--link` retired (links are ink + underline); dark-theme `action` no longer borrows the highlighter, which means only "this text changed". |
+| 28 Sep 2026 | Landing page built first, in `src/`, to establish the design system in code. CTAs are dead links and there is no analytics, so the price test cannot run yet. |
 
 ## Guardrails that stay regardless
 

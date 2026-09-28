@@ -1,20 +1,229 @@
 @import "tailwindcss";
 
+/* Dark is opt-in via data-theme on <html>, not prefers-color-scheme alone: the
+   app has to be able to hold a theme the user chose. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/* ---------------------------------------------------------------------------
+   Raw token values. See design/redesign/PLAN.md.
+   Two rules carry the product promise and must not be quietly relaxed:
+     - `highlighter` means exactly one thing: this text changed.
+     - the resume sheet is paper-white in BOTH themes.
+   --------------------------------------------------------------------------- */
+
+@layer base {
+  :root {
+    --paper: #f7f8fa;
+    --paper-raised: #ffffff;
+    --paper-sunken: #eef0f4;
+    --line: #dce0e7;
+    --line-strong: #8a94a6;
+    --ink: #152033;
+    --ink-muted: #4f5b6e;
+
+    --sheet: #ffffff;
+    --sheet-ink: #1b2230;
+    --sheet-ink-muted: #5a6273;
+    --sheet-line: #e3e6eb;
+
+    --highlighter: #e4f264;
+    --highlighter-soft: #f4f9c8;
+    --on-highlighter: #152033;
+
+    --verified: #0b6e5f;
+    --verified-soft: #ddf1ec;
+
+    /* the corrector's mark: anything that needs the user */
+    --gap: #a83e2a;
+    --gap-soft: #fbe6e1;
+
+    --action: #152033;
+    --on-action: #ffffff;
+    --focus: #152033;
+
+    --shadow-sheet: 0 1px 2px #1520330f, 0 8px 24px -8px #15203329;
+    --shadow-float: 0 4px 12px #1520331a, 0 16px 40px -8px #15203333;
+  }
+
+  [data-theme="dark"] {
+    --paper: #0f131a;
+    --paper-raised: #171c25;
+    --paper-sunken: #0b0e13;
+    --line: #2a3140;
+    --line-strong: #5c6880;
+    --ink: #e8ecf2;
+    --ink-muted: #a3aebf;
+
+    --highlighter: #d6ea4f;
+    --highlighter-soft: #353b12;
+
+    --verified: #4cc7b2;
+    --verified-soft: #12332d;
+    --gap: #f08a74;
+    --gap-soft: #3a1c16;
+
+    /* inverted, NOT the highlighter — that colour is reserved for change */
+    --action: #e8ecf2;
+    --on-action: #0f131a;
+    --focus: #e8ecf2;
+
+    --shadow-sheet: 0 1px 2px #00000080, 0 12px 32px -8px #000000b3;
+    --shadow-float: 0 16px 40px -8px #000000cc;
+  }
+
+  /* The document re-declares every theme-varying token it uses, so dark values
+     can never land on a white sheet. Without this, dark --gap-soft (#3a1c16)
+     paints a dark block behind dark "not in your resume" text. An element's own
+     custom-property declaration always beats an inherited one, so this wins
+     wherever the sheet is nested — no specificity juggling needed. */
+  .sheet {
+    /* text: inside the sheet, ink IS the document's ink, so plain text-ink /
+       text-ink-muted utilities come out right without special-casing */
+    --ink: var(--sheet-ink);
+    --ink-muted: var(--sheet-ink-muted);
+    --line: var(--sheet-line);
+
+    /* marks, frozen at their light values */
+    --highlighter: #e4f264;
+    --highlighter-soft: #f4f9c8;
+    --on-highlighter: #152033;
+    --gap: #a83e2a;
+    --gap-soft: #fbe6e1;
+    --verified: #0b6e5f;
+
+    /* Same class of bug as --gap-soft, one step further along: in dark theme
+       --focus is #e8ecf2, which would draw a near-white focus ring on white
+       paper. The sheet is focusable on the Result screen, so pin it dark. */
+    --focus: #152033;
+  }
+
+  /* Deliberately NOT re-declared above: --shadow-sheet and --shadow-float. Those
+     fall on the app's ground, not the paper, so they must follow the theme. */
+}
+
+/* ---------------------------------------------------------------------------
+   Expose the tokens to Tailwind.
+
+   `inline` is load-bearing for anything that varies. A plain `@theme` copies the
+   value into :root once, so `bg-paper` would emit var(--color-paper) frozen at
+   the light value and data-theme would do nothing. `@theme inline` makes the
+   utility emit var(--paper) instead, which re-resolves per element — which is
+   also why it is correct for the next/font variables.
+   --------------------------------------------------------------------------- */
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-paper-raised: var(--paper-raised);
+  --color-paper-sunken: var(--paper-sunken);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+
+  --color-sheet: var(--sheet);
+  --color-sheet-ink: var(--sheet-ink);
+  --color-sheet-ink-muted: var(--sheet-ink-muted);
+  --color-sheet-line: var(--sheet-line);
+
+  --color-highlighter: var(--highlighter);
+  --color-highlighter-soft: var(--highlighter-soft);
+  --color-on-highlighter: var(--on-highlighter);
+
+  --color-verified: var(--verified);
+  --color-verified-soft: var(--verified-soft);
+  --color-gap: var(--gap);
+  --color-gap-soft: var(--gap-soft);
+
+  --color-action: var(--action);
+  --color-on-action: var(--on-action);
+  --color-focus: var(--focus);
+
+  --shadow-sheet: var(--shadow-sheet);
+  --shadow-float: var(--shadow-float);
+
+  /* sans is Rezz talking; serif is what the user wrote; mono marks the margin */
+  --font-ui: var(--font-geist), system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-doc: Georgia, "Times New Roman", serif;
+  --font-mark: var(--font-geist-mono), ui-monospace, Menlo, monospace;
+}
+
+/* Static — these never vary by theme, so a plain @theme is right.
+   Spacing is deliberately absent: the house scale (4/8/12/16/24/32/48/64) is
+   exactly Tailwind's default 0.25rem step, so p-1…p-16 already match. Using
+   only that named subset is a review habit, not something to encode here. */
 @theme {
-  --color-ink: oklch(0.21 0.02 265);
-  --color-muted: oklch(0.52 0.02 265);
-  --color-line: oklch(0.91 0.01 265);
-  --color-surface: oklch(0.99 0.003 265);
-  --color-accent: oklch(0.55 0.16 258);
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 14px;
+  --radius-sheet: 2px;
 }
 
-html,
-body {
-  height: 100%;
+@layer base {
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-ui);
+    font-size: 16px;
+    line-height: 26px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Links are ink plus a permanent underline. v1 had a --link blue that carried
+     no meaning in the system; it is retired. */
+  a {
+    color: var(--ink);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  a:hover {
+    text-decoration-thickness: 2px;
+  }
+
+  /* The brand book asks for a 2px paper gap then a 2px ring. outline-offset
+     gives exactly that, follows border-radius for free, and is not clipped by
+     an ancestor's overflow the way a box-shadow ring would be. */
+  :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+    border-radius: var(--radius-sm);
+  }
 }
 
-body {
-  background: var(--color-surface);
-  color: var(--color-ink);
-  -webkit-font-smoothing: antialiased;
+/* ---------------------------------------------------------------------------
+   The one signature motion: the highlighter drawn left to right, once, when a
+   tailored resume first appears. Deliberately nowhere else.
+   --------------------------------------------------------------------------- */
+
+@layer components {
+  mark {
+    background-color: transparent;
+    background-image: linear-gradient(var(--highlighter), var(--highlighter));
+    background-repeat: no-repeat;
+    background-size: 0% 100%;
+    color: var(--on-highlighter);
+    border-radius: 2px;
+    padding: 0 2px;
+    box-decoration-break: clone;
+    -webkit-box-decoration-break: clone;
+    animation: sweep 450ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+  }
+
+  @keyframes sweep {
+    to {
+      background-size: 100% 100%;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    mark {
+      animation: none;
+      background-size: 100% 100%;
+    }
+    *,
+    *::before,
+    *::after {
+      transition-duration: 0.01ms !important;
+      animation-duration: 0.01ms !important;
+    }
+  }
 }
