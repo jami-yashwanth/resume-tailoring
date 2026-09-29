@@ -53,10 +53,15 @@ export type Persisted = {
 };
 
 export function fromStored(stored: Persisted | null): ReviewState {
+  /* A session saved before `removedFor` existed, whose "Keep everything" set
+     `growthAllowed` without raising `pagesAllowed`: its allowance is the old,
+     shorter length, and would re-ask about a page already agreed to. The next
+     measurement takes the current length instead. */
+  const oldGrowth = Boolean(stored?.growthAllowed) && stored?.removedFor === undefined;
   return {
     decisions: stored?.decisions ?? {},
     wordings: stored?.wordings ?? {},
-    pagesAllowed: stored?.pagesAllowed ?? null,
+    pagesAllowed: oldGrowth ? null : (stored?.pagesAllowed ?? null),
     growthAllowed: stored?.growthAllowed ?? false,
     removedFor: stored?.removedFor ?? {},
     lastAdded: null,

@@ -182,7 +182,7 @@ export function ResultScreen({
                    max-[900px]:[grid-template-columns:minmax(0,1fr)] max-[900px]:gap-4 max-[900px]:p-4"
       >
         <SummaryPanel
-          className="self-start min-[1241px]:sticky min-[1241px]:top-0 max-[1240px]:col-span-2 max-[900px]:col-span-1"
+          className="self-start min-[1240px]:sticky min-[1240px]:top-0 max-[1240px]:col-span-2 max-[900px]:col-span-1"
           rows={rows}
           coverage={coverage}
           selected={state.selectedRequirement}
@@ -200,8 +200,8 @@ export function ResultScreen({
         />
 
         <ReviewList
-          className="self-start min-[901px]:sticky min-[901px]:top-0 min-[901px]:max-h-[calc(100dvh-8rem)]
-                     min-[901px]:overflow-y-auto max-[900px]:order-2"
+          className="self-start min-[900px]:sticky min-[900px]:top-0 min-[900px]:max-h-[calc(100dvh-8rem)]
+                     min-[900px]:overflow-y-auto max-[900px]:order-2"
           list={list}
           state={state}
           coverage={coverage}

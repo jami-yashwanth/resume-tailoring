@@ -84,12 +84,14 @@ function Line({
      span, so the whole of level two was mouse-only — and the spec asks for
      undo to be reachable by keyboard. */
   const mark = MARK_LABEL[line.state as keyof typeof MARK_LABEL] ?? "Changed";
+  // A draft opens its decision card, not an explanation.
+  const action = line.state === "pending" ? "Open this decision." : "Why this line changed.";
   return (
     <span
       id={line.key}
       role="button"
       tabIndex={0}
-      aria-label={`${mark}. Why this line changed.`}
+      aria-label={`${mark}. ${action}`}
       onClick={() => onSelect(line.opId!)}
       onKeyDown={(event) => {
         if (event.key !== "Enter" && event.key !== " ") return;

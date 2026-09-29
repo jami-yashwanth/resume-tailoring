@@ -140,8 +140,17 @@ describe("open, why, select, compare, wording", () => {
 
 describe("storage", () => {
   it("loads a session saved before removedFor existed", () => {
-    const state = fromStored({ decisions: { ins1: true }, wordings: { ins1: 1 }, pagesAllowed: 1, growthAllowed: true });
-    expect(state).toMatchObject({ decisions: { ins1: true }, wordings: { ins1: 1 }, pagesAllowed: 1, growthAllowed: true, removedFor: {} });
+    const state = fromStored({ decisions: { ins1: true }, wordings: { ins1: 1 }, pagesAllowed: 1, growthAllowed: false });
+    expect(state).toMatchObject({ decisions: { ins1: true }, wordings: { ins1: 1 }, pagesAllowed: 1, growthAllowed: false, removedFor: {} });
+  });
+
+  it("re-reads the length of an old session that had already allowed growth", () => {
+    // Before this branch "Keep everything" set growthAllowed without raising
+    // pagesAllowed, so the stored allowance is the old, shorter length.
+    const old = fromStored({ decisions: { ins1: true }, wordings: {}, pagesAllowed: 1, growthAllowed: true });
+    expect(old).toMatchObject({ pagesAllowed: null, growthAllowed: true });
+    const current = fromStored({ decisions: {}, wordings: {}, pagesAllowed: 2, growthAllowed: true, removedFor: {} });
+    expect(current.pagesAllowed).toBe(2);
   });
 
   it("starts empty with nothing stored", () => {
