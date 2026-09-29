@@ -42,6 +42,53 @@ export const offset = "shadow-[4px_4px_0_0_var(--ink)]";
 export const offsetPage = "shadow-[8px_8px_0_0_var(--ink)]";
 
 /**
+ * 4px highlighter — the primary button. The one action on a view carries the
+ * product's colour behind its drawn edge; every other actionable object takes
+ * ink. This is the "yellow on the primary button's offset" the file header
+ * describes: it was written down here long before the component did it, and the
+ * buttons shipped flat until 29 Sep 2026.
+ */
+export const offsetAction = "shadow-[4px_4px_0_0_var(--highlighter)]";
+
+/* ---------------------------------------------------------------------------
+   Press.
+
+   Rule 1 above says a hard offset is a drawn outline, and the only thing that
+   keeps that reading honest is that the offset DOES something. So anything you
+   can act on presses into its own offset: hover halves the gap, active closes
+   it, and the object lands where its shadow was. Nothing moves that you cannot
+   press — a card you only read never takes these.
+
+   Written out as full literals rather than composed from `offset`, because
+   Tailwind scans source text: a class assembled at the call site never appears
+   on disk and is silently never generated. Same trap as `offsetPageOverride`.
+   --------------------------------------------------------------------------- */
+
+/* The `before:` box is an invisible hit-area guard for the press-in, carried
+   over from the pre-skin Button. Hover moves the object 2px down and right,
+   which uncovers a 2px strip along its top and left edges; a pointer resting
+   in that strip then un-hovers, the object springs back, it re-hovers, and it
+   shivers forever (Playwright never sees it as stable, and check:result
+   caught the guard's loss exactly that way). A new decision card lands its
+   buttons under a pointer that just clicked, so this is reachable. The guard
+   is a child, so it moves with the object and keeps covering the strip. */
+const pressMotion =
+  "relative before:absolute before:-left-1 before:-top-1 before:bottom-0 before:right-0 before:content-[''] " +
+  "transition-[box-shadow,transform,background-color,color,opacity] duration-150 " +
+  "motion-reduce:transition-none motion-reduce:hover:translate-x-0 motion-reduce:hover:translate-y-0 " +
+  "disabled:translate-x-0 disabled:translate-y-0 disabled:shadow-none";
+
+/** Press into a 4px ink offset. */
+export const press =
+  `${pressMotion} hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_0_var(--ink)] ` +
+  "active:translate-x-[4px] active:translate-y-[4px] active:shadow-none";
+
+/** Press into a 4px highlighter offset — the primary button. */
+export const pressAction =
+  `${pressMotion} hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_0_var(--highlighter)] ` +
+  "active:translate-x-[4px] active:translate-y-[4px] active:shadow-none";
+
+/**
  * `offsetPage`, flagged important, for the one element that has to beat a
  * shadow set inside its own component: the landing hero's ResumeSheet, which
  * ships `shadow-sheet` in its class string. Two shadow utilities in one string

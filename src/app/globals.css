@@ -145,6 +145,20 @@
   --font-ui: var(--font-geist), system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-doc: Georgia, "Times New Roman", serif;
   --font-mark: var(--font-geist-mono), ui-monospace, Menlo, monospace;
+  /* The v1 default template's face, and neither of the two above. It is not
+     `--font-doc`, because there is no original file to take a font from; it is
+     not `--font-ui`, because the sheet is not Rezz talking — and setting the
+     document in the app's own face was blurring exactly the boundary the type
+     system exists to hold.
+
+     It is Roboto because the template IS the owner's LaTeX reference
+     (`[sfdefault]{roboto}`, compiled by docsvc with Tectonic since 30 Sep
+     2026), and the compiled download embeds Roboto — same face, same metrics,
+     so the preview breaks its lines where the downloaded file breaks them. A
+     preview that wraps differently from the file is a preview that lies.
+     Helvetica/Arial are the metric-nearest fallbacks while the webfont loads
+     (and what the drawn PyMuPDF fallback renders in). */
+  --font-sheet: var(--font-roboto), Roboto, Helvetica, Arial, "Liberation Sans", sans-serif;
 }
 
 /* Static — these never vary by theme, so a plain @theme is right.
@@ -177,6 +191,28 @@
   }
   a:hover {
     text-decoration-thickness: 2px;
+  }
+
+  /* The parts of the page the browser draws still belong to the design.
+
+     Selection is the highlighter — literally. On a product whose one signature
+     colour means "this text changed", dragging across a line and watching it
+     light up in that same yellow is the cheapest possible demonstration of what
+     the product does, and it replaces Chrome's stock blue, which belongs to no
+     design system. `--highlighter` is deliberately NOT used raw here: inside
+     `.sheet` it is pinned to the light value, so selecting text on the resume
+     stays correct in dark theme for free.
+
+     The caret takes ink, so the two inputs in the flow blink in the page's own
+     colour rather than the platform's. */
+  ::selection {
+    background: var(--highlighter);
+    color: var(--on-highlighter);
+  }
+
+  :root {
+    caret-color: var(--ink);
+    accent-color: var(--ink);
   }
 
   /* The brand book asks for a 2px paper gap then a 2px ring. outline-offset
@@ -242,13 +278,64 @@
     }
   }
 
+  /* Generalises the same "once, on the way in" discipline to whole blocks, for
+     the landing page's scroll-length: a plain fade and 8px rise when a Reveal
+     wrapper (see components/rezz/Reveal.tsx) crosses into the viewport.
+
+     A mark tagged `mark-onview` sits inside a Reveal below the fold, so it
+     skips the base rule's auto-play above and instead sweeps on the same
+     `in-view` signal as its wrapper — a highlight seen on scroll now sweeps
+     when it's actually seen, instead of finishing off-screen before anyone
+     scrolled to it. Marks elsewhere (the Result screen, `/done`) are untouched:
+     they carry no `mark-onview` class, so the base rule's auto-play still
+     applies unconditionally.
+
+     EVERY hiding rule below is gated on `[data-reveal="on"]`, which the boot
+     script in layout.tsx sets and then withdraws if the bundle never hydrates.
+     The default — no attribute — is the page fully visible, animation simply
+     not played. This is not theoretical: a stale dev build served a 404 for the
+     landing page's own chunk, React never hydrated, the observer never ran, and
+     every Reveal on the page sat at opacity 0. The header, the headline and the
+     footer rendered; everything between them — the resume, the proof, the
+     steps, the pricing, the questions, the closing offer — was blank white. A
+     <noscript> fallback does not catch that case, because JS was enabled; it
+     just failed. An entrance animation must never be the thing that decides
+     whether the content exists. */
+  [data-reveal="on"] .reveal {
+    opacity: 0;
+    transform: translateY(8px);
+    transition:
+      opacity 450ms cubic-bezier(0.22, 0.61, 0.36, 1),
+      transform 450ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+
+  [data-reveal="on"] .reveal.in-view {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  [data-reveal="on"] .reveal mark.mark-onview {
+    animation: none;
+    background-size: 0% 100%;
+  }
+
+  [data-reveal="on"] .reveal.in-view mark.mark-onview {
+    animation: sweep 450ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+  }
+
   @media (prefers-reduced-motion: reduce) {
-    mark {
+    mark,
+    .reveal mark.mark-onview {
       animation: none;
       background-size: 100% 100%;
     }
     .tailor-ring {
       animation: none;
+    }
+    [data-reveal="on"] .reveal {
+      opacity: 1;
+      transform: none;
+      transition: none;
     }
     *,
     *::before,

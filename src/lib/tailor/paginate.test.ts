@@ -40,6 +40,21 @@ describe("paginate", () => {
   test("an empty resume is still one page", () => {
     expect(paginate([], 100)).toEqual([[]]);
   });
+
+  test("a fraction of a pixel over the page is measurement noise, not a page", () => {
+    // The browser sums forty-odd laid-out rects; the renderer works in exact
+    // points. A one-page fixture measured +0.102px over at 1240px and grew a
+    // phantom second page, while the same document measured under at every
+    // other width. The slack is one point, so at a 1000px page:
+    expect(paginate([600, 400.3], 1000)).toEqual([[0, 1]]);
+  });
+
+  test("the slack never swallows a real line", () => {
+    // A bullet is 14.7pt, the shortest block the template has. Anything that
+    // size or larger must still page — otherwise the preview hides a line the
+    // file puts on page two.
+    expect(paginate([600, 414], 1000)).toEqual([[0], [1]]);
+  });
 });
 
 /**

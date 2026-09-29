@@ -200,6 +200,12 @@ describe("stripBullet", () => {
     expect(cleanText("bullet", "- Led a team")).toBe("Led a team");
     expect(cleanText("paragraph", "- not a bullet")).toBe("- not a bullet");
   });
+
+  it("normalises contact separators to the compiled file's single-spaced pipe", () => {
+    // The template sets ` $|$ ` between fields, which extracts as " | " —
+    // the preview shows the same so the header reads identically.
+    expect(cleanText("contact", "a@b.c · Bengaluru\t+91 98")).toBe("a@b.c | Bengaluru | +91 98");
+  });
 });
 
 describe("buildLines bullet text", () => {

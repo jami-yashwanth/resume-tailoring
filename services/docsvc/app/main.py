@@ -125,6 +125,14 @@ class TemplateBlock(BaseModel):
 
 class RenderTemplateRequest(BaseModel):
     blocks: list[TemplateBlock]
+    #: Also render each page as a PNG — the Result screen's exact preview,
+    #: pictures of the same bytes the download gets. Off for downloads.
+    images: bool = False
+
+
+#: 2x A4 (~144dpi): crisp at any preview width the Result screen renders,
+#: ~100-200KB per text page.
+_IMAGE_SCALE = 2
 
 
 @app.post("/render-template", dependencies=[Depends(require_token)])
@@ -138,24 +146,34 @@ def render_template_endpoint(request: RenderTemplateRequest) -> dict:
     """
     blocks = [b.model_dump() for b in request.blocks]
 
-    # Flag-gated LaTeX path (spike promoted 29 Sep 2026): the owner's
-    # reference .tex compiled with Tectonic — true typesetting, ~0.5s warm.
-    # Only the exact string "true" turns it on, and any failure (tectonic
-    # missing, compile error, timeout) falls back to the drawn template, so
-    # the download can never fail because of the flag. Preview parity is the
-    # known cost while this is on: the HTML preview still paginates by the
-    # drawn template's metrics.
-    if os.environ.get("REZZ_LATEX_TEMPLATE") == "true":
+    # The LaTeX path IS the template (owner's call, 30 Sep 2026): the owner's
+    # reference .tex, stored verbatim, compiled with Tectonic — true
+    # typesetting, ~0.5s warm. On by default; REZZ_LATEX_TEMPLATE survives
+    # only as an off switch ("false", for a machine without tectonic). Any
+    # failure — tectonic missing, compile error, timeout — still falls back
+    # to the drawn template, so the download can never fail because of this.
+    data: bytes | None = None
+    pages = 0
+    if os.environ.get("REZZ_LATEX_TEMPLATE", "").strip().lower() != "false":
         try:
             data = render_latex(blocks)
             with pymupdf.open(stream=data, filetype="pdf") as compiled:
                 pages = compiled.page_count
-            return {"file": base64.b64encode(data).decode(), "pages": pages, "format": "pdf"}
         except Exception:
-            pass  # the drawn template below is the never-fails path
+            data = None  # the drawn template below is the never-fails path
 
-    data, pages = render_template(blocks)
-    return {"file": base64.b64encode(data).decode(), "pages": pages, "format": "pdf"}
+    if data is None:
+        data, pages = render_template(blocks)
+
+    payload = {"file": base64.b64encode(data).decode(), "pages": pages, "format": "pdf"}
+    if request.images:
+        matrix = pymupdf.Matrix(_IMAGE_SCALE, _IMAGE_SCALE)
+        with pymupdf.open(stream=data, filetype="pdf") as doc:
+            payload["images"] = [
+                base64.b64encode(page.get_pixmap(matrix=matrix).tobytes("png")).decode()
+                for page in doc
+            ]
+    return payload
 
 
 @app.post("/apply", response_model=ApplyResponse, dependencies=[Depends(require_token)])

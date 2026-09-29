@@ -16,6 +16,8 @@ export function ResultHeader({
   status,
   compare,
   onToggleCompare,
+  exact,
+  onToggleExact,
   ready,
   onDownload,
   canDownload,
@@ -26,6 +28,9 @@ export function ResultHeader({
   status: string;
   compare: boolean;
   onToggleCompare: () => void;
+  /** Showing the compiled PDF's own pages instead of the working sheet. */
+  exact: boolean;
+  onToggleExact: () => void;
   ready: boolean;
   onDownload: () => void;
   canDownload: boolean;
@@ -44,30 +49,46 @@ export function ResultHeader({
         {role} · {company}
       </h1>
       {/* Not a live region: the screen's sr-only region announces decisions. */}
-      <p className="m-0 text-sm leading-5 text-ink-muted">{compare ? "Showing your original wording" : status}</p>
+      <p className="m-0 text-sm leading-5 text-ink-muted">
+        {compare
+          ? "Showing your original wording"
+          : exact
+            ? "Showing the compiled PDF — what you download"
+            : status}
+      </p>
 
       <div className="ml-auto flex items-center gap-4">
-        <button
-          type="button"
-          aria-pressed={compare}
-          onClick={onToggleCompare}
-          className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-md border-0 bg-transparent px-2
-                     font-ui text-sm font-medium leading-5 text-ink transition-colors duration-150 hover:bg-paper-sunken"
-        >
-          <span
-            aria-hidden
-            className={`relative h-4 w-7 flex-none rounded-full transition-colors duration-150 ${compare ? "bg-ink" : "bg-line-strong"}`}
-          >
-            <span
-              className={`absolute top-0.5 h-3 w-3 rounded-full bg-paper-raised transition-all duration-150 ${compare ? "left-[14px]" : "left-0.5"}`}
-            />
-          </span>
-          Compare with original
-        </button>
+        <Switch on={compare} onToggle={onToggleCompare} label="Compare with original" />
+        {/* The two views are exclusive — the screen turns one off when the
+            other goes on — so these read as two views of the middle column,
+            not two independent flags. */}
+        <Switch on={exact} onToggle={onToggleExact} label="Exact PDF" />
         <Button variant={ready ? "primary" : "secondary"} onClick={onDownload} disabled={!canDownload || downloading}>
           {downloading ? "Writing your file…" : "Download resume"}
         </Button>
       </div>
     </header>
+  );
+}
+
+function Switch({ on, onToggle, label }: { on: boolean; onToggle: () => void; label: string }) {
+  return (
+    <button
+      type="button"
+      aria-pressed={on}
+      onClick={onToggle}
+      className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-md border-0 bg-transparent px-2
+                 font-ui text-sm font-medium leading-5 text-ink transition-colors duration-150 hover:bg-paper-sunken"
+    >
+      <span
+        aria-hidden
+        className={`relative h-4 w-7 flex-none rounded-full transition-colors duration-150 ${on ? "bg-ink" : "bg-line-strong"}`}
+      >
+        <span
+          className={`absolute top-0.5 h-3 w-3 rounded-full bg-paper-raised transition-all duration-150 ${on ? "left-[14px]" : "left-0.5"}`}
+        />
+      </span>
+      {label}
+    </button>
   );
 }

@@ -12,6 +12,7 @@ import { decisionAnnouncement, reviewList, undoAnnouncement, withDecisions } fro
 import type { Layout, TailorPlan } from "@/lib/tailor/types";
 import { buildLines } from "@/lib/tailor/view";
 import { DefaultTemplateSheet } from "./DefaultTemplateSheet";
+import { ExactPreview } from "./ExactPreview";
 import { ResultHeader } from "./ResultHeader";
 import { ReviewList } from "./ReviewList";
 import { SummaryPanel } from "./SummaryPanel";
@@ -59,6 +60,10 @@ export function ResultScreen({
   useEffect(() => () => cancelAnimationFrame(announceFrame.current), []);
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
+  /* Middle-column view: the working sheet, or the compiled PDF's own pages.
+     Local state, not the review reducer — it is a way of looking, not a
+     decision, and it should not persist into the stored decisions. */
+  const [exact, setExact] = useState(false);
 
   useEffect(() => {
     session.setDecisions(toStored(state));
@@ -176,7 +181,21 @@ export function ResultScreen({
         company={company}
         status={list.status}
         compare={state.compare}
-        onToggleCompare={() => dispatch({ type: "toggleCompare" })}
+        onToggleCompare={() => {
+          // The two middle-column views are exclusive: comparing shows the
+          // original wording in the working sheet, which the compiled PDF
+          // could silently contradict.
+          if (!state.compare) setExact(false);
+          dispatch({ type: "toggleCompare" });
+        }}
+        exact={exact}
+        onToggleExact={() => {
+          if (!exact) {
+            if (state.compare) dispatch({ type: "toggleCompare" });
+            track("exact_preview_opened");
+          }
+          setExact(!exact);
+        }}
         ready={list.ready}
         onDownload={download}
         // Not while the page-fit question is open: the file would be a length
@@ -203,15 +222,33 @@ export function ResultScreen({
           onSelect={(requirementId, opId) => dispatch({ type: "selectRequirement", requirementId, opId })}
         />
 
-        <DefaultTemplateSheet
-          className="max-[900px]:order-3"
-          layout={layout}
-          lines={lines}
-          activeOpId={activeOpId}
-          highlightBlocks={highlightBlocks}
-          onSelect={focusLine}
-          onPageCount={onPageCount}
-        />
+        <div className="flex min-w-0 flex-col gap-3 max-[900px]:order-3">
+          {exact && (
+            <>
+              <p className="m-0 font-ui text-[13px] leading-[19px] text-ink-muted">
+                The compiled file, exactly as it downloads.
+                {list.toDecide.length > 0 &&
+                  ` ${list.toDecide.length === 1 ? "1 line waiting for your OK is" : `${list.toDecide.length} lines waiting for your OK are`} not in it.`}
+              </p>
+              <ExactPreview lines={lines} who={layout.blocks[0]?.text ?? "Your"} />
+            </>
+          )}
+          {/* The working sheet stays mounted while the PDF view shows: its
+              hidden measuring pass is what keeps the agreed page count and the
+              page-fit question live while decisions land from the review list.
+              `invisible` (not display:none) keeps its width real, so those
+              measurements stay real; h-0 keeps it from taking space. */}
+          <div className={exact ? "invisible h-0 overflow-hidden" : "contents"} aria-hidden={exact || undefined}>
+            <DefaultTemplateSheet
+              layout={layout}
+              lines={lines}
+              activeOpId={activeOpId}
+              highlightBlocks={highlightBlocks}
+              onSelect={focusLine}
+              onPageCount={onPageCount}
+            />
+          </div>
+        </div>
 
         <ReviewList
           className="self-start min-[900px]:sticky min-[900px]:top-0 min-[900px]:max-h-[calc(100dvh-8rem)]

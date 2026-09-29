@@ -139,7 +139,9 @@ def test_a_heading_is_never_the_last_thing_on_a_page():
     heading = TYPE["heading"]
     # Fill the page down to just enough room for the heading and its own
     # spacing, and not enough for a line of what it heads.
-    needed = heading["before"] + heading["leading"] + heading["after"]
+    from app.template_render import GAPS
+
+    needed = GAPS["bullet>heading"] + heading["leading"] + GAPS["heading>bullet"]
     fillers = int((room - needed - BULLET_LEADING / 2) / BULLET_LEADING)
 
     blocks = [{"kind": "bullet", "text": "Filler line."} for _ in range(fillers)]

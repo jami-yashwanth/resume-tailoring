@@ -83,6 +83,12 @@ export type TemplateBlock = { kind: Layout["blocks"][number]["kind"]; text: stri
  *
  * v1 override (28 Sep 2026, see CLAUDE.md): every download goes through this
  * instead of `applyOps` + `exportResume`, which edit the user's own file.
+ *
+ * `images: true` also returns one PNG per page — the Result screen's exact
+ * preview, pictures of the same bytes the download gets.
  */
-export const renderTemplate = (blocks: TemplateBlock[]) =>
-  post<{ file: string; pages: number; format: string }>("/render-template", { blocks });
+export const renderTemplate = (blocks: TemplateBlock[], options: { images?: boolean } = {}) =>
+  post<{ file: string; pages: number; format: string; images?: string[] }>("/render-template", {
+    blocks,
+    ...(options.images ? { images: true } : {}),
+  });

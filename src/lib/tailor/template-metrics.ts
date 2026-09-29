@@ -1,53 +1,88 @@
 /**
  * The one default Rezz template, as numbers.
  *
- * `services/docsvc/app/template_render.py` draws every download from exactly
- * these values. This module is the web side of the same template, so the
- * Result screen previews the document the user is about to get rather than a
- * lookalike of it.
+ * The numbers live in `shared/template.json` and are MEASURED off the compiled
+ * LaTeX template (the owner's reference .tex, compiled by docsvc with
+ * Tectonic — since 30 Sep 2026 that compile IS the download). docsvc's
+ * `tests/test_latex_parity.py` recompiles and re-measures on every run, so
+ * these values cannot silently drift from the file the user gets. This module
+ * is the web side of the same numbers, so the Result screen previews the
+ * document itself rather than a lookalike of it.
  *
- * The two were allowed to differ before v1's fixed-template override (28 Sep
- * 2026, see `CLAUDE.md`): back then the preview showed the user's own file and
- * the renderer edited that file, so neither owned a template. After the
- * override they both render the same one, and the divergence left behind is
- * what made the preview read as the weaker document — its section headings
- * were smaller than its own body text, where the renderer sets them equal and
- * bold, and its bullets sat 29% further apart than the PDF's.
+ * The box model, shared with the json and the parity test:
  *
- * Points, because points are what the renderer works in. A number here is a
- * number there: change one only together with `template_render.py`.
+ *  - Every block is a box `lines × leading` tall — `leading` is the wrapped
+ *    line advance, i.e. exactly CSS `line-height`.
+ *  - Adjacent boxes are separated by `gaps["prev>next"]`, applied as the next
+ *    block's `margin-top` (the page is a flex column, so margins never
+ *    collapse and stay additive). Bullets nested under a role are keyed
+ *    `bullet2`; bullets straight under a heading are `bullet`. Gaps are
+ *    per-pair because TeX's spacing (per-level itemsep, the reference's
+ *    negative vspaces) is not a sum of per-kind constants.
+ *  - Within its box, the browser places the baseline at
+ *    L/2 + S·(asc − (asc+desc)/2) with Roboto's hhea metrics — which is why
+ *    setting only line-heights and margins lands the preview's text on the
+ *    compiled PDF's baselines.
+ *
+ * Points, because points are what the compiled page is measured in. What stays
+ * here is what only the browser needs: the unit conversions, the content box,
+ * and the gap/level lookups the preview renders with.
  */
+import spec from "../../../shared/template.json";
+import type { BlockKind } from "./types";
 
 /** CSS pixels per point, at the 96dpi a browser assumes for absolute units. */
 const PT = 96 / 72;
 
-/** `template_render.py`'s `PAGE_WIDTH`/`PAGE_HEIGHT`/`MARGIN` — A4, 50pt in. */
-export const PAGE = { width: 595.28, height: 841.89, margin: 50 } as const;
+/** A4, 36pt in — the reference's fullpage margins after its \addtolength. */
+export const PAGE = spec.page;
 
 /**
- * Per block kind, the three things the renderer decides:
- *
- * - `size` — the font size it draws at.
- * - `leading` — how far its y-cursor advances, which is the block's own height
- *   and therefore the CSS `line-height` that reproduces it.
- * - `before` / `after` — the `space()` it adds around the block, which is the
- *   CSS margin. Kinds without them get none; a role sits straight after the
- *   bullet above it, and the next bullet straight after the role.
- * - `indent` — how far a bullet's text is pushed off the margin, with the dot
- *   drawn back at the margin itself.
+ * Per block kind, measured off the compiled PDF: `size` and `leading` (the CSS
+ * font-size / line-height), appearance flags (`bold`, `italic`, `upper`,
+ * `rule`, `align`), `indent` off the left margin, and for `role` the tabular
+ * row's `width` its dates sit flush against.
  */
-export const TYPE = {
-  name: { size: 20, leading: 28 },
-  contact: { size: 10, leading: 18, after: 6 },
-  heading: { size: 10.5, leading: 13.5, before: 12, after: 10 },
-  role: { size: 10.5, leading: 16 },
-  bullet: { size: 10.5, leading: 14.7, indent: 14 },
-  paragraph: { size: 10.5, leading: 18.7 },
-} as const;
+export const TYPE = spec.type;
+
+/** The hairline under a section heading, and the document's inks. */
+export const RULE = spec.rule;
+export const COLOR = spec.color;
 
 /**
- * The page's content box — `CONTENT_WIDTH` and `ROOM` in `template_render.py`,
- * the area left once the margin is taken off all four sides.
+ * The measured space between two adjacent blocks, by "prev>next" pair.
+ * See the box model above; unlisted pairs fall back to `default`.
+ */
+export const GAPS: Record<string, number> = spec.gaps;
+
+/** A block kind with bullet nesting resolved — the key format `GAPS` uses. */
+export type KeyedKind = BlockKind | "bullet2";
+
+/**
+ * Bullet depth, resolved the way the compiled file nests them: a bullet under
+ * a role (or its job title) is level two until the next heading; a bullet
+ * straight under a heading stays level one. `latex_render.blocks_to_latex`
+ * builds the lists this way and `test_latex_parity.leveled` re-checks it.
+ */
+export function resolveBulletLevels(kinds: readonly BlockKind[]): KeyedKind[] {
+  let underRole = false;
+  return kinds.map((kind) => {
+    if (kind === "heading") underRole = false;
+    const keyed: KeyedKind = kind === "bullet" && underRole ? "bullet2" : kind;
+    if (kind === "role" || kind === "job_title") underRole = true;
+    return keyed;
+  });
+}
+
+/** The gap above `next` when it follows `prev`; nothing above the first block. */
+export function gapBetween(prev: KeyedKind | null, next: KeyedKind): number {
+  if (prev === null) return 0;
+  return GAPS[`${prev}>${next}`] ?? GAPS.default;
+}
+
+/**
+ * The page's content box — the area left once the margin is taken off all
+ * four sides. Same numbers as `CONTENT_WIDTH` / `ROOM` in template_render.py.
  */
 export const CONTENT = {
   width: PAGE.width - 2 * PAGE.margin,

@@ -87,7 +87,9 @@ export function TailoringSheet({
   return (
     <div aria-hidden className="rounded-lg bg-paper-sunken p-8" style={APP_INK}>
       <div className="grid grid-cols-[minmax(0,1fr)_128px] gap-4">
-        <ResumeSheet pad="tight" font="ui" label="Your resume">
+        {/* "template", not the removed "ui" variant: the result this sheet
+            becomes is set in the template face, so the working view matches. */}
+        <ResumeSheet pad="tight" font="template" label="Your resume">
           <div className="flex flex-col">
             {ROWS.map((row, i) => {
               const read = reading && current >= 0;

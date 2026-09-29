@@ -1,35 +1,13 @@
 import type { AnchorHTMLAttributes, ButtonHTMLAttributes, ReactNode } from "react";
+import { box, offset, offsetAction, press, pressAction } from "./skin";
 
 type Variant = "primary" | "secondary";
 type Size = "sm" | "md" | "lg";
 
-/* No border here on purpose — neither width nor colour. Two utilities of the
-   same kind in one class string are resolved by Tailwind's generated source
-   order, not by the order they appear here: a `border-transparent` in the base
-   silently beat the variant's `border-line-strong` and flattened every
-   secondary button, and a base `border` (1px) would beat the variants'
-   `border-2` the same way. Each variant owns its whole border outright.
-
-   `disabled:pointer-events-none` is how the press is suppressed on a disabled
-   button. Overriding the hover transform with a `disabled:` utility would put
-   two rules for the same property in one class string and hand the outcome to
-   Tailwind's generated order again; removing the hover entirely cannot be
-   beaten by ordering.
-
-   The `before:` box is an invisible hit-area guard for the press-in. Hover moves
-   the button 2px down and right, which uncovers a 2px strip along its top and
-   left edges; a pointer resting in that strip then un-hovers, the button springs
-   back, it re-hovers, and the button shivers forever (and Playwright never sees
-   it as stable). A new decision card lands its buttons under a pointer that
-   just clicked, so this is reachable. The guard is a child of the button, so it
-   moves with it and keeps covering the strip: 4px past the padding edge is 2px
-   past the 2px border. */
 const base =
-  "relative inline-flex items-center justify-center rounded-md " +
-  "before:absolute before:-left-1 before:-top-1 before:bottom-0 before:right-0 before:content-[''] " +
+  "inline-flex items-center justify-center rounded-md " +
   "font-semibold no-underline cursor-pointer " +
-  "disabled:cursor-not-allowed disabled:opacity-45 disabled:pointer-events-none " +
-  "transition-[background-color,border-color,color,box-shadow,transform] duration-150";
+  "disabled:cursor-not-allowed disabled:opacity-45 disabled:pointer-events-none";
 
 /* 44px is the minimum tap target the brand book requires. */
 const sizes: Record<Size, string> = {
@@ -39,30 +17,44 @@ const sizes: Record<Size, string> = {
   lg: "min-h-[52px] px-8 text-[17px] leading-6",
 };
 
-/* Two variants, not four. Until 29 Sep 2026 there were a flat `primary`/
-   `secondary` pair for the app and a drawn `brutal`/`brutalGhost` pair for the
-   landing page. The owner asked for one voice across every screen, so the flat
-   pair is gone and the drawn pair took its names. A fifth variant is not the
-   answer to a button that looks wrong somewhere — one primary per view is.
-
-   The hard offset shadow is a drawn outline, not depth, which is why it may sit
-   on a button at all when the brand book reserves real shadows for the resume
-   and floating layers. It presses into its own offset on hover, so the offset is
-   doing something rather than decorating. 4px because the skin runs exactly two
-   offset steps: 4px for anything you act on, 8px for page-scale objects.
-
-   `primary` carries the highlighter offset and `secondary` an ink one, so the
-   two are told apart by more than fill — which matters on the decision bar,
-   where Skip and Add it are both `secondary` precisely so that neither is
-   pre-selected. */
-const variants: Record<Variant, string> = {
-  primary:
-    "border-2 border-ink bg-action text-on-action shadow-[4px_4px_0_0_var(--highlighter)] " +
-    "hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_0_var(--highlighter)]",
-  secondary:
-    "border-2 border-ink bg-paper-raised text-ink shadow-[4px_4px_0_0_var(--ink)] " +
-    "hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_0_var(--ink)]",
+/**
+ * Two variants, not four. One primary per view — a fifth variant is not the
+ * answer to a button that looks wrong somewhere.
+ *
+ * Buttons are DRAWN: a 2px ink edge and a 4px offset they press into, the same
+ * as every other object on a page built in this skin. They shipped flat — a
+ * 1px hairline, `hover:opacity-90` — until 29 Sep 2026, which left the one
+ * thing you are meant to click as the quietest object on the screen while the
+ * theme toggle beside it had a drawn edge and a press. `skin.ts` had described
+ * this treatment, yellow offset and all, since the skin moved out of the
+ * landing page; only the component never caught up.
+ *
+ * Yellow is on `primary` alone. It is not decoration there: `highlighter` marks
+ * the thing this page is actually about, and on a view with one primary action
+ * that is the action. `secondary` takes ink, like every other drawn object, so
+ * two secondaries side by side stay equal — which is what the Result screen's
+ * Skip / Add it pair depends on, where a pre-selected option would be a product
+ * bug, not a visual one.
+ */
+const drawn: Record<Variant, string> = {
+  primary: `${box} bg-action text-on-action ${offsetAction} ${pressAction}`,
+  secondary: `${box} bg-paper-raised text-ink hover:bg-paper-sunken ${offset} ${press}`,
 };
+
+/**
+ * `sm` keeps the hairline. Per `skin.ts`, the drawn treatment is for chrome,
+ * page-scale objects and the things you act on — not for dense repeating rows
+ * you read. `sm` exists only inside those rows (Undo, Keep it, one per change
+ * on the Result screen), and forty 2px boxes each casting a 4px offset is
+ * noise, not consistency.
+ */
+const flat: Record<Variant, string> = {
+  primary: "border border-action bg-action text-on-action hover:opacity-90 transition-colors duration-150",
+  secondary:
+    "border border-line-strong bg-paper-raised text-ink hover:bg-paper-sunken transition-colors duration-150",
+};
+
+const skin = (variant: Variant, size: Size) => (size === "sm" ? flat[variant] : drawn[variant]);
 
 type Common = { variant?: Variant; size?: Size; className?: string; children: ReactNode };
 
@@ -74,7 +66,11 @@ export function Button({
   ...rest
 }: Common & ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
-    <button type="button" className={`${base} ${sizes[size]} ${variants[variant]} ${className}`} {...rest}>
+    <button
+      type="button"
+      className={`${base} ${sizes[size]} ${skin(variant, size)} ${className}`}
+      {...rest}
+    >
       {children}
     </button>
   );
@@ -88,7 +84,7 @@ export function ButtonLink({
   ...rest
 }: Common & AnchorHTMLAttributes<HTMLAnchorElement>) {
   return (
-    <a className={`${base} ${sizes[size]} ${variants[variant]} ${className}`} {...rest}>
+    <a className={`${base} ${sizes[size]} ${skin(variant, size)} ${className}`} {...rest}>
       {children}
     </a>
   );

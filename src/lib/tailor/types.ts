@@ -12,8 +12,21 @@
 /** Mirrors `Claim` in services/docsvc/app/models.py. */
 export type ClaimLevel = "verified" | "reworded" | "added_by_user";
 
-/** Mirrors `BlockKind` in services/docsvc/app/models.py. */
-export type BlockKind = "name" | "contact" | "heading" | "role" | "bullet" | "paragraph";
+/**
+ * Mirrors `BlockKind` in services/docsvc/app/models.py.
+ *
+ * `job_title` is the one kind no parser emits: `groupRoleRun` in `view.ts`
+ * splits a run of role lines into the employer line (bold, carrying the dates)
+ * and the title under it.
+ */
+export type BlockKind =
+  | "name"
+  | "contact"
+  | "heading"
+  | "role"
+  | "job_title"
+  | "bullet"
+  | "paragraph";
 
 /** A span of text with one set of formatting. Mirrors `Run` in docsvc. */
 export type Run = {

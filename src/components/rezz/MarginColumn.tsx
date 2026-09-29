@@ -22,7 +22,7 @@ export function MarginColumn({ marks, label }: { marks: Mark[]; label: string })
   const ref = useMarginAnchors<HTMLDivElement>();
 
   return (
-    <div ref={ref} aria-label={label} className="relative font-mark">
+    <div ref={ref} aria-label={label} className="group relative font-mark">
       {/* 2px connectors, not hairlines: the chrome around this is drawn in 2px
           ink, and a 1px rule here would make the signature element the quietest
           thing on the screen. */}
@@ -30,7 +30,8 @@ export function MarginColumn({ marks, label }: { marks: Mark[]; label: string })
         <p
           key={m.anchor}
           data-anchor={m.anchor}
-          className={`absolute left-0 right-0 m-0 flex items-start gap-2.5 text-xs font-medium leading-4
+          className={`relative left-0 right-0 mx-0 mt-0 mb-3 flex items-start gap-2.5 text-xs font-medium leading-4
+                      group-data-[aligned=true]:absolute group-data-[aligned=true]:mb-0
                       before:mt-[7px] before:h-[2px] before:w-[22px] before:flex-none before:content-['']
                       ${
                         m.ask

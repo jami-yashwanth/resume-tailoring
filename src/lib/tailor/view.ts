@@ -80,8 +80,9 @@ export function stripBullet(text: string): string {
 export function cleanText(kind: BlockKind, text: string): string {
   if (kind === "bullet") return stripBullet(text);
   // Contact separators normalise to the template's pipes on both sides —
-  // the renderer does the same, so the preview wraps where the file does.
-  if (kind === "contact") return text.replace(/\s*[·|\t]\s*/g, "  |  ");
+  // the compiled file sets ` $|$ ` between fields, which reads as a
+  // single-spaced pipe — so the preview wraps where the file does.
+  if (kind === "contact") return text.replace(/\s*[·|\t]\s*/g, " | ");
   return text;
 }
 

@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import Link from "next/link";
 
 import { ThemeToggle } from "@/components/rezz/ThemeToggle";
 import { Wordmark } from "@/components/rezz/Wordmark";
@@ -25,9 +26,13 @@ export function FlowHeader({ step }: { step: ReactNode }) {
       <div className="mx-auto flex min-h-[72px] max-w-[1312px] flex-wrap items-center justify-between gap-3 px-16 py-3 max-[1100px]:px-8 max-[680px]:px-4">
         {/* Boxed, the way the landing header boxes it: on a screen drawn
             entirely in 2px ink, an unboxed wordmark reads as unfinished. */}
-        <span className={`inline-flex items-center ${box} rounded-md bg-paper-raised px-3 py-1.5 ${offset}`}>
+        <Link
+          href="/"
+          aria-label="Rezz home"
+          className={`inline-flex items-center ${box} rounded-md bg-sheet px-3 py-1.5 no-underline ${offset}`}
+        >
           <Wordmark />
-        </span>
+        </Link>
         <div className="flex items-center gap-5">
           <p className="m-0 font-mark text-xs font-medium leading-4 text-ink-muted">{step}</p>
           <ThemeToggle />
