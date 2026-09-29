@@ -1,8 +1,8 @@
 # Open items
 
 ## Decisions still needed
-- Data-policy FAQ: a draft is on the landing page, marked "[Draft: confirm storage region and deletion time]". Needs real hosting and legal answers.
-- Final ₹149 pack size once real per-resume AI cost is measured (15 vs 10).
+- Data-policy FAQ: the landing copy and `/privacy` now state only what v1 verifiably does (file stays in the browser). Storage region and deletion window still need real hosting and legal answers before accounts ship.
+- Final ₹149 pack size once real per-resume AI cost is measured (15 vs 10). The stream route now logs the rupee cost of every tailoring — collect a few dozen runs.
 - `design/design-system/tokens.json` and `bundle.css` are a **v1 canvas snapshot** and now
   diverge from the shipped code on four points: the type families (they still list Literata /
   Hind / IBM Plex Mono), `link` (retired), `focus` (now ink) and dark `action` (no longer the
@@ -26,7 +26,8 @@
 - Meta WhatsApp service-message pricing, if a WhatsApp channel is ever added.
 
 ## Engineering next steps
-- Replace the starter `src/lib/prompt.ts` behaviour (Markdown output, gaps-only) with the edit-operation plan + claim levels in 05-architecture.md.
-- Update the model default in `.env.example` / README (currently an old Sonnet ID).
-- Production file pipeline: LibreOffice headless for DOCX page counts, server font library for PDFs, LaTeX via Tectonic, look-alike rebuild path.
-- Landing page validation before building everything: price test (₹99 vs ₹149) and ~15 user interviews.
+- ~~Replace the starter `src/lib/prompt.ts` behaviour~~ Done: the edit-op pipeline with claim levels lives in `src/lib/tailor/` (planner.ts, rules.ts).
+- ~~Update the model default in `.env.example` / README~~ Done: defaults documented, per-stage overrides added. Still open: swap the rate-limited OAuth token for an API key so the planner can actually run on Sonnet, then delete the Haiku override from `.env`.
+- Production file pipeline (only if/when in-place editing returns): LibreOffice headless for DOCX page counts, server font library for PDFs, LaTeX via Tectonic, look-alike rebuild path.
+- Landing page validation before building everything: price test (₹99 vs ₹149) and ~15 user interviews. Funnel events now exist (`src/lib/analytics.ts`) — set `NEXT_PUBLIC_PLAUSIBLE_DOMAIN` to start measuring.
+- Commercial layer (auth + UPI passes + minimal Postgres): design agreed 29 Sep 2026, deferred until vendors are picked. Long poles to start first: payment-gateway KYC and SMS DLT template approval.

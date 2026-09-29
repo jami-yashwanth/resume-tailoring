@@ -18,10 +18,11 @@ import { MARK_LABEL, type RenderedLine, groupIntoBlocks } from "@/lib/tailor/vie
  * The one default Rezz template.
  *
  * v1 override (28 Sep 2026, see CLAUDE.md's dated override): the result
- * renders into this fixed layout instead of `TailoredSheet`, which reproduces
- * the file the user uploaded. Only `kind` and the post-edit `text` are used
- * here — the original runs/size/align/rule that `TailoredSheet` carries don't
- * apply, because there is no "original design" to keep for this render path.
+ * renders into this fixed layout instead of reproducing the file the user
+ * uploaded (the in-place `TailoredSheet` path — deleted 29 Sep 2026, in git
+ * history if the override is revisited). Only `kind` and the post-edit `text`
+ * are used here — original runs/size/align/rule don't apply, because there is
+ * no "original design" to keep for this render path.
  * The highlighter marks for changed text are the one thing kept identical:
  * that part of the promise ("nothing added behind your back") doesn't depend
  * on whose template the text sits in.
@@ -98,8 +99,8 @@ function Line({
         event.preventDefault();
         onSelect(line.opId!);
       }}
-      className={`cursor-pointer ${faded ? "opacity-35" : ""}
-                  ${active ? "outline outline-2 outline-offset-4 outline-ink" : ""}
+      className={`cursor-pointer rounded-[4px] ${faded ? "opacity-35" : ""}
+                  ${active ? "outline outline-2 outline-offset-2 outline-ink" : ""}
                   transition-opacity duration-150`}
     >
       <Body line={line} />
@@ -155,6 +156,13 @@ const KIND_STYLE: Record<BlockKind, CSSProperties> = {
     fontSize: cqi(TYPE.role.size),
     lineHeight: cqi(TYPE.role.leading),
     fontWeight: 600,
+  },
+  /* The job title under it, and the only reason the two are separate kinds:
+     regular weight, so the employer line leads. */
+  job_title: {
+    fontSize: cqi(TYPE.job_title.size),
+    lineHeight: cqi(TYPE.job_title.leading),
+    marginBottom: cqi(TYPE.job_title.after),
   },
   bullet: { fontSize: cqi(TYPE.bullet.size), lineHeight: cqi(TYPE.bullet.leading) },
   paragraph: { fontSize: cqi(TYPE.paragraph.size), lineHeight: cqi(TYPE.paragraph.leading) },
@@ -418,7 +426,7 @@ export function DefaultTemplateSheet({
         aria-hidden
         className="pointer-events-none invisible absolute inset-x-0 top-0 -z-10"
       >
-        <ResumeSheet font="ui">
+        <ResumeSheet font="template">
           <Blocks lines={lines} measuring />
         </ResumeSheet>
       </div>
@@ -427,7 +435,7 @@ export function DefaultTemplateSheet({
         <div key={page} data-page={page}>
           <ResumeSheet
             label={`${who} resume, tailored — page ${page + 1} of ${sheets.length}`}
-            font="ui"
+            font="template"
           >
             <Blocks
               lines={indices.map((index) => lines[index])}

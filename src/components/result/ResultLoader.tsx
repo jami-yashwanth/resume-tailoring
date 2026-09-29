@@ -71,7 +71,7 @@ function OpeningResume() {
   return (
     <div className="flex h-screen items-start justify-center bg-paper-sunken p-8">
       <div className="w-full max-w-[794px]" aria-hidden>
-        <ResumeSheet font="ui">
+        <ResumeSheet font="template">
           <span />
         </ResumeSheet>
       </div>

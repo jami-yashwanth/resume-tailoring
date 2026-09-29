@@ -44,7 +44,7 @@ export function ItemRow({
 
   return (
     <li className="rounded-lg border border-line bg-paper-raised">
-      <div className="flex items-center gap-2 pl-3 pr-2">
+      <div className="flex items-center gap-2 px-3 py-2">
         <button
           type="button"
           aria-expanded={open}

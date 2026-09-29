@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Button } from "@/components/rezz/Button";
 import { Wordmark } from "@/components/rezz/Wordmark";
 import { box, offset } from "@/components/rezz/skin";
@@ -32,9 +33,13 @@ export function ResultHeader({
 }) {
   return (
     <header className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b-2 border-ink bg-paper-raised px-8 py-3 max-[900px]:px-4">
-      <span className={`inline-flex flex-none items-center ${box} rounded-md bg-paper-raised px-3 py-1.5 ${offset}`}>
+      <Link
+        href="/"
+        aria-label="Rezz home"
+        className={`inline-flex flex-none items-center ${box} rounded-md bg-sheet px-3 py-1.5 no-underline ${offset}`}
+      >
         <Wordmark />
-      </span>
+      </Link>
       <h1 className="m-0 min-w-0 truncate text-[15px] font-semibold leading-[21px]">
         {role} · {company}
       </h1>

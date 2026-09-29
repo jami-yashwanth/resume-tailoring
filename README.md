@@ -1,40 +1,65 @@
-# resume-tailoring
+# resume-tailoring (Rezz)
 
-Paste a resume and a job description; get back a tailored resume, a keyword gap
-report, and a plain-English list of what changed and why.
+India-first AI resume tailor. Upload a Word or PDF resume once, paste any job
+(or its link), and about fifteen seconds later get your own facts back,
+reworded for that job in one clean template, with every change marked. Nothing
+is added behind your back: a line with a skill that isn't in the resume waits
+for an explicit **Add it**.
+
+The decisions in `docs/README.md` are the spec; `CLAUDE.md` carries the
+product rules. Start there before changing behaviour.
 
 ## Setup
 
 ```bash
 npm install
-cp .env.example .env.local   # then add your ANTHROPIC_API_KEY
-npm run dev
+cp .env.example .env        # then add your ANTHROPIC_API_KEY and DOCSVC_TOKEN
+
+# the file service (parse + render), a Python FastAPI app
+cd services/docsvc && python3 -m venv .venv && .venv/bin/pip install -r requirements.txt && cd ../..
+
+npm run docsvc              # terminal 1 — file service
+npm run dev                 # terminal 2 — web app
 ```
 
-Open http://localhost:3001.
+`node scripts/ports.mjs` prints the ports both launchers will use
+(`FRONTEND_PORT` / `BACKEND_PORT`).
 
-## How it works
+## The flow
 
-- `src/app/page.tsx` - two-pane UI: inputs on the left, results on the right.
-- `src/app/api/tailor/route.ts` - server route. Never exposes the API key to the
-  browser. Calls Claude with a tool schema so the response comes back as
-  validated JSON rather than free text.
-- `src/lib/prompt.ts` - the system prompt and the output schema. This is the
-  file to edit when you want different tailoring behaviour.
+`/` → `/upload` → `/job` → `/tailoring` → `/result` → `/done`
 
-## Design notes
+- **`/upload`** reads the file in the browser, parses it via docsvc `/parse`
+  (`src/app/api/parse/route.ts`), and keeps it in `sessionStorage` — nothing
+  is stored server-side.
+- **`/tailoring`** streams staged progress over SSE from
+  `src/app/api/tailor/stream/route.ts`, which runs the pipeline in
+  `src/lib/tailor/pipeline.ts`: parse → requirements (Claude, verifier model)
+  → edit-op planner (Claude, planner model) → pure-code guardrails
+  (`src/lib/tailor/rules.ts`) → heading renames.
+- **`/result`** renders a live-measured A4 preview (`DefaultTemplateSheet`,
+  numbers from `shared/template.json`, same file the PDF renderer reads) with
+  the review list; Add it / Skip decisions are a pure reducer
+  (`src/lib/tailor/review.ts`) persisted per session. `/result?demo` shows a
+  saved sample tailoring.
+- **Download** posts approved lines only (`src/lib/tailor/download.ts`) to
+  `/api/download`, which renders the PDF via docsvc `/render-template`.
 
-The prompt is deliberately conservative: it is told to reorder, re-word, and
-re-emphasise what is already in the resume, and to surface missing
-qualifications in `gaps` rather than inventing them. If you loosen that, you are
-building a tool that lies on your behalf.
+`src/lib/tailor/planner.ts` holds the planner prompt and hard rules — the file
+to edit for different tailoring behaviour. The rules are deliberately
+conservative: reword and reorder what is already there, never invent numbers,
+never fake knockouts. If you loosen that, you are building a tool that lies on
+the user's behalf.
 
 ## Scripts
 
 | command | does |
 | --- | --- |
-| `npm run dev` | dev server, on `FRONTEND_PORT` (3001) |
-| `npm run docsvc` | the file service, on `BACKEND_PORT` (8001) |
+| `npm run dev` | web app (Next.js) |
+| `npm run docsvc` | file service (FastAPI) |
 | `npm run build` | production build |
+| `npm test` | vitest (frontend + pipeline logic) |
 | `npm run typecheck` | `tsc --noEmit` |
-| `node scripts/ports.mjs` | print the ports the launchers will use |
+| `npm run lint` | eslint |
+| `services/docsvc/.venv/bin/pytest services/docsvc/tests` | file-service tests |
+| `npx tsx scripts/tailor-sample.mts` | run the whole pipeline once against the sample resume + JD |

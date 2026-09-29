@@ -248,6 +248,10 @@ Worth being honest about, because it is not one-sided.
    explains after the fact. Ours asks before. That difference is the product,
    and the Result screen should make it unmistakable.
 4. **PDF-only output is a weakness we can name.** They hand back a PDF; the user
-   can never edit it again in Word. Ours returns the DOCX they uploaded.
+   can never edit it again in Word. ~~Ours returns the DOCX they uploaded.~~
+   *(No longer true under the 28 Sep 2026 v1 override: v1 also hands back a
+   PDF, rendered into the one default template. The difference that remains is
+   consent and honesty, not format — and the weakness named here now applies
+   to us too until in-place editing ships.)*
 5. **Tracking, cover letters and the extension are table stakes sooner than
    planned.** All three are live in a product charging ₹999/month.
