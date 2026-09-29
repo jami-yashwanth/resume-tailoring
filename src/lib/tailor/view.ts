@@ -78,7 +78,11 @@ export function stripBullet(text: string): string {
 
 /** Bullet text without its glyph; every other kind untouched. */
 export function cleanText(kind: BlockKind, text: string): string {
-  return kind === "bullet" ? stripBullet(text) : text;
+  if (kind === "bullet") return stripBullet(text);
+  // Contact separators normalise to the template's pipes on both sides —
+  // the renderer does the same, so the preview wraps where the file does.
+  if (kind === "contact") return text.replace(/\s*[·|\t]\s*/g, "  |  ");
+  return text;
 }
 
 /**

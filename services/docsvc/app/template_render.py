@@ -13,23 +13,45 @@ HTML-to-PDF step: a resume's shapes — a name, a couple of section rules, a
 role line with dates pushed right, bulleted lines — are simple enough to lay
 out by hand, and it keeps this service's only external dependency the same
 one it already has.
+
+Every number below comes from `shared/template.json`, which the web app's
+`src/lib/tailor/template-metrics.ts` reads too. Change the template there, not
+here: the preview and the file are one spec, and they used to drift because
+each kept its own copy.
 """
+import json
+import re
+from pathlib import Path
+
 import pymupdf
 
-PAGE_WIDTH, PAGE_HEIGHT = 595.28, 841.89  # A4, points
-MARGIN = 50.0
+#: Four levels up from `services/docsvc/app/template_render.py` is the repo root.
+_SPEC = json.loads((Path(__file__).resolve().parents[3] / "shared" / "template.json").read_text())
+
+TYPE: dict[str, dict] = _SPEC["type"]
+
+PAGE_WIDTH, PAGE_HEIGHT = _SPEC["page"]["width"], _SPEC["page"]["height"]  # A4, points
+MARGIN = float(_SPEC["page"]["margin"])
 CONTENT_WIDTH = PAGE_WIDTH - 2 * MARGIN
 #: What an empty page holds, and how far a bullet's text sits off the margin.
-#: `src/lib/tailor/template-metrics.ts` carries both for the preview.
 ROOM = PAGE_HEIGHT - 2 * MARGIN
-BULLET_INDENT = 14
+BULLET_INDENT = TYPE["bullet"]["indent"]
+RULE_WIDTH = _SPEC["rule"]["width"]
 
-INK = (0.09, 0.09, 0.09)
-MUTED = (0.45, 0.45, 0.45)
-RULE = (0.82, 0.82, 0.82)
+
+def _rgb(value: str) -> tuple[float, float, float]:
+    """`#rrggbb` as the 0-1 triple PyMuPDF wants."""
+    h = value.lstrip("#")
+    return tuple(int(h[i : i + 2], 16) / 255 for i in (0, 2, 4))  # type: ignore[return-value]
+
+
+INK = _rgb(_SPEC["color"]["ink"])
+MUTED = _rgb(_SPEC["color"]["muted"])
+RULE = _rgb(_SPEC["color"]["rule"])
 
 SANS = "helv"
 SANS_BOLD = "hebo"
+SANS_ITALIC = "heit"
 
 BULLET_CHARS = "•◦▪‣·-*"
 
@@ -111,11 +133,53 @@ class _Writer:
             (x, self.y + size), _sanitize(text), fontsize=size, fontname=fontname, color=color
         )
 
+    def centered(self, text: str, size: float, fontname: str, color=INK) -> None:
+        """One line centered on the page's midline — the reference template's
+        header block. Centering happens per drawn line, so a wrapped contact
+        line centers each of its lines like LaTeX's {center} does."""
+        font = pymupdf.Font(fontname)
+        x = MARGIN + max(0.0, (CONTENT_WIDTH - font.text_length(_sanitize(text), fontsize=size)) / 2)
+        self.text(x, text, size, fontname, color)
+
     def line(self, leading: float) -> None:
         self.y += leading
 
     def rule(self) -> None:
-        self.page.draw_line((MARGIN, self.y), (PAGE_WIDTH - MARGIN, self.y), color=RULE, width=0.75)
+        self.page.draw_line(
+            (MARGIN, self.y), (PAGE_WIDTH - MARGIN, self.y), color=RULE, width=RULE_WIDTH
+        )
+
+    def spread(self, left: str, right: str, size: float, fontname: str, color=INK) -> bool:
+        """One line with `left` at the margin and `right` pushed to the right one.
+
+        Returns False without drawing when the two do not fit on one line —
+        `insert_text` does not wrap, it draws off the edge of the page, and a
+        role line long enough to do that lost its dates completely. The caller
+        wraps instead.
+
+        Drawn as a SINGLE text run padded with spaces, not as two runs at two x
+        positions. Two runs is the obvious way and it is the one thing every
+        resume-parsing guide warns about: a PDF's content stream carries no
+        whitespace between separately-positioned runs, so an extractor has to
+        infer the gap. Some insert a space, some glue the two together
+        ("InncirclesJun 2023"), and some drop the detached run entirely — which
+        loses the dates the parser needs to work out how long the job lasted.
+        Padding with real spaces puts the separator in the stream, where every
+        extractor can see it.
+
+        The cost is up to half a space of right-edge raggedness — 1.46pt at
+        10.5pt Helvetica, 0.3% of the measure, against a date column nobody
+        measures with a ruler.
+        """
+        font = pymupdf.Font(fontname)
+        space = font.text_length(" ", fontsize=size)
+        gap = CONTENT_WIDTH - font.text_length(left, fontsize=size) - font.text_length(
+            right, fontsize=size
+        )
+        if not space or gap < space:
+            return False
+        self.text(MARGIN, f"{left}{' ' * round(gap / space)}{right}", size, fontname, color)
+        return True
 
     def bullet_dot(self, x: float, size: float, color=INK) -> None:
         """A drawn dot, not a bullet glyph — base-14 fonts render "•" as a
@@ -134,6 +198,7 @@ class _Writer:
         leading_extra=0.0,
         indent=0.0,
         bullet=False,
+        center=False,
     ):
         leading = size * 1.4 + leading_extra
         lines = _wrap(text, size, fontname, width)
@@ -146,7 +211,10 @@ class _Writer:
                 self._break()
             if bullet and i == 0:
                 self.bullet_dot(MARGIN, size, color)
-            self.text(MARGIN + indent, wrapped_line, size, fontname, color)
+            if center:
+                self.centered(wrapped_line, size, fontname, color)
+            else:
+                self.text(MARGIN + indent, wrapped_line, size, fontname, color)
             self.line(leading)
 
     def space(self, amount: float) -> None:
@@ -163,46 +231,78 @@ def render_template(blocks: list[dict]) -> tuple[bytes, int]:
             continue
         kind = block.get("kind", "paragraph")
 
+        spec = TYPE.get(kind, TYPE["paragraph"])
+        size, leading = spec["size"], spec["leading"]
+
         if kind == "name":
-            w._ensure(28)
-            w.text(MARGIN, text, 20, SANS_BOLD)
-            w.line(28)
+            w._ensure(leading)
+            w.centered(text, size, SANS_BOLD)
+            w.line(leading)
 
         elif kind == "contact":
-            w.wrapped(text.replace("\t", "   |   "), 10, SANS, CONTENT_WIDTH, MUTED, leading_extra=4)
-            w.space(6)
+            # The reference separates contact fields with pipes; parsed
+            # resumes usually arrive with middots, which base-14 fonts cannot
+            # draw anyway (`_sanitize` would degrade them to hyphens).
+            contact = re.sub(r"\s*[·|]\s*", "  |  ", text.replace("\t", "  |  "))
+            w.wrapped(
+                contact, size, SANS, CONTENT_WIDTH, INK,
+                leading_extra=leading - size * 1.4, center=True,
+            )
+            w.space(spec["after"])
 
         elif kind == "heading":
-            w._ensure(26)
-            w.space(12)
-            w.text(MARGIN, text.upper(), 10.5, SANS_BOLD)
+            # A heading that fits with nothing under it is a stranded heading,
+            # which docs/05-architecture.md forbids — so the room it asks for is
+            # everything the heading itself consumes plus one line of the
+            # section it heads. `_ensure` runs before the `space()` below, so
+            # that leading space has to be counted here too.
+            w._ensure(
+                spec["before"] + leading + spec["after"] + TYPE["bullet"]["leading"]
+            )
+            w.space(spec["before"])
+            w.text(MARGIN, text.upper(), size, SANS_BOLD)
             # `text()` draws the baseline at y + size, not y — advancing by
             # less than `size` draws the rule above the baseline, through
             # the letters, instead of below them.
-            w.line(10.5 + 3)
+            w.line(leading)
             w.rule()
-            w.space(10)
+            w.space(spec["after"])
 
         elif kind == "role":
-            w._ensure(16)
-            if "\t" in text:
-                left, right = text.split("\t", 1)
-            else:
-                left, right = text, ""
+            # A breath between entries — the reference's inter-subheading
+            # vspace. Counted in _ensure so the gap can't strand a role at a
+            # page's foot, and matched by the preview's margin-top.
+            w._ensure(spec.get("before", 0) + leading)
+            w.space(spec.get("before", 0))
+            left, right = text.split("\t", 1) if "\t" in text else (text, "")
             left, right = left.strip(), right.strip()
-            w.text(MARGIN, left, 10.5, SANS_BOLD)
-            if right:
-                width = pymupdf.Font(SANS_BOLD).text_length(right, fontsize=10.5)
-                w.text(PAGE_WIDTH - MARGIN - width, right, 10.5, SANS_BOLD)
-            w.line(16)
+            if right and w.spread(left, right, size, SANS_BOLD):
+                w.line(leading)
+            elif right:
+                # Too long to hold both ends of one line. Wrapping keeps the
+                # dates on the page, which matters more than the date column
+                # staying flush for this one entry.
+                w.wrapped(f"{left}  {right}", size, SANS_BOLD, CONTENT_WIDTH, INK,
+                          leading_extra=leading - size * 1.4)
+            else:
+                w.text(MARGIN, left, size, SANS_BOLD)
+                w.line(leading)
+
+        elif kind == "job_title":
+            w._ensure(leading)
+            w.text(MARGIN, text, size, SANS_ITALIC)
+            w.line(leading)
+            w.space(spec["after"])
 
         elif kind == "bullet":
             content = text.lstrip("".join(BULLET_CHARS) + " ").strip()
-            w.wrapped(content, 10.5, SANS, CONTENT_WIDTH - BULLET_INDENT, INK,
+            w.wrapped(content, size, SANS, CONTENT_WIDTH - BULLET_INDENT, INK,
+                      leading_extra=leading - size * 1.4,
                       indent=BULLET_INDENT, bullet=True)
 
         else:  # paragraph
-            w.wrapped(text, 10.5, SANS, CONTENT_WIDTH, INK, leading_extra=4)
+            w.wrapped(text, size, SANS, CONTENT_WIDTH, INK,
+                      leading_extra=leading - size * 1.4)
 
     data = doc.tobytes()
     pages = w.pages

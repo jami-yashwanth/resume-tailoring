@@ -10,7 +10,7 @@ import {
 } from "react";
 import { ResumeSheet } from "@/components/rezz/ResumeSheet";
 import { filePageCount, paginate } from "@/lib/tailor/paginate";
-import { TYPE, contentHeightFor, cqi } from "@/lib/tailor/template-metrics";
+import { COLOR, TYPE, contentHeightFor, cqi } from "@/lib/tailor/template-metrics";
 import type { BlockKind, Layout } from "@/lib/tailor/types";
 import { MARK_LABEL, type RenderedLine, groupIntoBlocks } from "@/lib/tailor/view";
 
@@ -123,17 +123,20 @@ function Line({
  * `align` are still unread here: v1 has no original design to carry over.
  */
 const KIND_STYLE: Record<BlockKind, CSSProperties> = {
+  /* The header is the reference template's centered block: a Huge bold name
+     over a centered ink contact line, per the spec's `align`. */
   name: {
     fontSize: cqi(TYPE.name.size),
     lineHeight: cqi(TYPE.name.leading),
     fontWeight: 600,
     letterSpacing: "-0.01em",
+    textAlign: "center",
   },
   contact: {
     fontSize: cqi(TYPE.contact.size),
     lineHeight: cqi(TYPE.contact.leading),
     marginBottom: cqi(TYPE.contact.after),
-    color: "var(--ink-muted)",
+    textAlign: "center",
   },
   heading: {
     fontSize: cqi(TYPE.heading.size),
@@ -149,20 +152,25 @@ const KIND_STYLE: Record<BlockKind, CSSProperties> = {
     /* The section rule, drawn rather than laid out. `render_template` draws
        its line without advancing the cursor, so a `border-bottom` here would
        add a pixel per heading that the file does not have. An inset shadow
-       paints in the same place and costs no height. */
-    boxShadow: "inset 0 -1px 0 0 var(--line)",
+       paints in the same place and costs no height. The colour is the
+       document's own rule ink, not a theme token: the sheet is paper-white in
+       both themes and the file draws this exact colour. */
+    boxShadow: `inset 0 -1px 0 0 ${COLOR.rule}`,
   },
   role: {
     fontSize: cqi(TYPE.role.size),
     lineHeight: cqi(TYPE.role.leading),
+    marginTop: cqi(TYPE.role.before),
     fontWeight: 600,
   },
   /* The job title under it, and the only reason the two are separate kinds:
-     regular weight, so the employer line leads. */
+     italic regular weight, per the reference's \textit second line, so the
+     employer line leads. */
   job_title: {
     fontSize: cqi(TYPE.job_title.size),
     lineHeight: cqi(TYPE.job_title.leading),
     marginBottom: cqi(TYPE.job_title.after),
+    fontStyle: "italic",
   },
   bullet: { fontSize: cqi(TYPE.bullet.size), lineHeight: cqi(TYPE.bullet.leading) },
   paragraph: { fontSize: cqi(TYPE.paragraph.size), lineHeight: cqi(TYPE.paragraph.leading) },

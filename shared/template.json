@@ -1,0 +1,69 @@
+{
+  "$comment": [
+    "The one default Rezz template, as numbers — the single source both sides read.",
+    "",
+    "`services/docsvc/app/template_render.py` draws every download from these values and",
+    "`src/lib/tailor/template-metrics.ts` previews from them, so the Result screen shows the",
+    "document the user is about to get rather than a lookalike of it. The two used to hold",
+    "their own hand-kept copies (plus a third in the renderer's tests) with nothing to catch",
+    "drift; that is why the preview's headings ended up smaller than its own body text and",
+    "its bullets sat 29% looser than the PDF's. One file now, read by both.",
+    "",
+    "Points, because points are what the renderer works in.",
+    "",
+    "Layout rules encoded here, and why (researched 29 Sep 2026 against how Workday, iCIMS,",
+    "Greenhouse, Taleo, Sovren and Daxtra actually read a resume — they are text extractors",
+    "that segment on section headings, not scorers):",
+    "",
+    "  - A4 with a 40pt (0.55in) margin, inside the 0.5-1in band every guide agrees on.",
+    "  - Single column. No tables, no text boxes, no photo, no icons, no skill bars.",
+    "  - Contact details are body text, never a PDF header region — Workday and iCIMS strip",
+    "    header/footer regions before parsing, so a name placed there disappears.",
+    "  - `heading` outranks `bullet` in size. They were both 10.5 until 29 Sep 2026, which",
+    "    left weight, caps and a rule as the only things separating a section from its body.",
+    "  - A job header is two lines: `role` (employer, location, dates, bold) then",
+    "    `job_title` (italic).",
+    "  - Body text never below 10pt.",
+    "",
+    "Re-cut 29 Sep 2026 against the owner's ATS-safe LaTeX reference (a Jake's-resume",
+    "variant): centered Huge bold name over a centered ink contact line, 14pt bold caps",
+    "headings with a solid ink rule tucked under (the faint gray hairline was one of the",
+    "generated-template tells), italic job titles, tighter margins and vertical rhythm.",
+    "`align` and `italic` per kind are read by both renderers.",
+    "",
+    "Colours are the preview's, chosen on the canvas; the renderer converts to its 0-1",
+    "tuples."
+  ],
+
+  "page": { "width": 595.28, "height": 841.89, "margin": 40 },
+
+  "rule": { "width": 0.6 },
+
+  "color": {
+    "ink": "#1b2230",
+    "muted": "#5a6273",
+    "rule": "#1b2230"
+  },
+
+  "$typeComment": [
+    "Per block kind, the things the renderer decides:",
+    "  size    — the font size it draws at.",
+    "  leading — how far its y-cursor advances, which is the block's own height and",
+    "            therefore the CSS `line-height` that reproduces it.",
+    "  before/after — the `space()` it adds around the block, which is the CSS margin.",
+    "  indent  — how far a bullet's text is pushed off the margin, dot drawn at the margin.",
+    "  align   — center, for the header block; everything else is left.",
+    "  italic  — the job title, per the reference's \\textit second line.",
+    "A kind without `before`/`after` gets none: a `job_title` sits straight under its role,",
+    "and the next bullet straight under that."
+  ],
+  "type": {
+    "name":      { "size": 25,   "leading": 30,   "bold": true, "align": "center" },
+    "contact":   { "size": 10,   "leading": 15,   "after": 8, "align": "center" },
+    "heading":   { "size": 14,   "leading": 17,   "before": 14, "after": 6, "bold": true, "upper": true, "rule": true },
+    "role":      { "size": 10.5, "leading": 14.5, "before": 5, "bold": true },
+    "job_title": { "size": 10.5, "leading": 14,   "after": 3, "italic": true },
+    "bullet":    { "size": 10.5, "leading": 13.8, "indent": 11 },
+    "paragraph": { "size": 10.5, "leading": 15 }
+  }
+}
