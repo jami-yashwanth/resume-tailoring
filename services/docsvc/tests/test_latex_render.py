@@ -1,0 +1,67 @@
+"""The LaTeX spike (unwired): template injection, escaping, compilation.
+
+Compile tests skip on machines without tectonic — the escaping and injection
+logic tests run everywhere.
+"""
+import shutil
+
+import pytest
+
+from app.latex_render import blocks_to_latex, escape
+
+needs_tectonic = pytest.mark.skipif(
+    shutil.which("tectonic") is None, reason="tectonic not installed"
+)
+
+
+def test_every_special_character_escapes_to_literal_text():
+    hostile = r"100% uptime & $0 cost #tag _under {brace} ~tilde ^caret \input{/etc/passwd}"
+    escaped = escape(hostile)
+    for ch in "&%$#_{}~^":
+        assert f"\\{ch}" in escaped or ch not in hostile
+    assert r"\textbackslash{}input" in escaped, "a raw backslash must never survive"
+
+
+def test_blocks_become_the_template_macros():
+    tex = blocks_to_latex(
+        [
+            {"kind": "name", "text": "Priya Sharma"},
+            {"kind": "contact", "text": "a@b.c · Bengaluru"},
+            {"kind": "heading", "text": "Experience"},
+            {"kind": "role", "text": "Razorfin\tAug 2024 - present"},
+            {"kind": "job_title", "text": "Engineer"},
+            {"kind": "bullet", "text": "• Did a thing."},
+        ]
+    )
+    assert r"\textbf{\Huge Priya Sharma}" in tex
+    assert "a@b.c $|$ Bengaluru" in tex
+    assert r"\section{Experience}" in tex
+    assert r"\resumeSubheading{Razorfin}{Aug 2024 - present}{Engineer}{}" in tex
+    assert r"\resumeItem{\textbullet\ Did a thing.}" in tex
+    # Every opened list is closed.
+    assert tex.count(r"\resumeSubHeadingList" + "\n") + tex.count(
+        r"\resumeSubHeadingList"
+    ) >= tex.count(r"\resumeSubHeadingListEnd")
+
+
+@needs_tectonic
+def test_compiles_to_a_readable_pdf():
+    import pymupdf
+
+    from app.latex_render import render_latex
+
+    pdf = render_latex(
+        [
+            {"kind": "name", "text": "Priya Sharma"},
+            {"kind": "contact", "text": "a@b.c · Bengaluru"},
+            {"kind": "heading", "text": "Experience"},
+            {"kind": "role", "text": "Razorfin\tAug 2024 - present"},
+            {"kind": "job_title", "text": "Engineer"},
+            {"kind": "bullet", "text": "Shipped 100% of the $ & # things."},
+        ],
+        timeout=180.0,
+    )
+    with pymupdf.open(stream=pdf, filetype="pdf") as doc:
+        text = doc[0].get_text()
+    assert "Priya Sharma" in text
+    assert "Shipped 100% of the $ & # things." in text
