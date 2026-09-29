@@ -33,7 +33,8 @@ Rezz tailors a person's own resume to each job and never adds anything behind th
 - On desktop, the resume sits centred like a canvas on `paper-sunken`, with a thin side panel for the job's requirements and changes.
 - Use the 4px scale only: `space-1` to `space-16`. Cards pad at `space-4`, groups sit `space-6` apart, marketing sections `space-12` apart.
 - Radii stay small and document-like: `radius-md` for controls, `radius-lg` for cards and sheets, `radius-sheet` for the resume, `radius-full` only for chips.
-- Only the resume (`shadow-sheet`) and floating layers (`shadow-float`) cast shadows. Everything else is separated by `line`.
+- Only the resume (`shadow-sheet`) and floating layers (`shadow-float`) cast **blurred** shadows — the two things that are meant to read as lifted off the page. Hairline `line` separates everything else that is merely adjacent.
+- **The drawn skin (29 Sep 2026)**, in `src/components/rezz/skin.ts`: chrome, the things you act on and page-scale objects carry a 2px `ink` outline and a hard offset shadow. It is 0-blur and 0-spread in a flat token colour, so it reads as a drawn outline rather than depth, and interactive objects press into their own offset on hover so the offset does something. Exactly two steps — 4px for anything you act on, 8px for page-scale objects — because nobody can tell 4px from 5px at a glance. Dense repeating rows you read rather than act on (requirement lists, progress stages, fact lists) keep the hairlines; the resume never takes an outline at all.
 
 ## Motion
 

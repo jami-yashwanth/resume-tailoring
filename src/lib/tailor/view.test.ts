@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Layout, PlannedOp } from "./types";
-import { buildLines, groupIntoBlocks } from "./view";
+import { anchorLabel, buildLines, groupIntoBlocks, wordingFor, wordingOptions } from "./view";
 
 const layout: Layout = {
   format: "docx",
@@ -70,11 +70,50 @@ describe("buildLines", () => {
     expect(lines.some((l) => l.opId === "o2")).toBe(false);
   });
 
-  it("dims a removed line instead of deleting it, so its mark has an anchor", () => {
-    const lines = buildLines(layout, [op({ id: "o3", op: "remove", block: "b13", text: undefined })], {});
+  it("leaves a line the user has not agreed to drop exactly where it was", () => {
+    /* A removal takes one of the user's own sentences out of their resume.
+       The planner proposing it is not the user accepting it, and this used to
+       apply on sight — the same trick as adding something behind their back,
+       run in reverse. */
+    const remove = op({ id: "o3", op: "remove", block: "b13", text: undefined });
+    const lines = buildLines(layout, [remove], {});
+    const line = lines.find((l) => l.blockId === "b13")!;
+    expect(line.state).toBe("unchanged");
+    expect(line.text).toBe("Wrote unit tests.");
+  });
+
+  it("dims a removal the user chose instead of deleting it, so its mark has an anchor", () => {
+    const remove = op({ id: "o3", op: "remove", block: "b13", text: undefined });
+    const lines = buildLines(layout, [remove], { o3: true });
     const line = lines.find((l) => l.blockId === "b13")!;
     expect(line.state).toBe("removed");
     expect(line.text).toBe("Wrote unit tests.");
+  });
+
+  it("puts the user's own words back when they undo a rewording", () => {
+    const lines = buildLines(layout, [op({})], { o1: false });
+    const line = lines.find((l) => l.blockId === "b6")!;
+    expect(line.state).toBe("reverted");
+    expect(line.text).toBe("Worked on backend APIs for payments.");
+    // The mark stays, so the rewording is one click away again.
+    expect(line.opId).toBe("o1");
+  });
+
+  it("takes the rewording back when they ask for it again", () => {
+    const lines = buildLines(layout, [op({})], { o1: undefined });
+    expect(lines.find((l) => l.blockId === "b6")!.state).toBe("reworded");
+  });
+
+  it("renders the wording the user chose, not always the planner's first", () => {
+    const withAlternatives = op({ alternatives: ["Built payment APIs."] });
+    const lines = buildLines(layout, [withAlternatives], {}, false, { o1: 1 });
+    expect(lines.find((l) => l.blockId === "b6")!.text).toBe("Built payment APIs.");
+  });
+
+  it("wraps around rather than falling off the end of the wordings", () => {
+    const withAlternatives = op({ alternatives: ["Built payment APIs."] });
+    expect(wordingOptions(withAlternatives)).toHaveLength(2);
+    expect(wordingFor(withAlternatives, { o1: 2 })).toBe("Designed backend REST APIs for payments.");
   });
 
   it("shows the uploaded file untouched when comparing", () => {
@@ -99,5 +138,27 @@ describe("groupIntoBlocks", () => {
     const groups = groupIntoBlocks(lines);
     expect(Array.isArray(groups[0])).toBe(false); // the name
     expect(Array.isArray(groups[1])).toBe(true); // the bullets
+  });
+});
+
+describe("anchorLabel", () => {
+  const withRole: Layout = {
+    ...layout,
+    blocks: [
+      { id: "b4", kind: "heading", text: "EXPERIENCE", section: null, style: null, lines: 1, has_bold: false, runs: [], size: 11, space_before: 0 },
+      { id: "b5", kind: "role", text: "Razorfin · Software Engineer, Backend\tAug 2024 – present", section: "EXPERIENCE", style: null, lines: 1, has_bold: true, runs: [], size: 11, space_before: 0 },
+      { id: "b6", kind: "bullet", text: "Worked on backend APIs for payments.", section: "EXPERIENCE", style: null, lines: 1, has_bold: false, runs: [], size: 10.5, space_before: 0 },
+    ],
+  };
+
+  it("names the job a drafted line would join", () => {
+    /* "Add this line to your Razorfin role?" is a different question from
+       "Add it?", and it is the one the spec asks. */
+    expect(anchorLabel(withRole, "b6")).toBe("Razorfin");
+  });
+
+  it("says nothing rather than guessing when there is no role above", () => {
+    expect(anchorLabel(withRole, "b4")).toBeNull();
+    expect(anchorLabel(withRole, "nope")).toBeNull();
   });
 });

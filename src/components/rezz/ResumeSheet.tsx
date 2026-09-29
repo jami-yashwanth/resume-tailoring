@@ -1,4 +1,5 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
+import { PAGE, pct } from "@/lib/tailor/template-metrics";
 
 /**
  * The user's document.
@@ -11,15 +12,39 @@ import type { ReactNode } from "react";
  * every word inside this element is the user's, not ours. In the real product
  * this face comes from their parsed file; Georgia is the sample's.
  */
-/* Page margins, as a variant rather than a free-form className: two padding
-   utilities in one class string are resolved by Tailwind's generated order, not
-   by ours, so an override passed in would win only by luck.
-   `tight` exists for the hero, where the sheet is 500px wide — a real page's
-   ~1in margin costs too much of the measure there and wraps the role/date row. */
-const pads = {
-  page: "px-[clamp(20px,5vw,56px)] pt-[clamp(24px,5vw,52px)] pb-[clamp(32px,6vw,64px)]",
-  tight: "px-10 pt-9 pb-11",
-} as const;
+/* `tight` is the hero's, where the sheet is 500px wide — a real page's ~1in
+   margin costs too much of the measure there and wraps the role/date row. It
+   stays a Tailwind class because it is a free choice; the page's margin is not
+   one, so it is computed below instead. */
+const TIGHT_PAD = "px-10 pt-9 pb-11";
+
+/* `page` is the real template, so its margin and the page it holds open are
+   the renderer's — `template-metrics.ts` holds those numbers and says why they
+   live in one place.
+
+   A percentage padding resolves against the page's own width, and `cqi` is 1%
+   of that same width, so the margin stays 50pt-worth and the page stays A4 at
+   whatever size the column renders them. The height is a floor rather than a
+   fixed height: longer content spills past it, which is what a second page
+   looks like until the preview paginates for real.
+
+   Inline rather than Tailwind for two reasons: these are computed, and
+   Tailwind only sees class strings it can read in the source; and an inline
+   style beats anything a caller passes in `className`, where two competing
+   padding utilities would have been resolved by Tailwind's generated order
+   rather than by ours. */
+const pageStyle: CSSProperties = {
+  padding: pct(PAGE.margin / PAGE.width),
+  minHeight: `${+((PAGE.height / PAGE.width) * 100).toFixed(4)}cqi`,
+  /* A column, only so that the blocks' margins stop collapsing. The renderer
+     advances its cursor by every `space()` it makes, one after another, while
+     CSS collapses two adjacent margins down to the larger of them — which ate
+     the 6pt under the contact line and pulled the first heading 8px up the
+     page. Flex children don't collapse, so the margins add the way the
+     renderer's spaces do. */
+  display: "flex",
+  flexDirection: "column",
+};
 
 /**
  * `name` and `contact` are the shorthand the landing page uses, where the
@@ -40,7 +65,7 @@ export function ResumeSheet({
   contact?: string;
   label?: string;
   children: ReactNode;
-  pad?: keyof typeof pads;
+  pad?: "page" | "tight";
   className?: string;
   /**
    * "doc" (default) is the user's own font, parsed out of their file.
@@ -49,11 +74,13 @@ export function ResumeSheet({
    */
   font?: "doc" | "ui";
 }) {
-  return (
+  const sheet = (
     <article
       aria-label={label ?? (name ? `${name}'s resume, tailored` : "Your resume, tailored")}
       className={`sheet rounded-sheet bg-sheet text-sheet-ink shadow-sheet
-                  ${font === "ui" ? "font-ui" : "font-doc"} text-[13.5px] leading-[21px] ${pads[pad]} ${className}`}
+                  ${font === "ui" ? "font-ui" : "font-doc"} text-[13.5px] leading-[21px]
+                  ${pad === "tight" ? TIGHT_PAD : ""} ${className}`}
+      style={pad === "page" ? pageStyle : undefined}
     >
       {name ? (
         <div className="text-[21px] font-bold leading-[26px] tracking-[-0.01em]">{name}</div>
@@ -62,6 +89,12 @@ export function ResumeSheet({
       {children}
     </article>
   );
+
+  /* The page floor is measured against the sheet's own width, which needs a
+     containment context around it. Only the `page` variant asks for one — the
+     hero's illustration is sized by its own grid and would gain nothing from a
+     wrapper but a wrapper. */
+  return pad === "page" ? <div className="@container">{sheet}</div> : sheet;
 }
 
 export function SheetRule() {

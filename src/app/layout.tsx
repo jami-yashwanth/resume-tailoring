@@ -24,11 +24,28 @@ export const metadata: Metadata = {
     "Upload your own Word, PDF or LaTeX resume once. Paste any job. Get that same file back, in your own design, reworded for that job, with every change marked.",
 };
 
+/* Applied before the first paint, which is the only reason it is an inline
+   script rather than an effect: read the theme in React and someone who chose
+   dark gets a white flash on every navigation while the bundle loads.
+
+   It always writes the attribute, even for light, so ThemeToggle can read the
+   current theme off the element rather than keeping a second copy of the truth.
+   `suppressHydrationWarning` is required because this mutates <html> before
+   React hydrates it — without it React reports the attribute it did not render. */
+const applyTheme = `try{document.documentElement.dataset.theme=localStorage.getItem("rezz.theme")==="dark"?"dark":"light"}catch(e){document.documentElement.dataset.theme="light"}`;
+
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${geist.variable} ${geistMono.variable}`}>
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className={`${geist.variable} ${geistMono.variable}`}
+    >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: applyTheme }} />
+      </head>
       <body className="min-h-screen">{children}</body>
     </html>
   );

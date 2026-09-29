@@ -42,10 +42,12 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app ./app
 
+# 8001 is the same number BACKEND_PORT defaults to locally, so the container
+# and a dev machine agree. A host that injects PORT still wins.
 ENV SOFFICE_BIN=/usr/bin/soffice \
-    PORT=8000
-EXPOSE 8000
+    PORT=8001
+EXPOSE 8001
 
 # One worker: each LibreOffice conversion already forks a process with its own
 # profile, and the machine is sized for that, not for parallel Writer instances.
-CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT} --workers 1"]
+CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${BACKEND_PORT:-$PORT} --workers 1"]

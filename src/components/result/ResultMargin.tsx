@@ -16,6 +16,7 @@ import { MARK_LABEL, type RenderedLine } from "@/lib/tailor/view";
 
 const TONE: Record<string, { text: string; rule: string }> = {
   reworded: { text: "text-ink", rule: "bg-line-strong" },
+  reverted: { text: "text-ink-muted", rule: "bg-line-strong" },
   pending: { text: "text-gap", rule: "bg-gap" },
   added: { text: "text-verified", rule: "bg-verified" },
   removed: { text: "text-ink-muted", rule: "bg-line-strong" },
@@ -39,7 +40,7 @@ export function ResultMargin({
   const marked = lines.filter((line) => line.state !== "unchanged" && line.opId);
 
   return (
-    <div ref={ref} aria-label="What changed and why" className="relative font-mark">
+    <aside ref={ref} aria-label="What changed and why" className="relative font-mark">
       {marked.map((line) => {
         const state = line.state as keyof typeof MARK_LABEL;
         const tone = TONE[state];
@@ -51,9 +52,11 @@ export function ResultMargin({
               ? "you added this"
               : state === "removed"
                 ? (op?.reason ?? "least relevant here")
-                : op?.evidence.length
-                  ? `from your line${op.evidence.length > 1 ? "s" : ""}`
-                  : "reworded";
+                : state === "reverted"
+                  ? "your own words"
+                  : op?.evidence.length
+                    ? `from your line${op.evidence.length > 1 ? "s" : ""}`
+                    : "reworded";
 
         return (
           <button
@@ -77,6 +80,6 @@ export function ResultMargin({
         );
       })}
       {children}
-    </div>
+    </aside>
   );
 }
