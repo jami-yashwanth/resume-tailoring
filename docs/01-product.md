@@ -82,6 +82,7 @@ Earlier wording was "Never invents". It changed on 28 Sep 2026 when the Add it f
 | 28 Sep 2026 | Landing page built first, in `src/`, to establish the design system in code. CTAs are dead links and there is no analytics, so the price test cannot run yet. |
 | 29 Sep 2026 | Landing truth pass: every claim on the page now matches what v1 does. Dead anchors removed (extension CTA, footer contact); paid pass cards state "Passes open soon — you'll pay at download" instead of carrying a dead buy button; upload copy says PDF/DOCX only; JD copy says paste only until the link fetcher ships; `/privacy` and `/terms` exist as short true pages. Promise-strip replacement confirmed: "One clean template". |
 | 29 Sep 2026 | The saved sample result is a deliberate demo, reachable only as `/result?demo` (linked from the landing hero as "See a sample result"). A cold visit to `/result` goes back to the start of the flow instead of showing a stranger's sample. |
+| 29 Sep 2026 | Every missing, non-knockout requirement reaches the user as a drafted line they can Add — "Not in your resume, no line to offer" is no longer a state the planner may choose. The prompt requires a draft with each needs_ok, and a deterministic fallback ("Familiar with X.", no numbers, dropped first by the fitter) covers what the planner or the verifier's downgrade leaves unanswered. Knockouts, degree/location kinds, and digit-bearing labels are still never drafted. |
 
 ## Guardrails that stay regardless
 

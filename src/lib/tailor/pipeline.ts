@@ -2,10 +2,12 @@ import { createClient, resolveCredentials } from "@/lib/anthropic";
 import { type Usage, addUsage, emptyUsage, models } from "./claude";
 import { coverageOf } from "./coverage";
 import * as docsvc from "./docsvc";
+import { normaliseHeading } from "./headings";
+import { fallbackOffers } from "./offers";
 import { planEdits } from "./planner";
 import { extractRequirements } from "./requirements";
 import { type Violation, enforce, verifyMatches } from "./rules";
-import { type Layout, type TailorPlan, toDocsvcOps } from "./types";
+import { type Layout, type PlannedOp, type TailorPlan, toDocsvcOps } from "./types";
 
 /**
  * The tailoring pipeline, end to end.
@@ -34,6 +36,45 @@ export type TailorOutcome = {
   usage: Usage;
   models: { planner: string; verifier: string };
 };
+
+/**
+ * Rename each section heading a parser wouldn't recognise — see `headings.ts`
+ * for why that matters more than anything else on the page.
+ *
+ * These are `rephrase` ops like any other, so they inherit the whole review
+ * machinery for free: applied automatically (the product rule for rewording
+ * the user's own words), drawn with the highlighter, listed with Undo. They
+ * carry no requirements and claim `reworded`, so they cannot move the coverage
+ * count — "Covers 7 of 9" is about the job's asks, and a heading is not one.
+ */
+function headingOps(layout: Layout): PlannedOp[] {
+  const ops: PlannedOp[] = [];
+  for (const block of layout.blocks) {
+    if (block.kind !== "heading") continue;
+    const swap = normaliseHeading(block.text);
+    if (!swap) continue;
+    ops.push({
+      id: `heading-${block.id}`,
+      op: "rephrase",
+      block: block.id,
+      text: swap.to,
+      alternatives: [],
+      claim: "reworded",
+      // Cheapest thing on the page to drop: renaming a heading buys no
+      // coverage, so when the fitter needs a line back it should take this
+      // before it touches anything the user is actually being judged on.
+      value: 0,
+      requirements: [],
+      evidence: [block.id],
+      reason: `"${swap.from}" is a heading some applicant tracking systems don't recognise, so everything under it can be skipped. "${swap.to}" is the standard name for the same section.`,
+      // The user's own word for their own section, in the standard spelling —
+      // a rewording, which applies on its own with Undo. Only added_by_user
+      // waits for a decision.
+      needsDecision: false,
+    });
+  }
+  return ops;
+}
 
 export async function tailor(
   resumeBase64: string,
@@ -70,6 +111,19 @@ export async function tailor(
       (verified.downgraded.length ? `, ${verified.downgraded.length} unbacked match corrected` : ""),
   );
 
+  // Added after `enforce`, deliberately: a heading rename answers no
+  // requirement and is built from no evidence, so every check in there would
+  // reject it for failing tests it was never meant to take. It is not the
+  // model's work either — the synonym table is fixed and the match is exact.
+  // fallbackOffers is the same class of thing: deterministic drafts for the
+  // missing requirements the planner (or the verifier's downgrade) left with
+  // no line to offer, so every gap reaches the user as a decision.
+  const operations = [
+    ...checked.operations,
+    ...headingOps(layout),
+    ...fallbackOffers(layout, jd.requirements, verified.matches, checked.operations),
+  ];
+
   onProgress("done");
   return {
     layout,
@@ -78,8 +132,8 @@ export async function tailor(
       role: jd.role || "the role",
       requirements: jd.requirements,
       matches: verified.matches,
-      operations: checked.operations,
-      coverage: coverageOf(jd.requirements, verified.matches, checked.operations),
+      operations,
+      coverage: coverageOf(jd.requirements, verified.matches, operations),
     },
     violations: checked.violations,
     usage,
