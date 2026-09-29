@@ -23,22 +23,23 @@ Three moments: **see the value → make 0–3 decisions → finish.**
 
 ## Layout (desktop, 1440px)
 
-- **Header:** wordmark, breadcrumb, **Compare with original** toggle, **Download resume** (secondary while decisions are pending, primary when ready).
-- **Status bar:** "7 lines reworded · 2 need your OK", an undo message after each decision (polite live region), page meter "Page 1 of 1 · 92% full".
-- **Left, "This job" (280px):** the gain ("Covers 6 of 9"), then requirements in three groups instead of one flat list. "Needs your OK" is open by default — it's the only group with a decision in it. "Already in your resume" and "Can't change" (e.g. "Based in Pune, on-site — You're in Bengaluru. We never change this.") sit collapsed behind a disclosure row, since there's nothing to do with them; expanding either reveals the same status rows: ✓ matched · ! needs your OK · – can't change. Clicking a requirement highlights its line and dims the rest, and auto-expands its group if collapsed.
-- **Centre, the resume (A4 page, always white):** *(29 Sep 2026: was a 620px sheet. The download is A4 — `template_render.py` draws 595.28 × 841.89pt with a 50pt margin — and a 620px sheet broke lines the file did not, so the preview argued with the PDF it previews. The sheet is now that page: 794px (A4 at 96dpi) where the viewport allows, scaled down but exactly A4-proportioned where it does not, with the margin held at the renderer's 50pt. Below ~1490px the two side panels win the space and the page renders a little under true size.)* reworded lines highlighted; "Not in your resume" lines dashed coral. Right margin (280px) shows small labels ("Reworded", "Needs your OK", "Added by you", "Removed to fit").
-- **Pages:** the preview breaks where the file breaks. `template_render.py` moves a block whole to the next page rather than splitting it across the fold, and the preview applies that same rule to measured block heights, so the two agree on the page count and on where each page ends. Every length inside the sheet is a share of the page's width, type included — a page that keeps A4's shape but not its type fits fewer characters to the line and paginates differently. The page meter counts the tailored document; it used to report the uploaded file's page count, which is a different document.
-- **Popover on click:** reason, "Based on your line", "The job says", source tag, **Undo · Try another wording · Edit**.
-- **Bottom decision bar:** one decision at a time, "1 of 2 · needs your OK": *"Kafka isn't in your resume. Add this line to your Razorfin role?"* + the line + "Recruiters may ask you about it. Nothing is added unless you choose Add it." Buttons **Skip / Add it**, equal.
-- **After Add it:** the added line's popover opens with the page-fit choice (default: remove the least relevant line; alternatives: another line, or allow 2 pages).
-- **Ready:** the bar becomes "Ready. Covers 7 of 9 requirements · 1 page." + Download.
-- **Compare with original:** flips the whole resume to the uploaded version; hides marks, pending lines and popovers. Approved as is.
+*(29 Sep 2026: rebuilt around one review list. The job panel's decision group, the margin marks, the popover and the bottom decision bar are gone; they showed the same question in four places and only the bar let you answer it. Design: `docs/superpowers/specs/2026-09-29-result-screen-revamp-design.md`.)*
+
+- **Header (the only chrome bar):** wordmark, "Backend Engineer · Kosha Payments", one status ("3 to decide · 1 page"), **Compare with original**, and one **Download resume**: secondary while anything is undecided, primary once nothing is.
+- **Left, summary (220px, sticky):** "Covers 6 of 9 · Your original covered 3", then the requirements. Every row either lights its lines in the resume or says in one short line why it cannot ("Not in your resume, no line to offer", "You're in Bengaluru. We never change this."). "Needs your OK" is open; "in your resume", "you skipped", "not in your resume" and "we can't change" are collapsed.
+- **Centre, the resume (A4 page, always white):** 794px (A4 at 96dpi) where the viewport allows, scaled down but A4-proportioned where it does not, margin held at the renderer's 50pt. Reworded and added lines highlighted; "Not in your resume" lines dashed coral. Clicking a changed line opens its card on the right and outlines the line.
+- **Right, the review list (300px, sticky):** the page-fit card when the document has outgrown what you agreed to; then "N left to decide" with the current card open (*"Kafka isn't in your resume. Add this line to your Razorfin role?"*, the line, "Recruiters may ask you about it. Nothing is added unless you choose Add it.", **Skip / Add it** equal, nothing pre-selected, "Try another wording", "Why this line?"); then **Decided** ("Kafka · Added · Undo"), **Reworded for you** ("Reworded · Undo") and **Removed to fit** ("Keep it").
+- **Pages:** the preview breaks where the file breaks: `template_render.py` moves a block whole to the next page, and the preview applies that rule to measured block heights. The page count is reported only after the webfont has loaded, and the first count is the length you are agreeing to.
+- **Page fit:** when a change pushes the document past what you agreed to, the card offers, cheapest first: a shorter wording, a named line to remove, or allowing the extra page. Allowing a page agrees to that length only; growing again asks again. Undoing an Add brings back any line removed to fit it.
+- **Changing your mind:** every decision stays in the list with Undo until you download. Undo returns a line to undecided; the list never re-asks on its own.
+- **Compare with original:** shows the uploaded wording; the review list stays visible but disabled ("Turn off compare to make changes.").
+- **Narrower windows:** below 1240px the summary folds into a strip above the resume ("See requirements"); below 900px the review list moves above the resume. Nothing is hidden at any width.
 
 ## States
 
 1. **Tailoring** (~15 s): staged steps (read the job ✓, matched 6 ✓, rewording 7 lines…, checking it fits on 1 page), progress bar, faded resume placeholder.
 2. **Review:** as above.
-3. **Ready:** all decisions made.
+3. **Ready:** all decided; the list reads "All decided. Covers 7 of 9 · 1 page." and Download turns primary.
 4. **Finish** (after download): file preview, "Your resume is ready for Kosha Payments", three checkable facts (7 of 9 requirements · 7 lines reworded · 1 line added by you), interview prep for each added line, "Tailor for another job".
 
 ## Deliberately not done
@@ -51,7 +52,7 @@ Three moments: **see the value → make 0–3 decisions → finish.**
 
 - Icon + label + colour for every change type.
 - Polite live region: "Kafka line added. 1 decision left."
-- Buttons name the skill ("Add Kafka line to my resume"); focus moves to the next pending decision; undo reachable by keyboard.
+- Buttons name the skill ("Add Kafka line to my resume"); focus moves to the next decision card; every Undo is a button.
 
 ## Metrics
 
