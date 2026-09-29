@@ -1,7 +1,7 @@
 import type { AnchorHTMLAttributes, ButtonHTMLAttributes, ReactNode } from "react";
 
 type Variant = "primary" | "secondary";
-type Size = "md" | "lg";
+type Size = "sm" | "md" | "lg";
 
 /* No border here on purpose — neither width nor colour. Two utilities of the
    same kind in one class string are resolved by Tailwind's generated source
@@ -23,6 +23,8 @@ const base =
 
 /* 44px is the minimum tap target the brand book requires. */
 const sizes: Record<Size, string> = {
+  /* Row-level actions (Undo, Keep it) in a 300px column. Still 44px tall. */
+  sm: "min-h-11 px-3 text-[13px] leading-[18px]",
   md: "min-h-11 px-6 text-[15px] leading-5",
   lg: "min-h-[52px] px-8 text-[17px] leading-6",
 };
