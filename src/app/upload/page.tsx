@@ -5,6 +5,7 @@ import { useRef, useState } from "react";
 import { FlowHeader } from "@/components/flow/FlowHeader";
 import { Button } from "@/components/rezz/Button";
 import { box, lead, offsetGap, offsetPage, title } from "@/components/rezz/skin";
+import { track } from "@/lib/analytics";
 import { session } from "@/lib/session";
 
 /**
@@ -74,6 +75,7 @@ export default function UploadPage() {
 
     setError(null);
     setBusy(true);
+    track("upload_started");
     try {
       const buffer = await file.arrayBuffer();
       // Magic bytes, not just the name: PDF opens "%PDF", DOCX is a ZIP
@@ -99,11 +101,13 @@ export default function UploadPage() {
       const body = await response.json();
 
       if (!response.ok) {
+        track("parse_failed");
         setError(body.error ?? "We couldn't read that file.");
         setBusy(false);
         return;
       }
 
+      track("parse_ok", { pages: body.pages ?? 0 });
       if (!session.setResume(base64, file.name)) {
         setError(
           "Your browser couldn't hold this file for the next step — it may be too large, or " +

@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { FlowHeader } from "@/components/flow/FlowHeader";
 import { Button } from "@/components/rezz/Button";
 import { box, lead, offset, title } from "@/components/rezz/skin";
+import { track } from "@/lib/analytics";
 import { looksLikeUrl } from "@/lib/job-fetch";
 import { session } from "@/lib/session";
 
@@ -46,6 +47,7 @@ export default function JobPage() {
 
   function submit() {
     if (short) return;
+    track("jd_submitted");
     session.setJob(text.trim());
     router.push("/tailoring");
   }
@@ -69,6 +71,7 @@ export default function JobPage() {
         setFetchError(body.error ?? "That page wouldn't let us read it — paste the description instead.");
         return;
       }
+      track("jd_link_fetched");
       setText(body.text);
     } catch {
       setFetchError("That page wouldn't let us read it — paste the description instead.");

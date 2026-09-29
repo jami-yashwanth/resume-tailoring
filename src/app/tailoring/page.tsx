@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { FlowHeader } from "@/components/flow/FlowHeader";
 import { ButtonLink } from "@/components/rezz/Button";
 import { box, lead, offsetGap, offsetPage, title } from "@/components/rezz/skin";
+import { track } from "@/lib/analytics";
 import { session } from "@/lib/session";
 import type { Stage } from "@/lib/tailor/pipeline";
 
@@ -92,9 +93,11 @@ export default function TailoringPage() {
               setDetails((d) => ({ ...d, [data.stage as Stage]: data.detail }));
             }
           } else if (name === "done") {
+            track("tailor_done");
             session.setResult(data);
             router.push("/result");
           } else if (name === "failed") {
+            track("tailor_failed");
             setError(data.message);
           }
         }

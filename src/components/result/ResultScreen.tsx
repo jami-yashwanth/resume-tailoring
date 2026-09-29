@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { track } from "@/lib/analytics";
 import { session } from "@/lib/session";
 import { coverageOf } from "@/lib/tailor/coverage";
 import { downloadResume } from "@/lib/tailor/download";
@@ -84,6 +85,9 @@ export function ResultScreen({
   function decide(opId: string, approved: boolean) {
     const item = list.toDecide.find((i) => i.op.id === opId);
     dispatch({ type: "decide", opId, approved });
+    // The event names the choice, never the line: no document text leaves.
+    track("decision_made", { approved });
+    if (list.toDecide.length - 1 === 0) track("all_decided");
     announce(decisionAnnouncement(item?.skill ?? null, approved, list.toDecide.length - 1));
   }
 
@@ -114,10 +118,12 @@ export function ResultScreen({
     if (!resume) return;
     setDownloading(true);
     setDownloadError(null);
+    track("download_clicked");
     try {
       // Always the tailored version, whatever the compare toggle shows.
       const final = buildLines(layout, operations, state.decisions, false, state.wordings);
       const saved = await downloadResume(final, filename, company);
+      track("download_done", { pages: saved.pages ?? state.pages });
       session.setFinish({
         filename: saved.name,
         company,
