@@ -1,6 +1,7 @@
 import type { ReviewState } from "./review";
 import type { Layout, PlannedOp, TailorPlan } from "./types";
 import {
+  type AnchorLabel,
   type Decisions,
   type LineState,
   type Wordings,
@@ -27,8 +28,9 @@ export type ReviewItem = {
   state: ItemState;
   /** What the line is about, e.g. "Apache Kafka". */
   skill: string | null;
-  /** The employer whose role the line joins, e.g. "Razorfin". */
-  where: string | null;
+  /** Where the line joins: an employer's role ("Razorfin") or a section
+   *  ("Skills") — the card phrases the two differently. */
+  where: AnchorLabel | null;
   /** The words on the page now. */
   text: string;
   wordingIndex: number;

@@ -87,6 +87,61 @@ describe("fallbackOffers", () => {
     expect(fallbackOffers(layout, reqs, [needsOk], [])).toEqual([]);
   });
 
+  it("anchors a skill in the Skills section, not under a job", () => {
+    // Placement changes the claim: "Familiar with X." under a role implies X
+    // was used there — more than the user approved. Skills is the honest home.
+    const sectioned = {
+      ...layout,
+      blocks: [
+        { id: "0", kind: "name", text: "Priya Sharma", lines: 1, has_bold: true, runs: [], size: 16, align: "left" },
+        { id: "1", kind: "heading", text: "Experience", lines: 1, has_bold: false, runs: [], size: 12, align: "left" },
+        { id: "2", kind: "role", text: "01 Bot — Engineer\t2024", lines: 1, has_bold: true, runs: [], size: 11, align: "left", section: "Experience" },
+        { id: "3", kind: "bullet", text: "Built bots", lines: 1, has_bold: false, runs: [], size: 11, align: "left", section: "Experience" },
+        { id: "4", kind: "heading", text: "Technical Skills", lines: 1, has_bold: false, runs: [], size: 12, align: "left" },
+        { id: "5", kind: "paragraph", text: "Python, SQL", lines: 1, has_bold: false, runs: [], size: 11, align: "left", section: "Technical Skills" },
+        { id: "6", kind: "heading", text: "Achievements", lines: 1, has_bold: false, runs: [], size: 12, align: "left" },
+        { id: "7", kind: "bullet", text: "Won a hackathon", lines: 1, has_bold: false, runs: [], size: 11, align: "left", section: "Achievements" },
+      ],
+    } as unknown as Layout;
+    const offers = fallbackOffers(sectioned, [requirement({ kind: "skill" })], [needsOk], []);
+    expect(offers[0].block).toBe("5");
+  });
+
+  it("anchors an experience requirement under the most recent role, not the document's tail", () => {
+    const sectioned = {
+      ...layout,
+      blocks: [
+        { id: "0", kind: "name", text: "Priya Sharma", lines: 1, has_bold: true, runs: [], size: 16, align: "left" },
+        { id: "1", kind: "heading", text: "Experience", lines: 1, has_bold: false, runs: [], size: 12, align: "left" },
+        { id: "2", kind: "role", text: "Razorfin — Engineer\t2024", lines: 1, has_bold: true, runs: [], size: 11, align: "left", section: "Experience" },
+        { id: "3", kind: "bullet", text: "Built APIs", lines: 1, has_bold: false, runs: [], size: 11, align: "left", section: "Experience" },
+        { id: "4", kind: "bullet", text: "Fixed bugs", lines: 1, has_bold: false, runs: [], size: 11, align: "left", section: "Experience" },
+        { id: "5", kind: "role", text: "OldCo — Intern\t2022", lines: 1, has_bold: true, runs: [], size: 11, align: "left", section: "Experience" },
+        { id: "6", kind: "bullet", text: "Interned", lines: 1, has_bold: false, runs: [], size: 11, align: "left", section: "Experience" },
+        { id: "7", kind: "heading", text: "Achievements", lines: 1, has_bold: false, runs: [], size: 12, align: "left" },
+        { id: "8", kind: "bullet", text: "Won a hackathon", lines: 1, has_bold: false, runs: [], size: 11, align: "left", section: "Achievements" },
+      ],
+    } as unknown as Layout;
+    const reqs = [requirement({ label: "mentoring juniors", kind: "experience" })];
+    const offers = fallbackOffers(sectioned, reqs, [needsOk], []);
+    expect(offers[0].block).toBe("4");
+  });
+
+  it("lowercases a sentence-case label mid-sentence but never an acronym or name", () => {
+    const reqs = [
+      requirement({ id: "r1", label: "Professional software engineering best practices" }),
+      requirement({ id: "r2", label: "Kafka" }),
+      requirement({ id: "r3", label: "REST APIs" }),
+    ];
+    const matches: Match[] = reqs.map((r) => ({ requirementId: r.id, status: "needs_ok", evidence: [] }));
+    const offers = fallbackOffers(layout, reqs, matches, []);
+    expect(offers.map((o) => o.text)).toEqual([
+      "Familiar with professional software engineering best practices.",
+      "Familiar with Kafka.",
+      "Familiar with REST APIs.",
+    ]);
+  });
+
   it("uses distinct ids that cannot collide with planner or heading ops", () => {
     const reqs = [requirement({ id: "r1" }), requirement({ id: "r2", label: "Docker" })];
     const matches: Match[] = [
