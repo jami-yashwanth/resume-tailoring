@@ -27,7 +27,22 @@ describe("validateJobUrl", () => {
     "http://192.168.1.1/router",
     "http://172.16.0.9/x",
     "http://0.0.0.0/",
+    "http://0.0.0.1/",
+    "http://100.64.0.9/cgnat",
+    "http://198.18.0.4/bench",
   ])("rejects private and loopback hosts (%s)", (url) => {
+    expect(validateJobUrl(url)).toMatch(/link/i);
+  });
+
+  it.each([
+    // IPv4-mapped IPv6 smuggles a private IPv4 past dotted-quad checks; no
+    // job board serves from a bare IPv6 literal, so all of them are refused.
+    "http://[::ffff:169.254.169.254]/latest/meta-data",
+    "http://[::ffff:a9fe:a9fe]/latest/meta-data",
+    "http://[::ffff:127.0.0.1]/",
+    "http://[64:ff9b::a9fe:a9fe]/",
+    "http://[2606:4700::6810:85e5]/",
+  ])("rejects every IPv6 literal host (%s)", (url) => {
     expect(validateJobUrl(url)).toMatch(/link/i);
   });
 

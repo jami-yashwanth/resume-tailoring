@@ -37,6 +37,17 @@ describe("session.setResume", () => {
     expect(session.setResume("a-base64-string-longer-than-quota", "resume.pdf")).toBe(false);
   });
 
+  it("never leaves an old resume paired with a new filename after a failed write", () => {
+    const store = new Map<string, string>();
+    stubStorage(store, 40);
+    expect(session.setResume("old-file", "old.pdf")).toBe(true);
+    // The big resume write fails on quota; the tiny filename write would
+    // succeed — which used to leave old.pdf's bytes labelled as new.pdf.
+    expect(session.setResume("x".repeat(100), "new.pdf")).toBe(false);
+    expect(session.getResume()).toBeNull();
+    expect(session.getFilename()).toBeNull();
+  });
+
   it("returns false when storage is blocked entirely", () => {
     vi.stubGlobal("window", {
       sessionStorage: {

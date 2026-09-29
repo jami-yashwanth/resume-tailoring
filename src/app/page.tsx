@@ -14,7 +14,8 @@ import { MarginColumn, type Mark } from "@/components/rezz/MarginColumn";
 import { Reveal } from "@/components/rezz/Reveal";
 /* PromiseStrip is deliberately not imported — see its file header. The four
    promises are still made on this page, each where its objection actually
-   arises, and the footer still carries the line verbatim. */
+   arises, and the footer carries the v1 line: the fourth item is "One clean
+   template" while the own-design rule is suspended (decision log, 29 Sep). */
 import { PassCard } from "@/components/rezz/PassCard";
 import { ThemeToggle } from "@/components/rezz/ThemeToggle";
 import { FaqItem } from "@/components/rezz/FaqItem";
@@ -515,7 +516,7 @@ export default function LandingPage() {
             </span>
             <p className="mt-4 max-w-[46ch] text-sm leading-[22px] text-paper/70">
               Your resume, tailored to each job. Nothing added behind your back. No fake ATS score.
-              No auto-renew.
+              No auto-renew. One clean template.
             </p>
           </div>
           {/* `mt-1.5` sits the link row on the wordmark's optical centre. Both

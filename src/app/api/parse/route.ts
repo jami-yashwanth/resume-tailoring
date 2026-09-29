@@ -24,11 +24,11 @@ export async function POST(request: Request) {
     return Response.json({ error: "No file received." }, { status: 400 });
   }
 
-  // The browser enforces 4 MB before uploading; this catches anyone posting
-  // to the API directly. 6M base64 characters ≈ 4.5 MB decoded, a little over
-  // the client cap so a legitimate boundary file never bounces here.
-  if (body.file.length > 6_000_000) {
-    return Response.json({ error: "That file is over the 4 MB limit." }, { status: 413 });
+  // The browser enforces 3 MB before uploading; this catches anyone posting
+  // to the API directly. 4.5M base64 characters ≈ 3.4 MB decoded, a little
+  // over the client cap so a legitimate boundary file never bounces here.
+  if (body.file.length > 4_500_000) {
+    return Response.json({ error: "That file is over the 3 MB limit." }, { status: 413 });
   }
 
   // Magic bytes, not the filename: a renamed file gets caught here instead of

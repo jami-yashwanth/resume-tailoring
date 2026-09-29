@@ -94,7 +94,13 @@ export default function TailoringPage() {
             }
           } else if (name === "done") {
             track("tailor_done");
-            session.setResult(data);
+            if (!session.setResult(data)) {
+              setError(
+                "Your tailored result is ready, but this browser couldn't hold it for the next screen. " +
+                  "Free some space or use a regular window, then tailor again.",
+              );
+              return;
+            }
             router.push("/result");
           } else if (name === "failed") {
             track("tailor_failed");

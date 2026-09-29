@@ -24,25 +24,48 @@ export function validateJobUrl(raw: string): string | null {
     return "That link isn't a web page. Paste an http(s) job posting URL.";
   }
 
-  const host = url.hostname.toLowerCase().replace(/^\[|\]$/g, "");
-  const privateHost =
-    host === "localhost" ||
-    host.endsWith(".localhost") ||
-    host.endsWith(".local") ||
-    host.endsWith(".internal") ||
-    host === "::1" ||
-    host === "0.0.0.0" ||
-    /^127\./.test(host) ||
-    /^10\./.test(host) ||
-    /^192\.168\./.test(host) ||
-    /^172\.(1[6-9]|2\d|3[01])\./.test(host) ||
-    /^169\.254\./.test(host) ||
-    /^f[cd][0-9a-f]{2}:/i.test(host) ||
-    /^fe80:/i.test(host);
-  if (privateHost) {
+  // Any IPv6 literal is refused outright: IPv4-mapped forms
+  // ([::ffff:169.254.169.254], and their hex spellings) smuggle a private
+  // IPv4 address past dotted-quad checks, and no job board serves from a
+  // bare IPv6 literal — so there is nothing legitimate to lose.
+  if (url.hostname.startsWith("[") || url.hostname.includes(":")) {
+    return "That link points inside a private network, which we can't read.";
+  }
+
+  const host = url.hostname.toLowerCase();
+  if (isPrivateHostname(host) || isPrivateIpv4(host)) {
     return "That link points inside a private network, which we can't read.";
   }
   return null;
+}
+
+function isPrivateHostname(host: string): boolean {
+  return (
+    host === "localhost" ||
+    host.endsWith(".localhost") ||
+    host.endsWith(".local") ||
+    host.endsWith(".internal")
+  );
+}
+
+/** True for every IPv4 address that must never be fetched: loopback, RFC1918,
+ *  link-local, CGNAT, benchmarking, and the 0.0.0.0/8 "this host" block. The
+ *  WHATWG URL parser has already normalised decimal/octal/hex IP spellings to
+ *  dotted quads by the time this runs. */
+export function isPrivateIpv4(host: string): boolean {
+  const match = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(host);
+  if (!match) return false;
+  const [a, b] = [Number(match[1]), Number(match[2])];
+  return (
+    a === 0 ||
+    a === 10 ||
+    a === 127 ||
+    (a === 100 && b >= 64 && b <= 127) ||
+    (a === 169 && b === 254) ||
+    (a === 172 && b >= 16 && b <= 31) ||
+    (a === 192 && b === 168) ||
+    (a === 198 && (b === 18 || b === 19))
+  );
 }
 
 /** True when the pasted text IS a link (one URL, nothing else) rather than a

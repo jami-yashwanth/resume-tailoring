@@ -99,10 +99,13 @@ export const session = {
   getResume: () => read(KEYS.resume),
   /** True only if the file survived the write — the resume is the one value
    *  big enough to hit the storage quota, and losing it silently costs the
-   *  user their upload. */
+   *  user their upload. All-or-nothing: a failed pair is dropped whole, so a
+   *  previous upload's bytes can never sit under the new file's name. */
   setResume: (base64: string, filename: string): boolean => {
-    const stored = write(KEYS.resume, base64);
-    return write(KEYS.filename, filename) && stored;
+    if (write(KEYS.resume, base64) && write(KEYS.filename, filename)) return true;
+    drop(KEYS.resume);
+    drop(KEYS.filename);
+    return false;
   },
   getFilename: () => read(KEYS.filename),
 
@@ -118,10 +121,13 @@ export const session = {
       return null;
     }
   },
-  /** A new tailoring is a new set of questions, so old answers go with it. */
-  setResult: (result: StoredResult) => {
+  /** A new tailoring is a new set of questions, so old answers go with it.
+   *  True only if the result survived the write: layout + plan share the
+   *  resume's quota, and a silently lost result bounces the user back to
+   *  /job with no explanation. */
+  setResult: (result: StoredResult): boolean => {
     drop(KEYS.decisions);
-    write(KEYS.result, JSON.stringify(result));
+    return write(KEYS.result, JSON.stringify(result));
   },
 
   getDecisions: (): StoredDecisions | null => {
