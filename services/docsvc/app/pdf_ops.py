@@ -224,6 +224,10 @@ def parse_pdf(path: str) -> tuple[list[Block], list[str], list[str], int]:
     fonts: set[str] = set()
     blocks: list[Block] = []
     index = 0
+    # Same contract as parse_docx: every non-heading block names the heading
+    # it sits under, headings themselves carry none. Sections carry across
+    # pages — a section that starts on page 1 still owns page 2's bullets.
+    section: str | None = None
 
     for page in doc:
         lines = _merge_role_dates(_read_lines(page, page.rect.width, fonts))
@@ -236,11 +240,14 @@ def parse_pdf(path: str) -> tuple[list[Block], list[str], list[str], int]:
             index += 1
 
         for block in _merge_continuations(page_blocks):
+            if block["kind"] is BlockKind.HEADING:
+                section = block["text"]
             blocks.append(
                 Block(
                     id=str(len(blocks)),
                     kind=block["kind"],
                     text=block["text"],
+                    section=None if block["kind"] is BlockKind.HEADING else section,
                     lines=1,
                     has_bold=block["bold"],
                     runs=[Run(text=block["text"], bold=block["bold"], size=block["size"])],

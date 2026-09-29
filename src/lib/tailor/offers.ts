@@ -30,11 +30,20 @@ function skillsAnchor(layout: Layout): Block | null {
   );
 }
 
-/** Last bullet/paragraph of the most recent role — the first role in the
- *  document, resumes being reverse-chronological — stopping at the next role
- *  or heading so an offer can't drift into an older job or another section. */
+/** Last bullet/paragraph of the most recent employment role — the first role
+ *  in the Experience section, resumes being reverse-chronological — stopping
+ *  at the next role or heading so an offer can't drift into an older job.
+ *
+ *  Experience-section only: role classification is a shape (bold, tab,
+ *  dates), and an education line ("Vignan's Institute\tAug 2019 – Jun 2023")
+ *  or a project entry has the same shape. A drafted line under those would
+ *  claim the skill was part of the degree or the project — a stronger claim
+ *  than the user approved. A resume with no Experience section falls through
+ *  to the Skills anchor. */
 function recentRoleAnchor(layout: Layout): Block | null {
-  const start = layout.blocks.findIndex((b) => b.kind === "role");
+  const start = layout.blocks.findIndex(
+    (b) => b.kind === "role" && b.section != null && standardHeading(b.section) === "Experience",
+  );
   if (start === -1) return null;
   let anchor: Block | null = null;
   for (const block of layout.blocks.slice(start + 1)) {

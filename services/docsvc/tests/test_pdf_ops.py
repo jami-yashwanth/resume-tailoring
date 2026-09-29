@@ -62,6 +62,20 @@ def test_classifies_name_contact_heading_role_and_bullet(tmp_path):
     assert any("Helvetica" in f for f in fonts)
 
 
+def test_blocks_carry_the_heading_they_sit_under(tmp_path):
+    """Same contract as docx parsing: every non-heading block names its
+    section, headings themselves carry none. Placement logic (which section
+    does a drafted line join?) is blind without it."""
+    blocks, *_ = parse_pdf(_save(tmp_path, _resume_pdf()))
+    by_kind = {b.kind.value: b for b in blocks}
+    assert by_kind["heading"].section is None
+    assert by_kind["role"].section == "EXPERIENCE"
+    assert by_kind["bullet"].section == "EXPERIENCE"
+    # Blocks before any heading (name, contact) belong to no section.
+    assert by_kind["name"].section is None
+    assert by_kind["contact"].section is None
+
+
 def test_wide_gap_between_title_and_dates_reads_as_a_tab(tmp_path):
     blocks, *_ = parse_pdf(_save(tmp_path, _resume_pdf()))
     role = next(b for b in blocks if b.kind.value == "role")

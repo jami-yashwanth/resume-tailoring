@@ -127,6 +127,36 @@ describe("fallbackOffers", () => {
     expect(offers[0].block).toBe("4");
   });
 
+  it("never treats an education or project entry as the role to write under", () => {
+    /* A PDF's education line ("Vignan's Institute … Aug 2019 – Jun 2023")
+       classifies as a role — bold, tab, dates. It is not employment, and a
+       drafted line under it would claim the skill was part of the degree.
+       With no Experience-section role, offers go to Skills instead. */
+    const noExperience = {
+      ...layout,
+      blocks: [
+        { id: "0", kind: "name", text: "Priya Sharma", lines: 1, has_bold: true, runs: [], size: 16, align: "left" },
+        { id: "1", kind: "heading", text: "EDUCATION", lines: 1, has_bold: false, runs: [], size: 12, align: "left" },
+        { id: "2", kind: "role", text: "Vignan's Institute\tAug 2019 – Jun 2023", lines: 1, has_bold: true, runs: [], size: 11, align: "left", section: "EDUCATION" },
+        { id: "3", kind: "paragraph", text: "BTech, Computer Science", lines: 1, has_bold: true, runs: [], size: 11, align: "left", section: "EDUCATION" },
+        { id: "4", kind: "heading", text: "PROJECTS", lines: 1, has_bold: false, runs: [], size: 12, align: "left" },
+        { id: "5", kind: "role", text: "01 Bot\t2022", lines: 1, has_bold: true, runs: [], size: 11, align: "left", section: "PROJECTS" },
+        { id: "6", kind: "bullet", text: "Built a Discord bot", lines: 1, has_bold: false, runs: [], size: 11, align: "left", section: "PROJECTS" },
+        { id: "7", kind: "heading", text: "SKILLS", lines: 1, has_bold: false, runs: [], size: 12, align: "left" },
+        { id: "8", kind: "paragraph", text: "Python, SQL", lines: 1, has_bold: false, runs: [], size: 11, align: "left", section: "SKILLS" },
+        { id: "9", kind: "heading", text: "ACHIEVEMENTS", lines: 1, has_bold: false, runs: [], size: 12, align: "left" },
+        { id: "10", kind: "bullet", text: "ICPC regional rank", lines: 1, has_bold: false, runs: [], size: 11, align: "left", section: "ACHIEVEMENTS" },
+      ],
+    } as unknown as Layout;
+    const reqs = [
+      requirement({ id: "r1", label: "software engineering best practices", kind: "other" }),
+      requirement({ id: "r2", label: "Kafka", kind: "skill" }),
+    ];
+    const matches: Match[] = reqs.map((r) => ({ requirementId: r.id, status: "needs_ok", evidence: [] }));
+    const offers = fallbackOffers(noExperience, reqs, matches, []);
+    expect(offers.map((o) => o.block)).toEqual(["8", "8"]);
+  });
+
   it("lowercases a sentence-case label mid-sentence but never an acronym or name", () => {
     const reqs = [
       requirement({ id: "r1", label: "Professional software engineering best practices" }),
