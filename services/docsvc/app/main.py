@@ -12,6 +12,7 @@ import shutil
 import tempfile
 from pathlib import Path
 
+import pymupdf
 from fastapi import Depends, FastAPI, Header, HTTPException
 from pydantic import BaseModel
 
@@ -19,6 +20,7 @@ from . import render
 from .docx_ops import parse_docx
 from .fitter import fit
 from .models import ApplyRequest, ApplyResponse, BlockKind, Layout
+from .latex_render import render_latex
 from .pdf_ops import parse_pdf
 from .template_render import render_template
 
@@ -134,7 +136,25 @@ def render_template_endpoint(request: RenderTemplateRequest) -> dict:
     the plan and the user's Add it / Skip decisions into a final ordered
     list of (kind, text) pairs — nothing here touches an original file.
     """
-    data, pages = render_template([b.model_dump() for b in request.blocks])
+    blocks = [b.model_dump() for b in request.blocks]
+
+    # Flag-gated LaTeX path (spike promoted 29 Sep 2026): the owner's
+    # reference .tex compiled with Tectonic — true typesetting, ~0.5s warm.
+    # Only the exact string "true" turns it on, and any failure (tectonic
+    # missing, compile error, timeout) falls back to the drawn template, so
+    # the download can never fail because of the flag. Preview parity is the
+    # known cost while this is on: the HTML preview still paginates by the
+    # drawn template's metrics.
+    if os.environ.get("REZZ_LATEX_TEMPLATE") == "true":
+        try:
+            data = render_latex(blocks)
+            with pymupdf.open(stream=data, filetype="pdf") as compiled:
+                pages = compiled.page_count
+            return {"file": base64.b64encode(data).decode(), "pages": pages, "format": "pdf"}
+        except Exception:
+            pass  # the drawn template below is the never-fails path
+
+    data, pages = render_template(blocks)
     return {"file": base64.b64encode(data).decode(), "pages": pages, "format": "pdf"}
 
 

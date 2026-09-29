@@ -74,3 +74,38 @@ def test_compiles_to_a_readable_pdf():
         text = doc[0].get_text()
     assert "Priya Sharma" in text
     assert "Shipped 100% of the $ & # things." in text
+
+
+@needs_tectonic
+def test_render_template_endpoint_honors_the_latex_flag(monkeypatch):
+    """Flag on -> compiled LaTeX (Roboto in the fonts). Flag off -> the drawn
+    template (base-14 Helvetica). Only the exact string "true" opens it."""
+    import pymupdf
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+
+    client = TestClient(app)
+    body = {
+        "blocks": [
+            {"kind": "name", "text": "Priya Sharma"},
+            {"kind": "heading", "text": "Experience"},
+            {"kind": "bullet", "text": "Did a thing."},
+        ]
+    }
+
+    def fonts_of(response) -> str:
+        import base64 as b64
+
+        data = b64.b64decode(response.json()["file"])
+        with pymupdf.open(stream=data, filetype="pdf") as doc:
+            return " ".join(f[3] for f in doc[0].get_fonts())
+
+    monkeypatch.setenv("REZZ_LATEX_TEMPLATE", "true")
+    assert "Roboto" in fonts_of(client.post("/render-template", json=body))
+
+    monkeypatch.setenv("REZZ_LATEX_TEMPLATE", "TRUE")
+    assert "Helvetica" in fonts_of(client.post("/render-template", json=body))
+
+    monkeypatch.delenv("REZZ_LATEX_TEMPLATE")
+    assert "Helvetica" in fonts_of(client.post("/render-template", json=body))

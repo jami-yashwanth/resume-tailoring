@@ -1,10 +1,14 @@
-"""SPIKE (29 Sep 2026): the tailored resume compiled through the owner's
-ATS-safe LaTeX reference, instead of drawn with PyMuPDF primitives.
+"""The tailored resume compiled through the owner's ATS-safe LaTeX
+reference, instead of drawn with PyMuPDF primitives.
 
-Not wired to any endpoint. The open question this answers: can a template be
-*data* (a .tex file) rather than code written twice (template_render.py + the
-CSS preview), so that future templates are drop-ins? See the decision log
-before promoting this: the preview/pagination story is the unpaid cost.
+Reached from /render-template only when REZZ_LATEX_TEMPLATE is exactly
+"true", with template_render as the automatic fallback on any failure —
+tectonic missing, compile error, timeout. Why it exists: a template here is
+*data* (a .tex file), not code written twice (template_render.py + the CSS
+preview), so future templates are drop-ins. Known cost while the flag is on:
+the HTML preview still paginates by the drawn template's metrics, so its page
+count can differ from the compiled file's (the endpoint returns the compiled
+count, which is the true one).
 
 Every user string goes through `escape()` — resume text is attacker-supplied
 input to the TeX engine. Tectonic runs with shell-escape off by default, so a
@@ -51,8 +55,10 @@ def blocks_to_latex(blocks: list[dict]) -> str:
     second line is the following job_title, bullets nest one level deeper.
     """
     out: list[str] = []
-    in_section = False   # inside a \resumeSubHeadingList
-    in_items = False     # inside a nested bullet list
+    in_section = False    # inside a \resumeSubHeadingList
+    in_items = False      # inside a nested bullet list
+    in_center = False     # inside the header's {center}
+    section_has_item = False  # the outer list carries at least one \item
 
     def close_items():
         nonlocal in_items
@@ -61,11 +67,18 @@ def blocks_to_latex(blocks: list[dict]) -> str:
             in_items = False
 
     def close_section():
-        nonlocal in_section
+        nonlocal in_section, section_has_item
         close_items()
         if in_section:
             out.append(r"\resumeSubHeadingListEnd")
             in_section = False
+        section_has_item = False
+
+    def close_center():
+        nonlocal in_center
+        if in_center:
+            out.append(r"\end{center}")
+            in_center = False
 
     i = 0
     while i < len(blocks):
@@ -77,15 +90,21 @@ def blocks_to_latex(blocks: list[dict]) -> str:
             continue
 
         if kind == "name":
+            close_center()
             out.append(r"\begin{center}")
             out.append(rf"  \textbf{{\Huge {escape(text)}}} \\")
+            in_center = True
 
         elif kind == "contact":
             fields = [escape(f) for f in re.split(r"\s*[·|\t]\s*", text) if f.strip()]
-            out.append(rf"  \small {' $|$ '.join(fields)}")
-            out.append(r"\end{center}")
+            if in_center:
+                out.append(rf"  \small {' $|$ '.join(fields)}")
+                close_center()
+            else:
+                out.append(rf"\begin{{center}}\small {' $|$ '.join(fields)}\end{{center}}")
 
         elif kind == "heading":
+            close_center()
             close_section()
             out.append(rf"\section{{{escape(text)}}}")
             out.append(r"\resumeSubHeadingList")
@@ -109,6 +128,7 @@ def blocks_to_latex(blocks: list[dict]) -> str:
                 )
             else:
                 out.append(rf"\resumeSubheadingCompact{{{escape(left)}}}{{{escape(right)}}}")
+            section_has_item = True
 
         elif kind == "job_title":
             # A title with no role above it still renders, italic, in place.
@@ -117,24 +137,33 @@ def blocks_to_latex(blocks: list[dict]) -> str:
                 out.append(r"\resumeSubHeadingList")
                 in_section = True
             out.append(rf"\item \textit{{{escape(text)}}}")
+            section_has_item = True
 
         elif kind == "bullet":
             if not in_section:
                 out.append(r"\resumeSubHeadingList")
                 in_section = True
-            if not in_items:
+            # A nested list is only legal after the outer list has an \item
+            # (a role's subheading provides one). Bullets straight under a
+            # heading go into the section list itself — LaTeX errors with
+            # "missing \item" otherwise.
+            if not in_items and section_has_item:
                 out.append(r"\resumeSubHeadingList")
                 in_items = True
             content = _BULLET_PREFIX.sub("", text)
             out.append(rf"\resumeItem{{\textbullet\ {escape(content)}}}")
+            if not in_items:
+                section_has_item = True
 
         else:  # paragraph
             close_items()
             if in_section:
                 out.append(rf"\resumeItem{{{escape(text)}}}")
+                section_has_item = True
             else:
                 out.append(escape(text))
 
+    close_center()
     close_section()
     return "\n".join(out)
 
