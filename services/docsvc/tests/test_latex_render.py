@@ -17,9 +17,18 @@ needs_tectonic = pytest.mark.skipif(
 def test_every_special_character_escapes_to_literal_text():
     hostile = r"100% uptime & $0 cost #tag _under {brace} ~tilde ^caret \input{/etc/passwd}"
     escaped = escape(hostile)
-    for ch in "&%$#_{}~^":
-        assert f"\\{ch}" in escaped or ch not in hostile
+    for ch in "&%$#_{}":
+        assert f"\\{ch}" in escaped
+    assert r"\textasciitilde{}" in escaped
+    assert r"\textasciicircum{}" in escaped
     assert r"\textbackslash{}input" in escaped, "a raw backslash must never survive"
+    # Nothing actionable remains: no unescaped specials outside the escapes'
+    # own syntax.
+    stripped = escaped
+    for seq in (r"\textbackslash{}", r"\textasciitilde{}", r"\textasciicircum{}",
+                r"\&", r"\%", r"\$", r"\#", r"\_", r"\{", r"\}"):
+        stripped = stripped.replace(seq, "")
+    assert not any(ch in stripped for ch in "\\&%$#_{}~^")
 
 
 def test_blocks_become_the_template_macros():
