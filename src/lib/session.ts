@@ -41,6 +41,9 @@ export type StoredDecisions = {
   pagesAllowed: number | null;
   /** They chose "keep everything" over losing a line, so stop asking. */
   growthAllowed: boolean;
+  /** Lines removed to make room for an insert, keyed by that insert. Absent in
+   *  sessions saved before 29 Sep 2026, which is why it is optional. */
+  removedFor?: Record<string, string[]>;
 };
 
 /** What the finish screen needs, written at the moment of a successful
