@@ -214,6 +214,12 @@ def _merge_continuations(blocks: list[dict]) -> list[dict]:
 def parse_pdf(path: str) -> tuple[list[Block], list[str], list[str], int]:
     """Returns (blocks, fonts, warnings, pages)."""
     doc = pymupdf.open(path)
+    if doc.needs_pass:
+        # Without the password every page reads as empty, which would fall
+        # through to the "scanned page" message — wrong advice for a fixable
+        # problem. Name the real one.
+        doc.close()
+        raise ValueError("this PDF is password-protected")
     warnings: list[str] = []
     fonts: set[str] = set()
     blocks: list[Block] = []

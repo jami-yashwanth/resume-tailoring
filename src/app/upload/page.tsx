@@ -63,7 +63,7 @@ export default function UploadPage() {
     const lower = file.name.toLowerCase();
     if (!lower.endsWith(".docx") && !lower.endsWith(".pdf")) {
       setError(
-        `Rezz reads Word or PDF resumes today, so it needs a .docx or .pdf. “${file.name}” isn’t one. `,
+        `Rezz reads Word or PDF resumes today, so it needs a .docx or .pdf. “${file.name}” isn’t one. Export a .pdf or .docx and try again.`,
       );
       return;
     }
@@ -75,7 +75,22 @@ export default function UploadPage() {
     setError(null);
     setBusy(true);
     try {
-      const base64 = toBase64(await file.arrayBuffer());
+      const buffer = await file.arrayBuffer();
+      // Magic bytes, not just the name: PDF opens "%PDF", DOCX is a ZIP
+      // ("PK\x03\x04"). A renamed file fails here, before any upload.
+      const head = new Uint8Array(buffer.slice(0, 4));
+      const isPdf = lower.endsWith(".pdf");
+      const expected = isPdf ? [0x25, 0x50, 0x44, 0x46] : [0x50, 0x4b, 0x03, 0x04];
+      if (!expected.every((byte, i) => head[i] === byte)) {
+        setError(
+          isPdf
+            ? `“${file.name}” has a .pdf name but isn't a PDF inside. Export a fresh copy and try again.`
+            : `“${file.name}” has a .docx name but isn't a Word file inside. Save it again from Word as .docx.`,
+        );
+        setBusy(false);
+        return;
+      }
+      const base64 = toBase64(buffer);
       const response = await fetch("/api/parse", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
