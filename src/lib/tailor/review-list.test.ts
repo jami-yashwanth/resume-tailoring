@@ -109,6 +109,13 @@ describe("reviewList", () => {
     expect(list.pageFit).toMatchObject({ causedBy: "ins1", pages: 2, allowed: 1 });
     expect(list.pageFit!.options.map((o) => o.id)).toEqual(["shorter:ins1:1", "remove:rem", "grow"]);
     expect(list.ready).toBe(false);
+    expect(list.status).toBe("Choose how it fits · 2 pages");
+  });
+
+  it("keeps the count of decisions in the status while the page-fit card is also showing", () => {
+    const list = reviewList(plan, layout, state({ decisions: { ins1: true }, pages: 2, pagesAllowed: 1 }));
+    expect(list.pageFit).not.toBeNull();
+    expect(list.status).toBe("1 to decide · 2 pages");
   });
 
   it("never asks about length while comparing", () => {

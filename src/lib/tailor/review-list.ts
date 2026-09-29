@@ -145,11 +145,13 @@ export function reviewList(plan: TailorPlan, layout: Layout, state: ReviewState)
   const pagesText = `${state.pages} page${state.pages === 1 ? "" : "s"}`;
   const status = toDecide.length
     ? `${toDecide.length} to decide · ${pagesText}`
-    : totalDecisions
-      ? `All decided · ${pagesText}`
-      : reworded.length
-        ? `Nothing to decide · ${pagesText}`
-        : "Your resume already covers what this job asks for.";
+    : pageFit
+      ? `Choose how it fits · ${pagesText}`
+      : totalDecisions
+        ? `All decided · ${pagesText}`
+        : reworded.length
+          ? `Nothing to decide · ${pagesText}`
+          : "Your resume already covers what this job asks for.";
 
   return {
     toDecide,

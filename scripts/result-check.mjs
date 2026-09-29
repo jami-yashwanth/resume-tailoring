@@ -23,14 +23,36 @@ function check(ok, what) {
   console.log(`  ${ok ? "✓" : "✗"} ${what}`);
 }
 
-/** The sample, padded with repeated bullets until it runs past one page. */
-function longLayout(layout) {
+/** The sample, padded with `count` repeated bullets (40 runs well past one page). */
+function longLayout(layout, count = 40) {
   const bullets = layout.blocks.filter((b) => b.kind === "bullet");
-  const extra = Array.from({ length: 40 }, (_, i) => ({ ...bullets[i % bullets.length], id: `pad${i}` }));
+  const extra = Array.from({ length: count }, (_, i) => ({ ...bullets[i % bullets.length], id: `pad${i}` }));
   return { ...layout, blocks: [...layout.blocks, ...extra] };
 }
 
-async function openResult(browser, width, { layout = fixture.layout, decisions = null, theme = "light" } = {}) {
+/* Pad counts measured at all four widths: with 23 the user's own resume is one
+   page and adding the three drafts makes it two; 25 is two pages and 24 is one,
+   so removing the last pad bullet brings it back to one. */
+const JUST_UNDER_ONE_PAGE = 23;
+const JUST_OVER_ONE_PAGE = 25;
+
+/** The sample plan plus a removal the page-fit card can offer: the last pad line. */
+const planWithRemoval = {
+  ...fixture.plan,
+  operations: [
+    ...fixture.plan.operations,
+    {
+      id: "rm-pad", op: "remove", block: `pad${JUST_OVER_ONE_PAGE - 1}`, alternatives: [], claim: "reworded",
+      value: 1, requirements: [], evidence: [], needsDecision: false,
+    },
+  ],
+};
+
+async function openResult(
+  browser,
+  width,
+  { layout = fixture.layout, plan = fixture.plan, decisions = null, theme = "light" } = {},
+) {
   const context = await browser.newContext({ viewport: { width, height: 900 }, colorScheme: theme });
   await context.addInitScript(
     ([result, stored, mode]) => {
@@ -42,7 +64,7 @@ async function openResult(browser, width, { layout = fixture.layout, decisions =
       apply();
       document.addEventListener("readystatechange", apply);
     },
-    [JSON.stringify({ layout, plan: fixture.plan }), decisions ? JSON.stringify(decisions) : null, theme],
+    [JSON.stringify({ layout, plan }), decisions ? JSON.stringify(decisions) : null, theme],
   );
   const page = await context.newPage();
   page.on("pageerror", (e) => failures.push(`page error at ${width}px: ${e.message}`));
@@ -121,6 +143,42 @@ for (const width of WIDTHS) {
     await page.getByRole("button", { name: /^Allow \d+ pages$/ }).click();
     await page.waitForTimeout(200);
     check(!(await visible(heading)), "allowing the pages closes the card");
+    await context.close();
+  }
+
+  // ── Adding drafts to a full page asks: the agreed length is the file's ───
+  {
+    const { context, page } = await openResult(browser, width, {
+      layout: longLayout(fixture.layout, JUST_UNDER_ONE_PAGE),
+    });
+    const heading = page.getByRole("heading", { name: /(makes it|runs to) \d+ pages\./ });
+    check(!(await visible(heading)), "undecided drafts do not count towards the agreed length");
+    const add = page.getByRole("button", { name: /^Add .+ line to my resume$/ });
+    for (let i = 0; i < 10 && (await add.count()); i++) {
+      await add.first().click();
+      await page.waitForTimeout(450);
+    }
+    check(await visible(heading), "adding every draft to a full page shows the page-fit card");
+    check(
+      await page.getByRole("button", { name: "Download resume" }).isDisabled(),
+      "Download waits for the page-fit answer",
+    );
+    check(await visible(page.getByText(/^Choose how it fits · 2 pages$/)), "the status says why");
+    await context.close();
+  }
+
+  // ── Removing a line frees its space ──────────────────────────────────────
+  {
+    const { context, page } = await openResult(browser, width, {
+      layout: longLayout(fixture.layout, JUST_OVER_ONE_PAGE),
+      plan: planWithRemoval,
+      decisions: { decisions: {}, wordings: {}, pagesAllowed: 1, growthAllowed: false, removedFor: {} },
+    });
+    const heading = page.getByRole("heading", { name: /(makes it|runs to) \d+ pages\./ });
+    check(await visible(heading), "a resume just over its agreed page asks about length");
+    await page.getByRole("button", { name: "Remove that line" }).click();
+    await page.waitForTimeout(300);
+    check(!(await visible(heading)), "removing a line closes the page-fit card");
     await context.close();
   }
 

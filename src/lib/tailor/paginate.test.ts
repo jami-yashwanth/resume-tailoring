@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { paginate } from "./paginate";
+import { filePageCount, paginate } from "./paginate";
 
 /**
  * The same rule `_Writer._ensure` in `services/docsvc/app/template_render.py`
@@ -39,5 +39,27 @@ describe("paginate", () => {
 
   test("an empty resume is still one page", () => {
     expect(paginate([], 100)).toEqual([[]]);
+  });
+});
+
+/**
+ * The length the user is asked about is the file's, not the preview's: an
+ * undecided draft and a line chosen for removal are on screen but not in the
+ * download, so neither may count towards it.
+ */
+describe("filePageCount", () => {
+  test("counts only the lines that go into the file", () => {
+    // On screen this is two pages; the pending draft is not in the file.
+    const states = ["unchanged", "pending", "unchanged"] as const;
+    expect(paginate([60, 30, 30], 100)).toHaveLength(2);
+    expect(filePageCount([60, 30, 30], states, 100)).toBe(1);
+  });
+
+  test("a line removed to fit frees its space", () => {
+    expect(filePageCount([60, 50], ["unchanged", "removed"], 100)).toBe(1);
+  });
+
+  test("added lines and automatic rewordings are counted", () => {
+    expect(filePageCount([40, 40, 40], ["added", "reworded", "reverted"], 100)).toBe(2);
   });
 });

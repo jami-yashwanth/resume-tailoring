@@ -13,6 +13,8 @@
  * function: the rule can be read and tested without a DOM.
  */
 
+import type { LineState } from "./view";
+
 /**
  * Assign blocks to pages, returning each page's block indices.
  *
@@ -43,4 +45,22 @@ export function paginate(heights: number[], pageHeight: number): number[][] {
   });
 
   return pages;
+}
+
+/**
+ * How many pages the downloaded file comes to, from the preview's heights.
+ *
+ * The preview shows two kinds of line the file does not have: a draft still
+ * waiting for Add it / Skip, and a line the user chose to remove. Counting
+ * them made the agreed length include every undecided draft (so adding them
+ * never asked about length) and made "Remove that line" free no space.
+ * Automatic rewordings are in the file, so they count.
+ */
+export function filePageCount(
+  heights: number[],
+  states: readonly LineState[],
+  pageHeight: number,
+): number {
+  const inFile = heights.filter((_, index) => states[index] !== "pending" && states[index] !== "removed");
+  return paginate(inFile, pageHeight).length;
 }

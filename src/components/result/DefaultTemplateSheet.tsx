@@ -9,7 +9,7 @@ import {
   useState,
 } from "react";
 import { ResumeSheet } from "@/components/rezz/ResumeSheet";
-import { paginate } from "@/lib/tailor/paginate";
+import { filePageCount, paginate } from "@/lib/tailor/paginate";
 import { TYPE, contentHeightFor, cqi } from "@/lib/tailor/template-metrics";
 import type { BlockKind, Layout } from "@/lib/tailor/types";
 import { MARK_LABEL, type RenderedLine, groupIntoBlocks } from "@/lib/tailor/view";
@@ -294,6 +294,11 @@ export function DefaultTemplateSheet({
   const columnRef = useRef<HTMLDivElement>(null);
   const measureRef = useRef<HTMLDivElement>(null);
   const [pages, setPages] = useState<number[][]>(() => [lines.map((_, index) => index)]);
+  /* What the file comes to, which is not what the screen shows: undecided
+     drafts and lines chosen for removal are drawn here but left out of the
+     download. This is the count the screen agrees a length with. */
+  const [filePages, setFilePages] = useState(1);
+  const linesRef = useRef(lines);
 
   /**
    * Read every block's height off the hidden pass and split them into pages.
@@ -327,10 +332,15 @@ export function DefaultTemplateSheet({
       );
     });
 
-    setPages(paginate(heights, contentHeightFor(contentWidth)));
+    const pageHeight = contentHeightFor(contentWidth);
+    setPages(paginate(heights, pageHeight));
+    // One marker per line, in document order, so heights[i] is lines[i]'s.
+    const states = linesRef.current.map((line) => line.state);
+    if (states.length === heights.length) setFilePages(filePageCount(heights, states, pageHeight));
   }, []);
 
   useMeasureEffect(() => {
+    linesRef.current = lines;
     measure();
   }, [measure, lines]);
 
@@ -359,8 +369,8 @@ export function DefaultTemplateSheet({
   }, [measure]);
 
   useEffect(() => {
-    if (fontsReady) onPageCount?.(pages.length);
-  }, [fontsReady, pages.length, onPageCount]);
+    if (fontsReady) onPageCount?.(filePages);
+  }, [fontsReady, filePages, onPageCount]);
 
   useEffect(() => {
     const column = columnRef.current;

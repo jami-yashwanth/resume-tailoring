@@ -157,7 +157,9 @@ export function ResultScreen({
         onToggleCompare={() => dispatch({ type: "toggleCompare" })}
         ready={list.ready}
         onDownload={download}
-        canDownload={Boolean(resume)}
+        // Not while the page-fit question is open: the file would be a length
+        // nobody agreed to. The status says why.
+        canDownload={Boolean(resume) && !list.pageFit}
         downloading={downloading}
       />
 
