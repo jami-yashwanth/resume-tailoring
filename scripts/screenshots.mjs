@@ -247,7 +247,7 @@ for (const theme of ["light", "dark"]) {
     await page.waitForTimeout(500);
     await shoot(page, `11-result-ready${suffix}`);
 
-    const compare = page.getByRole("button", { name: /Compare wording/ });
+    const compare = page.getByRole("button", { name: /Compare with original/ });
     if (await compare.count()) {
       await compare.first().click();
       await page.waitForTimeout(400);

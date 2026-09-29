@@ -97,7 +97,7 @@ function Line({
         onSelect(line.opId!);
       }}
       className={`cursor-pointer ${faded ? "opacity-35" : ""}
-                  ${active ? "outline outline-2 outline-offset-4 outline-line-strong" : ""}
+                  ${active ? "outline outline-2 outline-offset-4 outline-ink" : ""}
                   transition-opacity duration-150`}
     >
       <Body line={line} />
@@ -269,6 +269,7 @@ function Blocks({
 const useMeasureEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 
 export function DefaultTemplateSheet({
+  className,
   layout,
   lines,
   activeOpId,
@@ -277,6 +278,8 @@ export function DefaultTemplateSheet({
   onPageCount,
   onVisiblePage,
 }: {
+  /** Grid placement from the screen, e.g. order at narrow widths. */
+  className?: string;
   layout: Layout;
   lines: RenderedLine[];
   activeOpId: string | null;
@@ -331,19 +334,24 @@ export function DefaultTemplateSheet({
     measure();
   }, [measure, lines]);
 
+  /* The first measurement is taken before the webfont lands, and fallback
+     metrics wrap differently. Reporting it let the screen lock in "1 page" for
+     a resume that is 2, then ask the user about a page they never added. */
+  const [fontsReady, setFontsReady] = useState(false);
+
   useEffect(() => {
     const host = measureRef.current;
     if (!host) return;
-
-    // The column's width decides where every line wraps, so a resize is a
-    // repagination. The webfont landing moves every line too.
     const observer = new ResizeObserver(measure);
     observer.observe(host);
     let cancelled = false;
-    document.fonts?.ready.then(() => {
-      if (!cancelled) measure();
-    });
-
+    const done = () => {
+      if (cancelled) return;
+      measure();
+      setFontsReady(true);
+    };
+    if (document.fonts) document.fonts.ready.then(done);
+    else done();
     return () => {
       cancelled = true;
       observer.disconnect();
@@ -351,8 +359,8 @@ export function DefaultTemplateSheet({
   }, [measure]);
 
   useEffect(() => {
-    onPageCount?.(pages.length);
-  }, [pages.length, onPageCount]);
+    if (fontsReady) onPageCount?.(pages.length);
+  }, [fontsReady, pages.length, onPageCount]);
 
   useEffect(() => {
     const column = columnRef.current;
@@ -389,7 +397,7 @@ export function DefaultTemplateSheet({
   const who = layout.blocks[0]?.text ?? "Your";
 
   return (
-    <div ref={columnRef} className="relative flex flex-col gap-8">
+    <div ref={columnRef} className={`relative flex flex-col gap-8 ${className ?? ""}`}>
       {/* Laid out but never painted, and taken out of flow so it costs no
           space. It is a whole page rather than a bare box so that its content
           width is the real one, margins and all, without computing it. */}

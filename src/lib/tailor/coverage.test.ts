@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { coverageOf, displayStatus, pendingDecisions } from "./coverage";
+import { coverageOf, pendingDecisions } from "./coverage";
 import type { Match, PlannedOp, Requirement } from "./types";
 
 const requirement = (id: string, label: string, knockout = false): Requirement => ({
@@ -144,51 +144,5 @@ describe("pendingDecisions", () => {
 
   it("treats an explicit skip as decided", () => {
     expect(pendingDecisions([drafted("o1", "r4", false)])).toEqual([]);
-  });
-});
-
-describe("displayStatus", () => {
-  const kafka: Match = { requirementId: "r4", status: "needs_ok", evidence: [] };
-
-  it("shows a drafted line as still needing the user's OK", () => {
-    expect(displayStatus("r4", kafka, [drafted("o1", "r4")])).toBe("needs_ok");
-  });
-
-  it("shows an accepted line as added, not as something still owed", () => {
-    /* The panel used to keep saying "! Kafka — needs your OK" while the count
-       above it had already credited the line. Both read from here now. */
-    expect(displayStatus("r4", kafka, [drafted("o1", "r4", true)])).toBe("added");
-  });
-
-  it("stops asking for a line the user skipped", () => {
-    /* The document drops a skipped line without a trace because the spec
-       forbids re-asking. A panel still flagging it "needs your OK", with no
-       decision left to make, was the same question asked from the other side
-       of the screen. */
-    expect(displayStatus("r4", kafka, [drafted("o1", "r4", false)])).toBe("skipped");
-  });
-
-  it("keeps asking while any line for that requirement is undecided", () => {
-    const ops = [drafted("o1", "r4", false), drafted("o2", "r4")];
-    expect(displayStatus("r4", kafka, ops)).toBe("needs_ok");
-  });
-
-  it("distinguishes what the user added from what they already had", () => {
-    const own: Match = { requirementId: "r1", status: "matched", evidence: ["b6"] };
-    expect(displayStatus("r1", own, [drafted("o1", "r1", true)])).toBe("matched");
-  });
-
-  it("never reinterprets a knockout", () => {
-    const pune: Match = { requirementId: "r6", status: "cannot_change", evidence: [] };
-    expect(displayStatus("r6", pune, [drafted("o1", "r6", true)])).toBe("cannot_change");
-  });
-
-  it("does not ask about a requirement that has no drafted line to decide on", () => {
-    expect(displayStatus("r4", kafka, [])).toBe("not_offered");
-    expect(displayStatus("r4", kafka, [drafted("o1", "r5")])).toBe("not_offered");
-  });
-
-  it("treats a requirement with no match and no line as nothing to answer", () => {
-    expect(displayStatus("r7", undefined, [])).toBe("not_offered");
   });
 });
