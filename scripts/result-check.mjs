@@ -1,0 +1,142 @@
+/**
+ * Drive the Result screen through a whole review at four window widths and
+ * fail if any control is missing. Run the app first (`npm run dev`), then
+ * `npm run check:result`. Screenshots land in screenshots/ (gitignored).
+ *
+ * Exists because the old margin — and with it Undo and the page-fit question —
+ * silently disappeared below 1240px, and no test could see it.
+ */
+import { chromium } from "playwright";
+import fs from "node:fs";
+import path from "node:path";
+import { frontendPort, repoRoot } from "./ports.mjs";
+
+const BASE = process.env.BASE ?? `http://localhost:${frontendPort}`;
+const OUT = path.join(repoRoot, "screenshots");
+fs.mkdirSync(OUT, { recursive: true });
+const fixture = JSON.parse(fs.readFileSync(path.join(repoRoot, "fixtures/sample-plan.json"), "utf8"));
+const WIDTHS = [1440, 1240, 1100, 880];
+const failures = [];
+
+function check(ok, what) {
+  if (!ok) failures.push(what);
+  console.log(`  ${ok ? "✓" : "✗"} ${what}`);
+}
+
+/** The sample, padded with repeated bullets until it runs past one page. */
+function longLayout(layout) {
+  const bullets = layout.blocks.filter((b) => b.kind === "bullet");
+  const extra = Array.from({ length: 40 }, (_, i) => ({ ...bullets[i % bullets.length], id: `pad${i}` }));
+  return { ...layout, blocks: [...layout.blocks, ...extra] };
+}
+
+async function openResult(browser, width, { layout = fixture.layout, decisions = null, theme = "light" } = {}) {
+  const context = await browser.newContext({ viewport: { width, height: 900 }, colorScheme: theme });
+  await context.addInitScript(
+    ([result, stored, mode]) => {
+      sessionStorage.setItem("rezz.result", result);
+      sessionStorage.setItem("rezz.resume", "UEsDBBQAAAAI");
+      sessionStorage.setItem("rezz.filename", "priya_resume.docx");
+      if (stored && !sessionStorage.getItem("rezz.decisions")) sessionStorage.setItem("rezz.decisions", stored);
+      const apply = () => document.documentElement?.setAttribute("data-theme", mode);
+      apply();
+      document.addEventListener("readystatechange", apply);
+    },
+    [JSON.stringify({ layout, plan: fixture.plan }), decisions ? JSON.stringify(decisions) : null, theme],
+  );
+  const page = await context.newPage();
+  page.on("pageerror", (e) => failures.push(`page error at ${width}px: ${e.message}`));
+  await page.goto(`${BASE}/result`);
+  await page.waitForLoadState("networkidle").catch(() => {});
+  await page.waitForTimeout(900);
+  return { context, page };
+}
+
+async function visible(locator) {
+  return (await locator.count()) > 0 && (await locator.first().isVisible());
+}
+
+const browser = await chromium.launch();
+
+for (const width of WIDTHS) {
+  console.log(`\n${width}px`);
+
+  for (const theme of ["light", "dark"]) {
+    const shot = await openResult(browser, width, { theme });
+    await shot.page.screenshot({ path: path.join(OUT, `result-${width}-${theme}.png`) });
+    await shot.context.close();
+  }
+
+  // ── A whole review ───────────────────────────────────────────────────────
+  {
+    const { context, page } = await openResult(browser, width);
+    const add = page.getByRole("button", { name: /^Add .+ line to my resume$/ });
+    const skip = page.getByRole("button", { name: /^Skip .+ line$/ });
+    check((await visible(add)) && (await visible(skip)), "Skip and Add it are on screen");
+
+    const before = await page.getByRole("button", { name: /^Undo (adding|skipping) .+ line$/ }).count();
+    await add.first().dblclick();
+    await page.waitForTimeout(450);
+    const after = await page.getByRole("button", { name: /^Undo (adding|skipping) .+ line$/ }).count();
+    check(after - before === 1, "a double click answers one question, not two");
+
+    const undoAdd = page.getByRole("button", { name: /^Undo adding .+ line$/ });
+    check(await visible(undoAdd), "an added line has Undo");
+    await undoAdd.first().click();
+    await page.waitForTimeout(450); // the undone line reopens as a new card
+    check((await undoAdd.count()) === 0 && (await visible(add)), "Undo puts the line back to decide");
+
+    await skip.first().click();
+    await page.waitForTimeout(450);
+    const undoSkip = page.getByRole("button", { name: /^Undo skipping .+ line$/ });
+    check(await visible(undoSkip), "a skipped line has Undo");
+
+    for (let i = 0; i < 10 && (await add.count()); i++) {
+      await add.first().click();
+      await page.waitForTimeout(450); // longer than the card's 350ms guard
+    }
+    const download = page.getByRole("button", { name: "Download resume" });
+    check((await download.count()) === 1, "exactly one Download button");
+    check(await visible(page.getByText(/^All decided\./)), "the list says all decided");
+    await page.screenshot({ path: path.join(OUT, `result-${width}-ready.png`) });
+
+    await page.route("**/api/download", (route) =>
+      route.fulfill({ json: { file: Buffer.from("%PDF-1.4").toString("base64"), pages: 1 } }),
+    );
+    await download.click();
+    const reached = await page.waitForURL("**/done", { timeout: 5000 }).then(() => true, () => false);
+    check(reached, "Download goes to the finish screen");
+    await context.close();
+  }
+
+  // ── Page fit: the resume outgrew what the user agreed to ─────────────────
+  {
+    const { context, page } = await openResult(browser, width, {
+      layout: longLayout(fixture.layout),
+      decisions: { decisions: {}, wordings: {}, pagesAllowed: 1, growthAllowed: false },
+    });
+    const heading = page.getByRole("heading", { name: /(makes it|runs to) \d+ pages\./ });
+    check(await visible(heading), "the page-fit card is on screen");
+    await page.screenshot({ path: path.join(OUT, `result-${width}-page-fit.png`) });
+    await page.getByRole("button", { name: /^Allow \d+ pages$/ }).click();
+    await page.waitForTimeout(200);
+    check(!(await visible(heading)), "allowing the pages closes the card");
+    await context.close();
+  }
+
+  // ── No false alarm: a long resume nobody has touched asks nothing ────────
+  {
+    const { context, page } = await openResult(browser, width, { layout: longLayout(fixture.layout) });
+    const heading = page.getByRole("heading", { name: /(makes it|runs to) \d+ pages\./ });
+    check(!(await visible(heading)), "a long resume with no decisions asks nothing about length");
+    await context.close();
+  }
+}
+
+await browser.close();
+
+if (failures.length) {
+  console.log(`\n${failures.length} failed:\n  - ${failures.join("\n  - ")}`);
+  process.exit(1);
+}
+console.log("\nAll checks passed.");

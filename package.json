@@ -8,6 +8,7 @@
     "start": "node scripts/serve.mjs start",
     "docsvc": "node scripts/serve.mjs docsvc",
     "screenshots": "node scripts/screenshots.mjs",
+    "check:result": "node scripts/result-check.mjs",
     "lint": "eslint .",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
