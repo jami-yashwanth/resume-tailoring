@@ -22,7 +22,11 @@ import { session } from "@/lib/session";
  */
 
 const ACCEPTED = ".docx,.pdf";
-const MAX_BYTES = 10 * 1024 * 1024;
+/* 4 MB, not 10: the file crosses to /job and /result through sessionStorage as
+   base64 (×1.33), and common browser quotas sit near 5 MB — a bigger file
+   survives the upload and then silently fails to persist. Real resumes are
+   well under 1 MB; 4 MB already means embedded photos. */
+const MAX_BYTES = 4 * 1024 * 1024;
 
 /* The app screens sit on the same flat white the landing page does. The grey
    ground exists to sink the resume canvas on the Result screen; there is no
@@ -64,7 +68,7 @@ export default function UploadPage() {
       return;
     }
     if (file.size > MAX_BYTES) {
-      setError(`That file is ${(file.size / 1024 / 1024).toFixed(1)} MB. The limit is 10 MB.`);
+      setError(`That file is ${(file.size / 1024 / 1024).toFixed(1)} MB. The limit is 4 MB.`);
       return;
     }
 
@@ -85,7 +89,14 @@ export default function UploadPage() {
         return;
       }
 
-      session.setResume(base64, file.name);
+      if (!session.setResume(base64, file.name)) {
+        setError(
+          "Your browser couldn't hold this file for the next step — it may be too large, or " +
+            "storage is blocked in this window. Try a copy under 4 MB, or a regular window.",
+        );
+        setBusy(false);
+        return;
+      }
       setFilename(file.name);
 
       // Nothing to say about a clean file, so don't make them click through a
@@ -195,7 +206,7 @@ export default function UploadPage() {
             {busy ? "Reading your resume…" : "Drop your resume here"}
           </p>
           <p className="m-0 mt-1 text-sm leading-[21px] text-ink-muted">
-            Word (.docx) or PDF, up to 10 MB
+            Word (.docx) or PDF, up to 4 MB
           </p>
           <div className="mt-7 flex justify-center">
             <Button onClick={() => inputRef.current?.click()} disabled={busy}>

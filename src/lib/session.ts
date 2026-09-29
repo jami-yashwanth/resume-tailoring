@@ -73,12 +73,17 @@ function read(key: string): string | null {
   }
 }
 
-function write(key: string, value: string): void {
+function write(key: string, value: string): boolean {
   try {
     window.sessionStorage.setItem(key, value);
+    // Read back rather than trusting the absence of a throw: some browsers
+    // fail a quota write without one, and a swallowed loss here surfaces as an
+    // unexplained bounce back to /upload two screens later.
+    return window.sessionStorage.getItem(key) === value;
   } catch {
-    // Private window or blocked storage. The flow still works within one page;
-    // it just will not survive a navigation, which is better than crashing.
+    // Private window, blocked storage, or the value is over quota. The caller
+    // decides whether that is fatal; most flows work within one page.
+    return false;
   }
 }
 
@@ -92,9 +97,12 @@ function drop(key: string): void {
 
 export const session = {
   getResume: () => read(KEYS.resume),
-  setResume: (base64: string, filename: string) => {
-    write(KEYS.resume, base64);
-    write(KEYS.filename, filename);
+  /** True only if the file survived the write — the resume is the one value
+   *  big enough to hit the storage quota, and losing it silently costs the
+   *  user their upload. */
+  setResume: (base64: string, filename: string): boolean => {
+    const stored = write(KEYS.resume, base64);
+    return write(KEYS.filename, filename) && stored;
   },
   getFilename: () => read(KEYS.filename),
 
