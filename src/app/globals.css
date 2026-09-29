@@ -214,10 +214,41 @@
     }
   }
 
+  /* The Tailoring screen's two motions. The ring is the one looping motion in
+     the product, approved by the owner (29 Sep 2026): it marks the stage that
+     is running, and it stops when that stage is done. The fade is the house
+     150ms opacity change, as a keyframe so text appears softly on mount. */
+  .tailor-ring {
+    animation: tailor-ring 1.6s ease-out infinite;
+  }
+
+  @keyframes tailor-ring {
+    0% {
+      box-shadow: 0 0 0 0 color-mix(in srgb, var(--ink) 40%, transparent);
+    }
+    80%,
+    100% {
+      box-shadow: 0 0 0 7px color-mix(in srgb, var(--ink) 0%, transparent);
+    }
+  }
+
+  .tailor-fade {
+    animation: tailor-fade 150ms ease-out both;
+  }
+
+  @keyframes tailor-fade {
+    from {
+      opacity: 0;
+    }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     mark {
       animation: none;
       background-size: 100% 100%;
+    }
+    .tailor-ring {
+      animation: none;
     }
     *,
     *::before,
