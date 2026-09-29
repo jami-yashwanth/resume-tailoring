@@ -1,6 +1,7 @@
 "use client";
 
 import type { Layout, TailorPlan } from "@/lib/tailor/types";
+import type { Decisions, Wordings } from "@/lib/tailor/view";
 
 /**
  * Where a tailoring lives between screens.
@@ -20,10 +21,30 @@ const KEYS = {
   filename: "rezz.filename",
   job: "rezz.job",
   result: "rezz.result",
+  decisions: "rezz.decisions",
   finish: "rezz.finish",
 } as const;
 
 export type StoredResult = { layout: Layout; plan: TailorPlan };
+
+/**
+ * What the user has decided on the Result screen so far.
+ *
+ * Kept because a refresh used to throw all of it away and ask again — including
+ * for lines the user had already skipped, which is the one thing the spec says
+ * never to do. It lives beside the result and dies with it.
+ */
+export type StoredDecisions = {
+  decisions: Decisions;
+  wordings: Wordings;
+  /** The page count the user has agreed the document may reach. */
+  pagesAllowed: number | null;
+  /** They chose "keep everything" over losing a line, so stop asking. */
+  growthAllowed: boolean;
+  /** Lines removed to make room for an insert, keyed by that insert. Absent in
+   *  sessions saved before 29 Sep 2026, which is why it is optional. */
+  removedFor?: Record<string, string[]>;
+};
 
 /** What the finish screen needs, written at the moment of a successful
  *  download so `/done` reports what actually happened rather than re-deriving
@@ -38,6 +59,8 @@ export type Finish = {
   total: number;
   originalCovered: number;
   reworded: number;
+  /** Lines the user chose to drop so the page count would hold. */
+  removed: number;
   added: string[];
   operations: TailorPlan["operations"];
 };
@@ -87,7 +110,22 @@ export const session = {
       return null;
     }
   },
-  setResult: (result: StoredResult) => write(KEYS.result, JSON.stringify(result)),
+  /** A new tailoring is a new set of questions, so old answers go with it. */
+  setResult: (result: StoredResult) => {
+    drop(KEYS.decisions);
+    write(KEYS.result, JSON.stringify(result));
+  },
+
+  getDecisions: (): StoredDecisions | null => {
+    const raw = read(KEYS.decisions);
+    if (!raw) return null;
+    try {
+      return JSON.parse(raw) as StoredDecisions;
+    } catch {
+      return null;
+    }
+  },
+  setDecisions: (state: StoredDecisions) => write(KEYS.decisions, JSON.stringify(state)),
 
   getFinish: (): Finish | null => {
     const raw = read(KEYS.finish);
@@ -100,6 +138,7 @@ export const session = {
   clearJob: () => {
     drop(KEYS.job);
     drop(KEYS.result);
+    drop(KEYS.decisions);
     drop(KEYS.finish);
   },
   clearAll: () => Object.values(KEYS).forEach(drop),

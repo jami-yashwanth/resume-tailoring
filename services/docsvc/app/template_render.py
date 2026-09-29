@@ -19,6 +19,10 @@ import pymupdf
 PAGE_WIDTH, PAGE_HEIGHT = 595.28, 841.89  # A4, points
 MARGIN = 50.0
 CONTENT_WIDTH = PAGE_WIDTH - 2 * MARGIN
+#: What an empty page holds, and how far a bullet's text sits off the margin.
+#: `src/lib/tailor/template-metrics.ts` carries both for the preview.
+ROOM = PAGE_HEIGHT - 2 * MARGIN
+BULLET_INDENT = 14
 
 INK = (0.09, 0.09, 0.09)
 MUTED = (0.45, 0.45, 0.45)
@@ -78,11 +82,29 @@ class _Writer:
         self.page = doc.new_page(width=PAGE_WIDTH, height=PAGE_HEIGHT)
         self.y = MARGIN
 
+    def _fits(self, needed: float) -> bool:
+        return self.y + needed <= PAGE_HEIGHT - MARGIN
+
+    def _break(self) -> None:
+        self.page = self.doc.new_page(width=PAGE_WIDTH, height=PAGE_HEIGHT)
+        self.y = MARGIN
+        self.pages += 1
+
     def _ensure(self, needed: float) -> None:
-        if self.y + needed > PAGE_HEIGHT - MARGIN:
-            self.page = self.doc.new_page(width=PAGE_WIDTH, height=PAGE_HEIGHT)
-            self.y = MARGIN
-            self.pages += 1
+        """Move to a new page if `needed` does not fit in what is left.
+
+        `needed` is a whole block, not a line: a bullet broken across the fold
+        reads as a typesetting failure on a document whose pitch is that its
+        layout survived, and the Result screen's preview paginates against
+        this same rule so the two agree on where the file breaks.
+
+        A block taller than an empty page is the exception — no page would
+        hold it, so paging cannot keep it whole, and it stays where it is and
+        flows. Refusing to draw it would lose the user's text, and paging for
+        it would only buy a blank page first.
+        """
+        if not self._fits(needed) and needed <= ROOM:
+            self._break()
 
     def text(self, x: float, text: str, size: float, fontname: str, color=INK) -> None:
         self.page.insert_text(
@@ -102,10 +124,28 @@ class _Writer:
         center = (x + radius, self.y + size * 0.62)
         self.page.draw_circle(center, radius, color=color, fill=color)
 
-    def wrapped(self, text: str, size: float, fontname: str, width: float, color, leading_extra=0.0, indent=0.0):
+    def wrapped(
+        self,
+        text: str,
+        size: float,
+        fontname: str,
+        width: float,
+        color,
+        leading_extra=0.0,
+        indent=0.0,
+        bullet=False,
+    ):
         leading = size * 1.4 + leading_extra
-        for wrapped_line in _wrap(text, size, fontname, width):
-            self._ensure(leading)
+        lines = _wrap(text, size, fontname, width)
+        # Ask for the whole block first, so it moves in one piece. The per-line
+        # check below only ever fires for a block too tall for any page, which
+        # `_ensure` deliberately leaves where it is.
+        self._ensure(leading * len(lines))
+        for i, wrapped_line in enumerate(lines):
+            if not self._fits(leading):
+                self._break()
+            if bullet and i == 0:
+                self.bullet_dot(MARGIN, size, color)
             self.text(MARGIN + indent, wrapped_line, size, fontname, color)
             self.line(leading)
 
@@ -158,13 +198,8 @@ def render_template(blocks: list[dict]) -> tuple[bytes, int]:
 
         elif kind == "bullet":
             content = text.lstrip("".join(BULLET_CHARS) + " ").strip()
-            leading = 10.5 * 1.4
-            for i, wrapped_line in enumerate(_wrap(content, 10.5, SANS, CONTENT_WIDTH - 14)):
-                w._ensure(leading)
-                if i == 0:
-                    w.bullet_dot(MARGIN, 10.5)
-                w.text(MARGIN + 14, wrapped_line, 10.5, SANS)
-                w.line(leading)
+            w.wrapped(content, 10.5, SANS, CONTENT_WIDTH - BULLET_INDENT, INK,
+                      indent=BULLET_INDENT, bullet=True)
 
         else:  # paragraph
             w.wrapped(text, 10.5, SANS, CONTENT_WIDTH, INK, leading_extra=4)

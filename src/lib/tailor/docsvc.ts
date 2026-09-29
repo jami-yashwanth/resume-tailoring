@@ -26,7 +26,12 @@ export type ApplyResult = {
 
 export class DocsvcError extends Error {}
 
-const baseUrl = () => process.env.DOCSVC_URL ?? "http://localhost:8000";
+// DOCSVC_URL wins when set — that is how the deployed service is reached.
+// Otherwise the port comes from BACKEND_PORT, defaulting to the same 8001 that
+// scripts/ports.mjs starts docsvc on. Next.js loads `.env` itself, so both are
+// already in `process.env` here.
+const baseUrl = () =>
+  process.env.DOCSVC_URL ?? `http://localhost:${process.env.BACKEND_PORT?.trim() || 8001}`;
 
 async function post<T>(path: string, body: unknown): Promise<T> {
   const token = process.env.DOCSVC_TOKEN;
@@ -43,7 +48,7 @@ async function post<T>(path: string, body: unknown): Promise<T> {
   } catch (cause) {
     throw new DocsvcError(
       `Could not reach the file service at ${baseUrl()}. Is it running? ` +
-        "(cd services/docsvc && .venv/bin/uvicorn app.main:app --port 8000)",
+        "(npm run docsvc)",
       { cause },
     );
   }

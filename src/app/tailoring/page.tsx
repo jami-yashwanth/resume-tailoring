@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { FlowHeader } from "@/components/flow/FlowHeader";
 import { ButtonLink } from "@/components/rezz/Button";
+import { box, lead, offsetGap, offsetPage, title } from "@/components/rezz/skin";
 import { session } from "@/lib/session";
 import type { Stage } from "@/lib/tailor/pipeline";
 
@@ -23,6 +24,9 @@ const STEPS: Array<{ stage: Stage; doing: string; done: string }> = [
 ];
 
 const ORDER = STEPS.map((s) => s.stage);
+
+const page = "min-h-screen bg-paper-raised";
+const column = "mx-auto max-w-[640px] px-16 pb-24 pt-16 max-[1100px]:px-8 max-[680px]:px-4";
 
 export default function TailoringPage() {
   const router = useRouter();
@@ -102,40 +106,48 @@ export default function TailoringPage() {
 
   if (error) {
     return (
-      <>
+      <div className={page}>
         <FlowHeader step="Something went wrong" />
-        <main className="mx-auto max-w-[640px] px-16 pt-16 max-[1100px]:px-8 max-[680px]:px-4">
-          <h1 className="m-0 text-[28px] font-semibold leading-9 tracking-[-0.03em]">
-            Tailoring stopped.
-          </h1>
-          <p className="mt-4 text-[17px] leading-7 text-ink-muted">{error}</p>
+        <main className={column}>
+          <h1 className={title}>Tailoring stopped.</h1>
+          {/* The corrector's red, the same box the landing page gives the one
+              thing that needs the user. A failure is exactly that. */}
+          <div className={`mt-8 rounded-md border-2 border-gap bg-paper-raised p-6 ${offsetGap}`}>
+            <p className="m-0 max-w-[58ch] text-[15px] leading-6">{error}</p>
+            <p className="mt-3 flex items-center gap-2 font-mark text-xs leading-4 text-gap before:h-[2px] before:w-[18px] before:bg-gap before:content-['']">
+              your resume and the job are still here
+            </p>
+          </div>
           <div className="mt-8">
             <ButtonLink href="/job">Back to the job</ButtonLink>
           </div>
         </main>
-      </>
+      </div>
     );
   }
 
   return (
-    <>
+    <div className={page}>
       <FlowHeader step="Tailoring" />
-      <main className="mx-auto max-w-[640px] px-16 pt-16 max-[1100px]:px-8 max-[680px]:px-4">
-        <h1 className="m-0 text-[clamp(28px,3vw,40px)] font-semibold leading-[1.1] tracking-[-0.03em]">
-          Tailoring your resume.
-        </h1>
-        <p className="mt-4 text-[17px] leading-7 text-ink-muted">
+      <main className={column}>
+        <h1 className={title}>Tailoring your resume.</h1>
+        <p className={`mt-6 ${lead}`}>
           About fifteen seconds. We keep your layout and mark every change.
         </p>
 
-        <ol aria-live="polite" className="mt-10 list-none border-t border-line p-0">
+        {/* One drawn container; the stages inside stay hairlines. Four rows that
+            tick over in sequence are something you read, not four things you
+            act on, and drawing each one would make the wait louder than the
+            work. */}
+        <div className={`mt-10 ${box} ${offsetPage} rounded-md bg-paper-raised p-8 max-[680px]:p-6`}>
+        <ol aria-live="polite" className="m-0 list-none p-0">
           {STEPS.map((step, index) => {
             const done = current > index;
             const active = current === index;
             return (
               <li
                 key={step.stage}
-                className="grid grid-cols-[20px_minmax(0,1fr)] items-baseline gap-3 border-b border-line py-3.5"
+                className="grid grid-cols-[20px_minmax(0,1fr)] items-baseline gap-3 border-b border-line py-3.5 last:border-b-0"
               >
                 <span
                   aria-hidden
@@ -155,7 +167,8 @@ export default function TailoringPage() {
             );
           })}
         </ol>
+        </div>
       </main>
-    </>
+    </div>
   );
 }

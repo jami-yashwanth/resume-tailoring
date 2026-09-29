@@ -24,7 +24,13 @@ already works.
 ```bash
 python3 -m venv .venv
 .venv/bin/pip install -r requirements.txt
-DOCSVC_ALLOW_INSECURE=true .venv/bin/uvicorn app.main:app --reload --port 8000
+```
+
+Then, from the repo root, so it lands on `BACKEND_PORT` (8001 unless `.env` says
+otherwise):
+
+```bash
+DOCSVC_ALLOW_INSECURE=true npm run docsvc -- --reload
 ```
 
 `GET /health` reports whether a renderer was found. Without LibreOffice the
@@ -53,7 +59,7 @@ between locked and wide open. To run without authentication locally, say so
 explicitly:
 
 ```bash
-DOCSVC_ALLOW_INSECURE=true .venv/bin/uvicorn app.main:app --reload --port 8000
+DOCSVC_ALLOW_INSECURE=true npm run docsvc -- --reload
 ```
 
 A real `DOCSVC_TOKEN` always wins; the escape hatch cannot weaken a configured

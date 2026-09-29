@@ -79,7 +79,7 @@ export async function tailor(
       requirements: jd.requirements,
       matches: verified.matches,
       operations: checked.operations,
-      coverage: coverageOf(verified.matches, checked.operations),
+      coverage: coverageOf(jd.requirements, verified.matches, checked.operations),
     },
     violations: checked.violations,
     usage,

@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { FlowHeader } from "@/components/flow/FlowHeader";
 import { Button } from "@/components/rezz/Button";
+import { box, lead, offsetGap, offsetPage, title } from "@/components/rezz/skin";
 import { session } from "@/lib/session";
 
 /**
@@ -22,6 +23,12 @@ import { session } from "@/lib/session";
 
 const ACCEPTED = ".docx,.pdf";
 const MAX_BYTES = 10 * 1024 * 1024;
+
+/* The app screens sit on the same flat white the landing page does. The grey
+   ground exists to sink the resume canvas on the Result screen; there is no
+   resume here, so there is nothing to sink. */
+const page = "min-h-screen bg-paper-raised";
+const column = "mx-auto max-w-[720px] px-16 pb-24 pt-16 max-[1100px]:px-8 max-[680px]:px-4";
 
 type Check = { pages: number; fonts: string[]; warnings: string[]; name: string | null };
 
@@ -97,39 +104,40 @@ export default function UploadPage() {
 
   if (check) {
     return (
-      <>
+      <div className={page}>
         <FlowHeader step="Step 1 of 2" />
-        <main className="mx-auto max-w-[720px] px-16 pt-16 max-[1100px]:px-8 max-[680px]:px-4">
-          <h1 className="m-0 text-[clamp(28px,3vw,40px)] font-semibold leading-[1.1] tracking-[-0.03em]">
-            We read your resume.
-          </h1>
-          <p className="mt-4 max-w-[54ch] text-[17px] leading-7 text-ink-muted">
+        <main className={column}>
+          <h1 className={title}>We read your resume.</h1>
+          <p className={`mt-6 max-w-[54ch] ${lead}`}>
             {check.name ? `${check.name}, ` : ""}
             {check.pages} page{check.pages === 1 ? "" : "s"}, set in{" "}
             {check.fonts.slice(0, 2).join(" and ") || "its own font"}. Two things worth knowing
             before we start.
           </p>
 
-          <ul className="mt-8 list-none border-t border-line p-0">
-            {check.warnings.map((w) => (
-              <li
-                key={w}
-                className="grid grid-cols-[20px_minmax(0,1fr)] gap-3 border-b border-line py-4"
-              >
-                <span aria-hidden className="font-mark text-[13px] leading-6 text-gap">
-                  !
-                </span>
-                <span className="text-[15px] leading-6">{w}</span>
-              </li>
-            ))}
-          </ul>
+          {/* Hairlines, not drawn boxes: this is a list you read, not a set of
+              things you act on. The skin stops at the container. */}
+          <div className={`mt-10 ${box} ${offsetPage} rounded-md bg-paper-raised p-8 max-[680px]:p-6`}>
+            <ul className="m-0 list-none p-0">
+              {check.warnings.map((w) => (
+                <li
+                  key={w}
+                  className="grid grid-cols-[20px_minmax(0,1fr)] gap-3 border-b border-line py-4 last:border-b-0"
+                >
+                  <span aria-hidden className="font-mark text-[13px] leading-6 text-gap">
+                    !
+                  </span>
+                  <span className="text-[15px] leading-6">{w}</span>
+                </li>
+              ))}
+            </ul>
+            <p className="m-0 mt-5 max-w-[58ch] text-sm leading-[22px] text-ink-muted">
+              None of this stops us — we read your facts either way and set them in our own
+              resume layout.
+            </p>
+          </div>
 
-          <p className="mt-6 max-w-[58ch] text-sm leading-[22px] text-ink-muted">
-            None of this stops us — we read your facts either way and set them in our own
-            resume layout.
-          </p>
-
-          <div className="mt-8 flex items-center gap-4 max-[680px]:flex-col max-[680px]:items-stretch">
+          <div className="mt-10 flex items-center gap-5 max-[680px]:flex-col max-[680px]:items-stretch">
             <Button size="lg" onClick={() => router.push("/job")}>
               Continue with {filename}
             </Button>
@@ -145,22 +153,25 @@ export default function UploadPage() {
             onChange={(e) => void accept(e.target.files?.[0])}
           />
         </main>
-      </>
+      </div>
     );
   }
 
   return (
-    <>
+    <div className={page}>
       <FlowHeader step="Step 1 of 2" />
-      <main className="mx-auto max-w-[720px] px-16 pt-16 max-[1100px]:px-8 max-[680px]:px-4">
-        <h1 className="m-0 text-[clamp(28px,3vw,40px)] font-semibold leading-[1.1] tracking-[-0.03em]">
-          Upload your resume.
-        </h1>
-        <p className="mt-4 max-w-[54ch] text-[17px] leading-7 text-ink-muted">
+      <main className={column}>
+        <h1 className={title}>Upload your resume.</h1>
+        <p className={`mt-6 max-w-[54ch] ${lead}`}>
           We read your facts and reword them for the job — nothing invented. You only do this
           once — after that, every job takes one step.
         </p>
 
+        {/* A page-scale drawn object, so 8px. Dragging presses it into its own
+            offset and fills it with the sunken well — the same idiom the
+            buttons use for "active", rather than a new colour invented for
+            hover. The highlighter is not available for this: it means changed
+            text and nothing else. */}
         <div
           onDragOver={(e) => {
             e.preventDefault();
@@ -172,14 +183,21 @@ export default function UploadPage() {
             setDragging(false);
             void accept(e.dataTransfer.files[0]);
           }}
-          className={`mt-10 rounded-lg border border-dashed bg-paper-raised p-12 text-center
-                      transition-colors duration-150 ${dragging ? "border-ink" : "border-line-strong"}`}
+          className={`mt-10 rounded-md ${box} p-12 text-center transition-[background-color,box-shadow,transform] duration-150
+                      max-[680px]:p-8
+                      ${
+                        dragging
+                          ? "translate-x-[8px] translate-y-[8px] bg-paper-sunken shadow-none"
+                          : `bg-paper-raised ${offsetPage}`
+                      }`}
         >
-          <p className="m-0 text-[17px] leading-7">
+          <p className="m-0 text-lg font-semibold leading-[29px]">
             {busy ? "Reading your resume…" : "Drop your resume here"}
           </p>
-          <p className="m-0 mt-1 text-sm leading-[21px] text-ink-muted">Word (.docx) or PDF, up to 10 MB</p>
-          <div className="mt-6 flex justify-center">
+          <p className="m-0 mt-1 text-sm leading-[21px] text-ink-muted">
+            Word (.docx) or PDF, up to 10 MB
+          </p>
+          <div className="mt-7 flex justify-center">
             <Button onClick={() => inputRef.current?.click()} disabled={busy}>
               Choose a file
             </Button>
@@ -193,16 +211,26 @@ export default function UploadPage() {
           />
         </div>
 
+        {/* Drawn in the corrector's red, the same treatment the landing page
+            gives the one thing that needs the user. It is the only box on this
+            screen carrying a colour other than ink. */}
         {error && (
-          <p role="alert" className="mt-4 max-w-[58ch] text-[15px] leading-6 text-gap">
-            {error}
-          </p>
+          <div
+            role="alert"
+            className={`mt-8 rounded-md border-2 border-gap bg-paper-raised p-6 ${offsetGap}`}
+          >
+            <p className="m-0 text-lg font-semibold leading-[29px]">We can&rsquo;t read that file.</p>
+            <p className="m-0 mt-1 max-w-[58ch] text-[15px] leading-6 text-ink-muted">{error}</p>
+            <p className="mt-3 flex items-center gap-2 font-mark text-xs leading-4 text-gap before:h-[2px] before:w-[18px] before:bg-gap before:content-['']">
+              nothing was uploaded — try another file
+            </p>
+          </div>
         )}
 
         <p className="mt-8 text-sm leading-[22px] text-ink-muted">
           Your file stays in this browser until there is tailoring to do. No sign-up to try.
         </p>
       </main>
-    </>
+    </div>
   );
 }

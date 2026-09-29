@@ -13,7 +13,19 @@ import { MarginColumn, type Mark } from "@/components/rezz/MarginColumn";
    promises are still made on this page, each where its objection actually
    arises, and the footer still carries the line verbatim. */
 import { PassCard } from "@/components/rezz/PassCard";
+import { ThemeToggle } from "@/components/rezz/ThemeToggle";
 import { FaqItem } from "@/components/rezz/FaqItem";
+import {
+  box,
+  display,
+  h2,
+  h3,
+  lead,
+  offset,
+  offsetAccent,
+  offsetGap,
+  offsetPageOverride,
+} from "@/components/rezz/skin";
 
 /* Written at 1440px. Two floors, not one: the margin column drops at 1215 and
    the hero stacks at 1100. Mobile is out of scope until the owner says
@@ -21,46 +33,11 @@ import { FaqItem } from "@/components/rezz/FaqItem";
    not a phone design. */
 const wrap = "mx-auto max-w-[1312px] px-16 max-[1100px]:px-8 max-[680px]:px-4";
 
-/* ---------------------------------------------------------------------------
-   The landing page's skin (28 Sep 2026): black-on-white, 2px ink borders, hard
-   offset shadows. It is the marketing voice only — the app screens keep the
-   quiet hairline system, which is why nothing here is promoted into a token.
-
-   Three disciplines keep it from drifting into decoration:
-
-   1. A hard offset shadow is a DRAWN OUTLINE, not depth. That is the only
-      reading under which it may sit on a button at all, when the brand book
-      reserves real shadows for the resume and floating layers. So every one of
-      them is 0-blur, 0-spread, in a flat token colour, and interactive objects
-      press into their own offset on hover — the offset does something.
-   2. Exactly TWO offset steps: 4px for anything you act on, 8px for the three
-      page-scale objects (resume sheet, promise block, featured pass). An audit
-      found four steps in use — 3/4/5/8 — which is not a hierarchy, because
-      nobody can tell 4px from 5px at a glance.
-   3. `highlighter` still means exactly one thing. Yellow appears on this page
-      and never as decoration: behind the word "reworded" (the word that means
-      changed), behind the changed lines in the document, on the primary CTA's
-      offset, and on the two blocks that state the promise. Every other offset
-      is ink.
-   --------------------------------------------------------------------------- */
-const box = "border-2 border-ink";
-const hardInk = "shadow-[4px_4px_0_0_var(--ink)]";
-
-/* One scale, eight steps, after an audit found 29 distinct size/line-height
-   /weight combinations on this page — four different line-heights on 15px text
-   alone. Nobody chose those; they accumulated. Snap to a step or add one
-   deliberately, but do not invent a ninth by eye.
-
-     display  clamp(34,3.7vw,52)/1.08  700  -0.04em   h1
-     h2       clamp(32,3.2vw,46)/1.06  700  -0.04em   sections + prices
-     h3       20/28                    700  -0.02em   step titles
-     lead     18/29                    400/600/700    leads, FAQ Qs, promises
-     body     16/26                    400            bodies, answers, features
-     label    15/20                    600            buttons, nav
-     small    14/22                    400/500        meta, footer
-     mark     12/16 mono               500            margin marks, tags       */
-const h2 = "m-0 text-[clamp(32px,3.2vw,46px)] font-bold leading-[1.06] tracking-[-0.04em]";
-const lead = "text-lg leading-[29px] text-ink-muted";
+/* The skin — 2px ink outlines, hard offset shadows, the type scale — now lives
+   in `@/components/rezz/skin`, where its rules are written down. It was local
+   to this file until 29 Sep 2026, when the owner asked for one voice across
+   every screen and the app screens took it too. Nothing about the discipline
+   changed: two offset steps, and `highlighter` still means only "this changed". */
 
 /* The example is fixed across every screen: Priya Sharma applying to Kosha
    Payments. Same person, same nine requirements, everywhere. */
@@ -117,7 +94,7 @@ export default function LandingPage() {
         <div className={`${wrap} flex min-h-20 flex-wrap items-center justify-between gap-3 py-3`}>
           {/* Boxed, the way the reference boxes its mark: on a page drawn
               entirely in 2px ink, an unboxed wordmark reads as unfinished. */}
-          <span className={`inline-flex items-center ${box} rounded-md bg-paper-raised px-3 py-1.5 ${hardInk}`}>
+          <span className={`inline-flex items-center ${box} rounded-md bg-paper-raised px-3 py-1.5 ${offset}`}>
             <Wordmark />
           </span>
           {/* py-3 on the links is a tap target, not spacing: at their natural
@@ -126,7 +103,8 @@ export default function LandingPage() {
             <a href="#how" className="py-3 no-underline hover:underline hover:underline-offset-4">How it works</a>
             <a href="#pricing" className="py-3 no-underline hover:underline hover:underline-offset-4">Pricing</a>
             <a href="#faq" className="py-3 no-underline hover:underline hover:underline-offset-4">Questions</a>
-            <ButtonLink href="#extension" variant="brutalGhost">Get the Chrome extension</ButtonLink>
+            <ButtonLink href="#extension" variant="secondary">Get the Chrome extension</ButtonLink>
+            <ThemeToggle />
           </nav>
         </div>
       </header>
@@ -147,11 +125,11 @@ export default function LandingPage() {
                   rotated off the baseline — the one place on the page where
                   something is deliberately out of square, because it is the one
                   word the whole product is about. */}
-              <h1 className="m-0 text-[clamp(34px,3.7vw,52px)] font-bold leading-[1.08] tracking-[-0.04em]">
+              <h1 className={display}>
                 Your resume,{" "}
                 <span
                   className={`mx-[-2px] inline-block -rotate-[2.5deg] rounded-md ${box} bg-highlighter px-3 py-0.5
-                              text-on-highlighter ${hardInk}`}
+                              text-on-highlighter ${offset}`}
                 >
                   reworded
                 </span>{" "}
@@ -162,12 +140,12 @@ export default function LandingPage() {
                 own facts back, reworded for that job, with every change marked.
               </p>
               <div className="mt-8 flex flex-col items-start gap-5">
-                <ButtonLink href="/upload" variant="brutal" size="lg">
+                <ButtonLink href="/upload" size="lg">
                   Upload your resume
                 </ButtonLink>
                 <div className="flex flex-wrap items-center gap-3">
-                  <Badge tone="brutal">No sign-up to try</Badge>
-                  <Badge tone="brutal">1 free resume a week</Badge>
+                  <Badge tone="drawn">No sign-up to try</Badge>
+                  <Badge tone="drawn">1 free resume a week</Badge>
                 </div>
               </div>
             </div>
@@ -182,7 +160,7 @@ export default function LandingPage() {
                 name="Priya Sharma"
                 contact="Backend Engineer · Bengaluru · Notice period 30 days · priya.sharma@example.com"
                 pad="tight"
-                className={`${box} shadow-[8px_8px_0_0_var(--ink)]!`}
+                className={`${box} ${offsetPageOverride}`}
               >
                 <SheetRule />
                 <p id="l-sum" className="m-0">
@@ -268,7 +246,7 @@ export default function LandingPage() {
                 the third one — the one that asks — is visibly a thing you act
                 on, not a paragraph you scroll past. */}
             <div className="flex flex-col gap-5">
-              <div className={`${box} ${hardInk} rounded-md bg-paper-raised p-6`}>
+              <div className={`${box} ${offset} rounded-md bg-paper-raised p-6`}>
                 <div className="font-doc text-sm leading-[22px] text-ink-muted line-through">
                   Worked on backend APIs for payments.
                 </div>
@@ -283,7 +261,7 @@ export default function LandingPage() {
                 </div>
               </div>
 
-              <div className={`${box} ${hardInk} rounded-md bg-paper-raised p-6`}>
+              <div className={`${box} ${offset} rounded-md bg-paper-raised p-6`}>
                 <div className="font-doc text-sm leading-[22px] text-ink-muted line-through">
                   Mentored 2 junior engineers.
                 </div>
@@ -300,7 +278,7 @@ export default function LandingPage() {
               {/* The one that needs the user is drawn in the corrector's red, not
                   in ink, and is the only box on the page that carries a colour
                   other than the highlighter. */}
-              <div className="rounded-md border-2 border-gap bg-paper-raised p-6 shadow-[4px_4px_0_0_var(--gap)]">
+              <div className={`rounded-md border-2 border-gap bg-paper-raised p-6 ${offsetGap}`}>
                 <div className="text-lg font-bold leading-[29px]">
                   Kafka is in the job, but not in your resume.
                 </div>
@@ -311,11 +289,11 @@ export default function LandingPage() {
                   not in your resume — recruiters may ask about it
                 </div>
                 {/* Exactly two options, equal weight, nothing pre-selected. Both
-                    are brutalGhost for that reason: the moment one of them takes
+                    are `secondary` for that reason: the moment one of them takes
                     the primary fill, the page has picked for the user. */}
                 <div className="mt-5 flex gap-4 max-[680px]:flex-col">
-                  <Button variant="brutalGhost" className="flex-1">Skip</Button>
-                  <Button variant="brutalGhost" className="flex-1">Add it</Button>
+                  <Button variant="secondary" className="flex-1">Skip</Button>
+                  <Button variant="secondary" className="flex-1">Add it</Button>
                 </div>
               </div>
             </div>
@@ -331,7 +309,7 @@ export default function LandingPage() {
               are told apart before either is read. */}
           <ol className="mt-12 grid list-none grid-cols-3 gap-6 p-0 max-[1100px]:grid-cols-1">
             {STEPS.map((s) => (
-              <li key={s.n} className={`${box} ${hardInk} rounded-md bg-paper-raised p-7`}>
+              <li key={s.n} className={`${box} ${offset} rounded-md bg-paper-raised p-7`}>
                 <div
                   aria-hidden
                   className={`flex h-12 w-12 items-center justify-center rounded-md ${box}
@@ -340,7 +318,7 @@ export default function LandingPage() {
                 >
                   {s.n}
                 </div>
-                <h3 className="mt-5 mb-2 text-xl font-bold leading-7 tracking-[-0.02em]">{s.title}</h3>
+                <h3 className={`mt-5 mb-2 ${h3}`}>{s.title}</h3>
                 <p className="m-0 font-mark text-xs font-medium leading-4 text-ink-muted">{s.when}</p>
                 <p className="m-0 mt-3 text-base leading-[26px] text-ink-muted">{s.body}</p>
               </li>
@@ -349,7 +327,7 @@ export default function LandingPage() {
           {/* Sits here rather than up in the changes section: this is the point
               where a reader has understood the product and has furthest to
               scroll before the next chance to act. */}
-          <ButtonLink href="/upload" variant="brutal" size="lg" className="mt-12">
+          <ButtonLink href="/upload" size="lg" className="mt-12">
             Upload your resume
           </ButtonLink>
         </section>
@@ -432,16 +410,16 @@ export default function LandingPage() {
         {/* The page used to end on the FAQ, so a reader who scrolled the whole
             thing arrived at the footer with nothing to do. */}
         <section className={`${wrap} pt-28 max-[1100px]:pt-16`}>
-          <div className={`${box} rounded-md bg-paper-raised px-12 py-14 shadow-[8px_8px_0_0_var(--highlighter)] max-[680px]:px-6`}>
+          <div className={`${box} rounded-md bg-paper-raised px-12 py-14 ${offsetAccent} max-[680px]:px-6`}>
             <h2 className={`${h2} max-w-[18ch]`}>Try it on the job you&rsquo;re looking at now.</h2>
             <p className={`mt-5 max-w-[52ch] ${lead}`}>
               One resume a week is free, and you don&rsquo;t need an account to see what changes.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-5">
-              <ButtonLink href="/upload" variant="brutal" size="lg">
+              <ButtonLink href="/upload" size="lg">
                 Upload your resume
               </ButtonLink>
-              <Badge tone="brutal">No sign-up to try</Badge>
+              <Badge tone="drawn">No sign-up to try</Badge>
             </div>
           </div>
         </section>

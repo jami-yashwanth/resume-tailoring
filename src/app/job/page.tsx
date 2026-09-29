@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { FlowHeader } from "@/components/flow/FlowHeader";
 import { Button } from "@/components/rezz/Button";
+import { box, lead, offset, title } from "@/components/rezz/skin";
 import { session } from "@/lib/session";
 
 /**
@@ -14,6 +15,9 @@ import { session } from "@/lib/session";
  * spec; this is the one that works without any of them.
  */
 const MINIMUM = 50;
+
+const page = "min-h-screen bg-paper-raised";
+const column = "mx-auto max-w-[720px] px-16 pb-24 pt-16 max-[1100px]:px-8 max-[680px]:px-4";
 
 export default function JobPage() {
   const router = useRouter();
@@ -44,13 +48,11 @@ export default function JobPage() {
   }
 
   return (
-    <>
+    <div className={page}>
       <FlowHeader step="Step 2 of 2" />
-      <main className="mx-auto max-w-[720px] px-16 pt-16 max-[1100px]:px-8 max-[680px]:px-4">
-        <h1 className="m-0 text-[clamp(28px,3vw,40px)] font-semibold leading-[1.1] tracking-[-0.03em]">
-          Add the job.
-        </h1>
-        <p className="mt-4 max-w-[54ch] text-[17px] leading-7 text-ink-muted">
+      <main className={column}>
+        <h1 className={title}>Add the job.</h1>
+        <p className={`mt-6 max-w-[54ch] ${lead}`}>
           Paste the description. We read what it asks for, then show you which of those your
           resume already covers.
         </p>
@@ -65,17 +67,19 @@ export default function JobPage() {
         <label htmlFor="jd" className="sr-only">
           Job description
         </label>
+        {/* 4px, not 8px: you act on this one. The offset is the whole reason the
+            field reads as a control on a screen where nothing else is bordered. */}
         <textarea
           id="jd"
           value={text}
           onChange={(e) => setText(e.target.value)}
           rows={16}
           placeholder="Paste the whole job posting — requirements, responsibilities, everything."
-          className="mt-6 w-full resize-y rounded-lg border border-line-strong bg-paper-raised p-4
-                     font-ui text-[15px] leading-6 text-ink placeholder:text-ink-muted"
+          className={`mt-6 w-full resize-y rounded-md ${box} ${offset} bg-paper-raised p-4
+                      font-ui text-[15px] leading-6 text-ink placeholder:text-ink-muted`}
         />
 
-        <div className="mt-6 flex items-center gap-4 max-[680px]:flex-col max-[680px]:items-stretch">
+        <div className="mt-8 flex items-center gap-5 max-[680px]:flex-col max-[680px]:items-stretch">
           <Button onClick={submit} disabled={short} size="lg">
             Tailor my resume
           </Button>
@@ -86,6 +90,6 @@ export default function JobPage() {
           </p>
         </div>
       </main>
-    </>
+    </div>
   );
 }

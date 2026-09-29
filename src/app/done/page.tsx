@@ -2,8 +2,9 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { Button, ButtonLink } from "@/components/rezz/Button";
-import { Wordmark } from "@/components/rezz/Wordmark";
+import { FlowHeader } from "@/components/flow/FlowHeader";
+import { Button } from "@/components/rezz/Button";
+import { box, h3, lead, offsetAccent, offsetPage, title } from "@/components/rezz/skin";
 import { type Finish, session } from "@/lib/session";
 import type { PrepItem } from "@/lib/tailor/prep";
 
@@ -17,6 +18,10 @@ import type { PrepItem } from "@/lib/tailor/prep";
  * The facts are counts, never a score — the same rule as the Result screen.
  * Nothing here is a prediction about whether they will get the job.
  */
+
+const page = "min-h-screen bg-paper-raised";
+const column = "mx-auto max-w-[760px] px-16 pb-24 pt-16 max-[1100px]:px-8 max-[680px]:px-4";
+
 export default function DonePage() {
   const router = useRouter();
   const [finish, setFinish] = useState<Finish | null>(null);
@@ -54,50 +59,51 @@ export default function DonePage() {
       `${finish.reworded} line${finish.reworded === 1 ? "" : "s"} reworded from your own facts`,
     finish.added.length > 0 &&
       `${finish.added.length} line${finish.added.length === 1 ? "" : "s"} you added`,
+    /* Removals were never reported anywhere. A fact list that counts what went
+       in and stays quiet about what came out is not a fact list. */
+    (finish.removed ?? 0) > 0 &&
+      `${finish.removed} line${finish.removed === 1 ? "" : "s"} you removed to fit`,
     `${finish.pages} page${finish.pages === 1 ? "" : "s"}`,
   ].filter(Boolean) as string[];
 
   return (
-    <>
-      <header className="border-b border-line">
-        <div className="mx-auto flex h-[72px] max-w-[1312px] items-center justify-between px-16 max-[1100px]:px-8 max-[680px]:px-4">
-          <Wordmark />
-          <a href="/resumes" className="text-sm leading-[21px] text-ink-muted no-underline hover:underline">
-            Your resumes
-          </a>
-        </div>
-      </header>
+    <div className={page}>
+      <FlowHeader step="Done" />
 
-      <main className="mx-auto max-w-[760px] px-16 pb-24 pt-16 max-[1100px]:px-8 max-[680px]:px-4">
-        <h1 className="m-0 text-[clamp(28px,3vw,40px)] font-semibold leading-[1.1] tracking-[-0.03em]">
-          Your resume is ready for {finish.company}.
-        </h1>
-        <p className="mt-4 max-w-[54ch] text-[17px] leading-7 text-ink-muted">
-          Downloaded as <b className="font-semibold text-ink">{finish.filename}</b>. Same file,
-          same design, same fonts — with the changes you approved.
+      <main className={column}>
+        <h1 className={title}>Your resume is ready for {finish.company}.</h1>
+        {/* v1 override (28 Sep 2026, see CLAUDE.md): the download is one clean
+            Rezz template, not the file they uploaded. This line used to promise
+            "same file, same design, same fonts", which stopped being true the
+            day the override landed. */}
+        <p className={`mt-6 max-w-[54ch] ${lead}`}>
+          Downloaded as <b className="font-semibold text-ink">{finish.filename}</b>. One clean
+          Rezz template, your own words, and only the changes you approved.
         </p>
 
         {/* Counts, not a score. Each one is something the user can open the
-            file and check for themselves. */}
-        <ul className="mt-10 list-none border-t border-line p-0">
-          {facts.map((fact) => (
-            <li
-              key={fact}
-              className="grid grid-cols-[20px_minmax(0,1fr)] gap-3 border-b border-line py-3.5"
-            >
-              <span aria-hidden className="font-mark text-[13px] leading-6 text-verified">
-                ✓
-              </span>
-              <span className="text-[15px] leading-6">{fact}</span>
-            </li>
-          ))}
-        </ul>
+            file and check for themselves. The block is drawn; the facts inside
+            stay hairlines, because they are read rather than acted on. The
+            highlighter offset is allowed here: this block is the promise kept. */}
+        <div className={`mt-10 ${box} ${offsetAccent} rounded-md bg-paper-raised p-8 max-[680px]:p-6`}>
+          <ul className="m-0 list-none p-0">
+            {facts.map((fact) => (
+              <li
+                key={fact}
+                className="grid grid-cols-[20px_minmax(0,1fr)] gap-3 border-b border-line py-3.5 last:border-b-0"
+              >
+                <span aria-hidden className="font-mark text-[13px] leading-6 text-verified">
+                  ✓
+                </span>
+                <span className="text-[15px] leading-6">{fact}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
 
         {finish.added.length > 0 && (
-          <section className="mt-14">
-            <h2 className="m-0 text-[24px] font-semibold leading-8 tracking-[-0.02em]">
-              Be ready for what you added.
-            </h2>
+          <section className="mt-16">
+            <h2 className={h3}>Be ready for what you added.</h2>
             <p className="mt-3 max-w-[58ch] text-[15px] leading-6 text-ink-muted">
               You added {finish.added.length} line{finish.added.length === 1 ? "" : "s"} that
               {finish.added.length === 1 ? " wasn't" : " weren't"} in your resume before. A
@@ -109,8 +115,13 @@ export default function DonePage() {
               <p className="mt-6 text-[15px] leading-6 text-ink-muted">Preparing questions…</p>
             )}
 
+            {/* One drawn card per added line, the way the landing page draws each
+                change: the line itself, then what it costs you to keep it. */}
             {prep?.map((item) => (
-              <div key={item.line} className="mt-8 border-t border-line pt-6">
+              <div
+                key={item.line}
+                className={`mt-6 ${box} ${offsetPage} rounded-md bg-paper-raised p-6`}
+              >
                 <p className="m-0 font-doc text-[15px] leading-[23px]">
                   <mark>{item.line}</mark>
                 </p>
@@ -124,8 +135,11 @@ export default function DonePage() {
                     </li>
                   ))}
                 </ul>
-                <p className="mt-3 max-w-[60ch] rounded-md bg-paper-raised p-4 text-[15px] leading-6">
+                <p className="m-0 mt-4 border-t border-line pt-4 text-[15px] leading-6">
                   {item.honest}
+                </p>
+                <p className="mt-3 flex items-center gap-2 font-mark text-xs leading-4 text-verified before:h-[2px] before:w-[18px] before:bg-verified before:content-['']">
+                  you chose to add this line
                 </p>
               </div>
             ))}
@@ -139,7 +153,7 @@ export default function DonePage() {
           </section>
         )}
 
-        <div className="mt-14 flex items-center gap-4 border-t border-line pt-8 max-[680px]:flex-col max-[680px]:items-stretch">
+        <div className="mt-16 flex items-center gap-5 border-t-2 border-ink pt-10 max-[680px]:flex-col max-[680px]:items-stretch">
           <Button
             size="lg"
             onClick={() => {
@@ -151,11 +165,8 @@ export default function DonePage() {
           >
             Tailor for another job
           </Button>
-          <ButtonLink href="/resumes" variant="secondary">
-            See your resumes
-          </ButtonLink>
         </div>
       </main>
-    </>
+    </div>
   );
 }

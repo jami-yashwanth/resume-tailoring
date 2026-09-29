@@ -1,25 +1,26 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
-import { Button } from "@/components/rezz/Button";
-import { Wordmark } from "@/components/rezz/Wordmark";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { session } from "@/lib/session";
-import { coverageOf, pendingDecisions } from "@/lib/tailor/coverage";
+import { coverageOf } from "@/lib/tailor/coverage";
+import { downloadResume } from "@/lib/tailor/download";
+import { requirementRows } from "@/lib/tailor/requirement-rows";
+import { createReviewReducer, fromStored, toStored } from "@/lib/tailor/review";
+import { decisionAnnouncement, reviewList, undoAnnouncement, withDecisions } from "@/lib/tailor/review-list";
 import type { Layout, TailorPlan } from "@/lib/tailor/types";
-import { type Decisions, buildLines } from "@/lib/tailor/view";
-import { ChangePopover } from "./ChangePopover";
-import { DecisionBar } from "./DecisionBar";
+import { buildLines } from "@/lib/tailor/view";
 import { DefaultTemplateSheet } from "./DefaultTemplateSheet";
-import { JobPanel } from "./JobPanel";
-import { ResultMargin } from "./ResultMargin";
+import { ResultHeader } from "./ResultHeader";
+import { ReviewList } from "./ReviewList";
+import { SummaryPanel } from "./SummaryPanel";
 
 /**
  * The Result screen: see the value → make 0–3 decisions → finish.
  *
- * One bar of chrome, three columns, one decision at a time. State lives here
- * because every part of the screen moves together: a decision changes the
- * document, the margin, the coverage count and the bottom bar at once.
+ * Layout and wiring only. What the user can do lives in `review.ts`, what the
+ * screen shows in `review-list.ts` and `requirement-rows.ts`, both tested
+ * without a browser. The design is docs/superpowers/specs/2026-09-29-result-screen-revamp-design.md.
  */
 export function ResultScreen({
   layout,
@@ -40,100 +41,89 @@ export function ResultScreen({
   sample?: boolean;
 }) {
   const router = useRouter();
-  const [decisions, setDecisions] = useState<Decisions>({});
-  const [activeOpId, setActiveOpId] = useState<string | null>(null);
-  const [selectedRequirement, setSelectedRequirement] = useState<string | null>(null);
-  const [compare, setCompare] = useState(false);
+  const reducer = useMemo(() => createReviewReducer(plan.operations), [plan.operations]);
+  /* Read once, in the initialiser: this only mounts in the browser (the loader
+     renders a placeholder until the session is read), and hydrating in an
+     effect raced the effect that persists. */
+  const [state, dispatch] = useReducer(reducer, null, () => fromStored(session.getDecisions()));
   const [announcement, setAnnouncement] = useState("");
+  const announceFrame = useRef(0);
+  /* Cleared, then set on the next frame: a live region only speaks when its
+     text changes, so the second "Line removed to fit." in a row was silent. */
+  const announce = useCallback((text: string) => {
+    cancelAnimationFrame(announceFrame.current);
+    setAnnouncement("");
+    announceFrame.current = requestAnimationFrame(() => setAnnouncement(text));
+  }, []);
+  useEffect(() => () => cancelAnimationFrame(announceFrame.current), []);
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
 
-  const operations = useMemo(
-    () => plan.operations.map((op) => ({ ...op, approved: decisions[op.id] })),
-    [plan.operations, decisions],
-  );
+  useEffect(() => {
+    session.setDecisions(toStored(state));
+  }, [state]);
 
+  const operations = useMemo(() => withDecisions(plan.operations, state.decisions), [plan.operations, state.decisions]);
   const lines = useMemo(
-    () => buildLines(layout, operations, decisions, compare),
-    [layout, operations, decisions, compare],
+    () => buildLines(layout, operations, state.decisions, state.compare, state.wordings),
+    [layout, operations, state.decisions, state.compare, state.wordings],
   );
+  const list = reviewList(plan, layout, state);
+  const coverage = coverageOf(plan.requirements, plan.matches, operations);
+  const rows = requirementRows(plan.requirements, plan.matches, operations);
+  const highlightBlocks = rows.find((r) => r.requirement.id === state.selectedRequirement)?.pointsTo ?? null;
 
-  // Always the tailored version, independent of the "Compare with original"
-  // toggle above — a download must reflect the user's decisions, not
-  // whichever preview mode they happen to be looking at.
-  const downloadLines = useMemo(
-    () => buildLines(layout, operations, decisions, false),
-    [layout, operations, decisions],
-  );
-
-  const coverage = coverageOf(plan.matches, operations);
-  const pending = pendingDecisions(operations);
-  const total = plan.operations.filter((op) => op.needsDecision).length;
-  const reworded = plan.operations.filter((op) => op.claim === "reworded").length;
-  const ready = pending.length === 0;
+  const onPageCount = useCallback((pages: number) => dispatch({ type: "measuredPages", pages }), []);
 
   function decide(opId: string, approved: boolean) {
-    const op = plan.operations.find((o) => o.id === opId);
-    const left = pending.length - 1;
-    setDecisions((previous) => ({ ...previous, [opId]: approved }));
-    setActiveOpId(null);
-    // Polite live region, per the spec: name what happened and what remains.
-    setAnnouncement(
-      `${approved ? "Line added" : "Line skipped"}. ${
-        left === 0 ? "No decisions left." : `${left} decision${left === 1 ? "" : "s"} left.`
-      }`,
-    );
-    if (op && approved) setSelectedRequirement(null);
+    const item = list.toDecide.find((i) => i.op.id === opId);
+    dispatch({ type: "decide", opId, approved });
+    announce(decisionAnnouncement(item?.skill ?? null, approved, list.toDecide.length - 1));
   }
 
-  /**
-   * Render the user's decisions into the one default Rezz template and hand
-   * them the PDF.
-   *
-   * v1 override (28 Sep 2026, see CLAUDE.md): this used to send the file
-   * itself to be edited in place. Now the client resolves the final content
-   * — skipped lines and lines dropped to fit are excluded here, so a line
-   * that was skipped cannot arrive in the document by some later accident of
-   * state — and only that resolved (kind, text) list crosses the wire.
-   */
+  function undo(opId: string) {
+    const item = [...list.decided, ...list.reworded, ...list.removed].find((i) => i.op.id === opId);
+    dispatch({ type: "undo", opId });
+    announce(item ? undoAnnouncement(item) : "");
+  }
+
+  function choosePageFit(optionId: string) {
+    dispatch({ type: "choosePageFit", optionId, causedBy: list.pageFit?.causedBy ?? null });
+    announce(
+      optionId.startsWith("remove:")
+        ? "Line removed to fit."
+        : optionId.startsWith("shorter:")
+          ? "Using a shorter wording."
+          : `Keeping everything. Your resume is now ${state.pages} pages.`,
+    );
+  }
+
+  /** A changed line on the page opens its card, or its row's explanation. */
+  function focusLine(opId: string) {
+    if (list.toDecide.some((i) => i.op.id === opId)) dispatch({ type: "open", opId });
+    else dispatch({ type: "why", opId });
+  }
+
   async function download() {
     if (!resume) return;
     setDownloading(true);
     setDownloadError(null);
     try {
-      const blocks = downloadLines
-        .filter((line) => line.state !== "removed" && line.state !== "pending")
-        .map((line) => ({ kind: line.kind, text: line.text }));
-
-      const response = await fetch("/api/download", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ blocks }),
-      });
-      const body = await response.json();
-      if (!response.ok) throw new Error(body.error ?? "Could not write your file.");
-
-      const bytes = Uint8Array.from(atob(body.file), (c) => c.charCodeAt(0));
-      const url = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = (filename ?? "resume").replace(/\.(docx|pdf)$/i, "") + ` — ${company}.pdf`;
-      link.click();
-      URL.revokeObjectURL(url);
-
-      // Hand the finish screen what actually happened, rather than making it
-      // re-derive counts from state the user is about to navigate away from.
+      // Always the tailored version, whatever the compare toggle shows.
+      const final = buildLines(layout, operations, state.decisions, false, state.wordings);
+      const saved = await downloadResume(final, filename, company);
       session.setFinish({
-        filename: link.download,
+        filename: saved.name,
         company,
         role,
-        pages: body.pages,
+        pages: saved.pages ?? state.pages,
         pagesBefore: layout.pages,
         covered: coverage.covered,
         total: coverage.total,
         originalCovered: coverage.originalCovered,
-        reworded,
-        added: operations.filter((op) => op.approved === true).map((op) => op.text ?? ""),
+        reworded: list.reworded.filter((i) => i.state === "reworded").length,
+        removed: list.removed.length,
+        added: list.decided.filter((i) => i.state === "added").map((i) => i.text),
         operations,
       });
       router.push("/done");
@@ -144,176 +134,90 @@ export function ResultScreen({
     }
   }
 
-  /* Built from what actually happened rather than a template with numbers
-     poured in. A run that reworded nothing should not open with "0 lines
-     reworded" — that is a true sentence about nothing, and it reads as a
-     failure report. */
-  const added = operations.filter((op) => op.approved === true).length;
-  const status = [
-    reworded > 0 && `${reworded} line${reworded === 1 ? "" : "s"} reworded from your own facts.`,
-    added > 0 && `${added} line${added === 1 ? "" : "s"} you added.`,
-    pending.length > 0
-      ? `${pending.length} line${pending.length === 1 ? "" : "s"} ${
-          pending.length === 1 ? "needs" : "need"
-        } your OK.`
-      : total > 0 && "All decisions made.",
-    reworded === 0 && total === 0 && "Your resume already covers what this job asks for.",
-  ]
-    .filter(Boolean)
-    .join(" ");
-
-  const activeOp = operations.find((op) => op.id === activeOpId) ?? null;
-  const activeLine = lines.find((line) => line.opId === activeOpId);
-
-  const highlightBlocks = useMemo(() => {
-    if (!selectedRequirement) return null;
-    const match = plan.matches.find((m) => m.requirementId === selectedRequirement);
-    const fromOps = operations
-      .filter((op) => op.requirements.includes(selectedRequirement))
-      .map((op) => op.block);
-    return [...(match?.evidence ?? []), ...fromOps];
-  }, [selectedRequirement, plan.matches, operations]);
+  const notice =
+    downloadError || sample || !resume ? (
+      <p
+        role={downloadError ? "alert" : undefined}
+        className={`m-0 rounded-lg border p-3 text-[13px] leading-[19px] ${
+          downloadError ? "border-gap bg-gap-soft font-semibold text-gap" : "border-line bg-paper-raised text-ink-muted"
+        }`}
+      >
+        {downloadError ??
+          (sample ? (
+            <>
+              Showing a saved sample tailoring. <a href="/upload">Tailor your own resume</a> to download a file.
+            </>
+          ) : (
+            <>
+              Your decisions are safe, but this browser no longer has your file, so we can&rsquo;t write the
+              download. <a href="/upload">Upload it again</a> to finish.
+            </>
+          ))}
+      </p>
+    ) : null;
 
   return (
     <div className="flex h-screen flex-col overflow-hidden">
-      {/* One bar of chrome. The header and the status line are the same row:
-          two stacked bars was the v1 mistake. */}
-      <header className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-8 border-b border-line bg-paper-raised px-8 py-3 max-[900px]:grid-cols-1 max-[900px]:gap-3">
-        <div className="min-w-0">
-          <div className="flex items-baseline gap-4">
-            <Wordmark />
-            <p className="m-0 truncate text-[15px] leading-[21px]">
-              <a href="/tracker" className="text-ink-muted no-underline hover:underline">
-                Your resumes
-              </a>{" "}
-              / <b className="font-semibold">{role}, {company}</b>
-            </p>
-          </div>
-          <p role="status" className="m-0 mt-px text-[13px] leading-[18px] text-ink-muted">
-            {compare ? "Showing the file you uploaded. No changes applied." : status}
-          </p>
-        </div>
+      <ResultHeader
+        role={role}
+        company={company}
+        status={list.status}
+        compare={state.compare}
+        onToggleCompare={() => dispatch({ type: "toggleCompare" })}
+        ready={list.ready}
+        onDownload={download}
+        // Not while the page-fit question is open: the file would be a length
+        // nobody agreed to. The status says why.
+        canDownload={Boolean(resume) && !list.pageFit}
+        downloading={downloading}
+      />
 
-        <div className="flex items-center gap-4">
-          <span className="text-[13px] leading-[18px] text-ink-muted">
-            Page 1 of {layout.pages}
-          </span>
-          <button
-            type="button"
-            aria-pressed={compare}
-            onClick={() => {
-              setCompare((v) => !v);
-              setActiveOpId(null);
-            }}
-            className="inline-flex min-h-11 items-center gap-2 rounded-full border border-line-strong
-                       bg-transparent py-0 pl-3 pr-4 font-ui text-sm font-medium leading-5 text-ink
-                       hover:border-ink"
-          >
-            <span
-              aria-hidden
-              className={`relative h-4 w-7 flex-none rounded-full transition-colors duration-150
-                          ${compare ? "bg-ink" : "bg-line-strong"}`}
-            >
-              <span
-                className={`absolute top-0.5 h-3 w-3 rounded-full bg-white transition-all duration-150
-                            ${compare ? "left-[14px]" : "left-0.5"}`}
-              />
-            </span>
-            Compare with original
-          </button>
-          <Button
-            variant={ready ? "primary" : "secondary"}
-            onClick={download}
-            disabled={!resume || downloading}
-            title={sample ? "This is the saved sample. Tailor your own resume to download." : undefined}
-          >
-            {downloading ? "Writing your file…" : "Download resume"}
-          </Button>
-        </div>
-      </header>
-
-      {(sample || downloadError) && (
-        <p
-          role={downloadError ? "alert" : undefined}
-          className={`border-b px-8 py-2 text-[13px] leading-[18px] ${
-            downloadError
-              ? "border-line bg-gap-soft text-gap"
-              : "border-line bg-paper-raised text-ink-muted"
-          }`}
-        >
-          {downloadError ?? (
-            <>
-              Showing a saved sample tailoring. <a href="/upload">Tailor your own resume</a> to
-              download a file.
-            </>
-          )}
-        </p>
-      )}
-
+      {/* 220 · up to 794 (A4 at 96dpi, the page template_render.py draws) · 300.
+          Below 1240 the summary folds into a strip above; below 900 the review
+          list moves above the resume. Nothing is ever hidden. */}
       <div
-        className="grid flex-1 justify-center gap-8 overflow-y-auto bg-paper-sunken px-8 pt-8
-                   [grid-template-columns:264px_minmax(0,620px)_300px]
-                   max-[1240px]:[grid-template-columns:240px_minmax(0,1fr)]
-                   max-[900px]:[grid-template-columns:minmax(0,1fr)] max-[900px]:p-4"
+        className="grid flex-1 content-start justify-center gap-8 overflow-y-auto bg-paper-sunken px-8 py-8
+                   [grid-template-columns:220px_minmax(0,794px)_300px]
+                   max-[1240px]:[grid-template-columns:minmax(0,1fr)_300px]
+                   max-[900px]:[grid-template-columns:minmax(0,1fr)] max-[900px]:gap-4 max-[900px]:p-4"
       >
-        <div className="max-[900px]:hidden">
-          <JobPanel
-            requirements={plan.requirements}
-            matches={plan.matches}
-            operations={operations}
-            coverage={coverage}
-            selected={selectedRequirement}
-            onSelect={setSelectedRequirement}
-          />
-        </div>
-
-        <DefaultTemplateSheet
-          layout={layout}
-          lines={lines}
-          activeOpId={activeOpId}
-          highlightBlocks={highlightBlocks}
-          onSelect={(opId) => setActiveOpId((current) => (current === opId ? null : opId))}
+        <SummaryPanel
+          className="self-start min-[1240px]:sticky min-[1240px]:top-0 max-[1240px]:col-span-2 max-[900px]:col-span-1"
+          rows={rows}
+          coverage={coverage}
+          selected={state.selectedRequirement}
+          onSelect={(requirementId, opId) => dispatch({ type: "selectRequirement", requirementId, opId })}
         />
 
-        <div className="max-[1240px]:hidden">
-          {!compare && (
-            <ResultMargin
-              lines={lines}
-              operations={operations}
-              activeOpId={activeOpId}
-              onSelect={setActiveOpId}
-            >
-              {activeOp && activeLine && (
-                <ChangePopover
-                  op={activeOp}
-                  layout={layout}
-                  requirements={plan.requirements}
-                  anchorKey={activeLine.key}
-                  onUndo={() => setActiveOpId(null)}
-                  onClose={() => setActiveOpId(null)}
-                />
-              )}
-            </ResultMargin>
-          )}
-        </div>
+        <DefaultTemplateSheet
+          className="max-[900px]:order-3"
+          layout={layout}
+          lines={lines}
+          activeOpId={state.currentOpId ?? list.current?.op.id ?? null}
+          highlightBlocks={highlightBlocks}
+          onSelect={focusLine}
+          onPageCount={onPageCount}
+        />
+
+        <ReviewList
+          className="self-start min-[900px]:sticky min-[900px]:top-0 min-[900px]:max-h-[calc(100dvh-8rem)]
+                     min-[900px]:overflow-y-auto max-[900px]:order-2"
+          list={list}
+          state={state}
+          coverage={coverage}
+          notice={notice}
+          onDecide={decide}
+          onUndo={undo}
+          onNextWording={(opId) => dispatch({ type: "nextWording", opId })}
+          onOpen={(opId) => dispatch({ type: "open", opId })}
+          onWhy={(opId) => dispatch({ type: "why", opId })}
+          onChoosePageFit={choosePageFit}
+        />
       </div>
 
       <p aria-live="polite" className="sr-only">
         {announcement}
       </p>
-
-      {!compare && (
-        <DecisionBar
-          pending={pending[0] ?? null}
-          index={total - pending.length + 1}
-          total={total}
-          onDecide={decide}
-          ready={ready}
-          coverage={coverage}
-          pages={layout.pages}
-          onDownload={download}
-        />
-      )}
     </div>
   );
 }

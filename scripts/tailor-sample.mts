@@ -4,7 +4,7 @@
  * The one thing that proves the product works before any screen exists: a real
  * DOCX in, a real tailored DOCX out, with every guardrail applied.
  *
- *   cd services/docsvc && .venv/bin/uvicorn app.main:app --port 8000 &
+ *   npm run docsvc &
  *   npx tsx scripts/tailor-sample.mts
  */
 import fs from "node:fs";

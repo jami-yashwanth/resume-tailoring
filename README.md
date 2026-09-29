@@ -11,7 +11,7 @@ cp .env.example .env.local   # then add your ANTHROPIC_API_KEY
 npm run dev
 ```
 
-Open http://localhost:3000.
+Open http://localhost:3001.
 
 ## How it works
 
@@ -33,6 +33,8 @@ building a tool that lies on your behalf.
 
 | command | does |
 | --- | --- |
-| `npm run dev` | dev server |
+| `npm run dev` | dev server, on `FRONTEND_PORT` (3001) |
+| `npm run docsvc` | the file service, on `BACKEND_PORT` (8001) |
 | `npm run build` | production build |
 | `npm run typecheck` | `tsc --noEmit` |
+| `node scripts/ports.mjs` | print the ports the launchers will use |

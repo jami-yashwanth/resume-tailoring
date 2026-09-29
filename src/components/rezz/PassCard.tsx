@@ -1,5 +1,6 @@
 import { Badge } from "./Badge";
 import { ButtonLink } from "./Button";
+import { box, offset, offsetAccent } from "./skin";
 
 /**
  * A pass. This is the only place in the product where a bordered, rounded box
@@ -28,12 +29,12 @@ export function PassCard({
 }) {
   return (
     <div
-      className={`flex flex-col gap-4 rounded-md border-2 border-ink bg-paper-raised p-8
-                  ${featured ? "shadow-[8px_8px_0_0_var(--highlighter)]" : "shadow-[4px_4px_0_0_var(--ink)]"}`}
+      className={`flex flex-col gap-4 rounded-md ${box} bg-paper-raised p-8
+                  ${featured ? offsetAccent : offset}`}
     >
       <div className="flex items-center justify-between gap-2">
         <div className="text-[15px] font-semibold leading-5">{name}</div>
-        {featured && <Badge tone="brutal">Most popular</Badge>}
+        {featured && <Badge tone="drawn">Most popular</Badge>}
       </div>
       {/* The price is the pricing section's display moment, so it takes the same
           weight and tracking as the h2 above it. It was set lighter (600) and
@@ -58,7 +59,7 @@ export function PassCard({
           </li>
         ))}
       </ul>
-      <ButtonLink href={href} variant={featured ? "brutal" : "brutalGhost"}>
+      <ButtonLink href={href} variant={featured ? "primary" : "secondary"}>
         {cta}
       </ButtonLink>
     </div>

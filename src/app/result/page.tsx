@@ -13,8 +13,11 @@ import type { Layout, TailorPlan } from "@/lib/tailor/types";
  */
 export const dynamic = "force-dynamic";
 
+/* The job is read from the browser's session, which this server component
+   cannot see, so the tab cannot name it. It used to name one particular job at
+   one particular company to every visitor. */
 export const metadata = {
-  title: "Backend Engineer, Kosha Payments — Rezz",
+  title: "Your tailored resume — Rezz",
 };
 
 type Fixture = { layout: Layout; plan: TailorPlan };

@@ -61,10 +61,26 @@ export function useMarginAnchors<T extends HTMLElement>() {
     const observer = row ? new ResizeObserver(align) : null;
     if (row && observer) observer.observe(row);
 
+    /* A popover is absolutely positioned, so opening one changes no layout and
+       the resize observer never fires — which left every popover stacked at the
+       top of the margin instead of beside its line. Marks appearing and
+       disappearing as decisions are made have the same problem, and worse: React
+       does not manage the `top` we set imperatively, so a surviving mark kept a
+       stale one. Watching the margin's own children catches both.
+       childList only: `align` writes inline styles, and observing attributes
+       here would have it retrigger itself forever. */
+    const marks = containerRef.current
+      ? new MutationObserver(() => align())
+      : null;
+    if (containerRef.current && marks) {
+      marks.observe(containerRef.current, { childList: true, subtree: true });
+    }
+
     window.addEventListener("resize", align);
     return () => {
       cancelled = true;
       observer?.disconnect();
+      marks?.disconnect();
       window.removeEventListener("resize", align);
     };
   }, [align]);

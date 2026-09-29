@@ -23,9 +23,9 @@ export function MarginColumn({ marks, label }: { marks: Mark[]; label: string })
 
   return (
     <div ref={ref} aria-label={label} className="relative font-mark">
-      {/* 2px connectors, not hairlines: on the brutalist landing the rest of the
-          page is drawn in 2px ink, and a 1px rule here would make the signature
-          element the quietest thing on the screen. */}
+      {/* 2px connectors, not hairlines: the chrome around this is drawn in 2px
+          ink, and a 1px rule here would make the signature element the quietest
+          thing on the screen. */}
       {marks.map((m) => (
         <p
           key={m.anchor}

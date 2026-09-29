@@ -7,17 +7,21 @@ import type { ReactNode } from "react";
  * product; there is no tone here that doesn't.
  */
 /* Radius lives on the tone, not the base: `radius-full` is reserved for chips
-   and every app tone is one, but `brutal` is not. On the landing page it was
-   the only round object among 22 square ones — a leftover from the old skin
-   rather than a decision, so it takes the same radius as everything there. */
+   and every state tone is one, but `drawn` is not. On a page drawn entirely in
+   squares it was the only round object among 22 — a leftover from the old skin
+   rather than a decision, so it takes the same radius as everything there.
+
+   The state tones stay pills on purpose. They appear inline in dense lists, next
+   to running text, where a 2px box with an offset would read as a control you
+   can press. A tone that reports a state is not a thing you act on. */
 const TONES = {
   neutral: "rounded-full border border-line-strong bg-transparent text-ink",
   verified: "rounded-full bg-verified-soft text-verified",
   gap: "rounded-full bg-gap-soft text-gap",
   changed: "rounded-full bg-highlighter text-on-highlighter",
-  /* Landing page only. Drawn in ink with a hard offset instead of tinted — it
-     carries no state, so it borrows no state colour. */
-  brutal: "rounded-md border-2 border-ink bg-paper-raised text-ink shadow-[4px_4px_0_0_var(--ink)]",
+  /* Drawn in ink with a hard offset instead of tinted — it carries no state, so
+     it borrows no state colour. */
+  drawn: "rounded-md border-2 border-ink bg-paper-raised text-ink shadow-[4px_4px_0_0_var(--ink)]",
 } as const;
 
 export function Badge({
