@@ -19,6 +19,9 @@ export type ReviewState = {
   /** Lines removed to make room for an insert, keyed by that insert's id —
    *  so undoing the Add brings back what it pushed out. */
   removedFor: Record<string, string[]>;
+  /** The insert most recently added, so a page overflow is filed under the Add
+   *  that caused it rather than under whichever changed line comes last. */
+  lastAdded: string | null;
   /** The card the user opened; null lets the list pick the first pending one. */
   currentOpId: string | null;
   /** Whether "Why this line?" is expanded for `currentOpId`. */
@@ -56,6 +59,7 @@ export function fromStored(stored: Persisted | null): ReviewState {
     pagesAllowed: stored?.pagesAllowed ?? null,
     growthAllowed: stored?.growthAllowed ?? false,
     removedFor: stored?.removedFor ?? {},
+    lastAdded: null,
     currentOpId: null,
     whyOpen: false,
     selectedRequirement: null,
@@ -83,6 +87,7 @@ export function createReviewReducer(operations: PlannedOp[]) {
         return {
           ...state,
           decisions: { ...state.decisions, [action.opId]: action.approved },
+          lastAdded: action.approved ? action.opId : state.lastAdded,
           currentOpId: null,
           whyOpen: false,
         };
@@ -144,7 +149,8 @@ function undo(state: ReviewState, op: PlannedOp | undefined): ReviewState {
   for (const id of state.removedFor[op.id] ?? []) decisions[id] = undefined;
   const removedFor = { ...state.removedFor };
   delete removedFor[op.id];
-  return { ...state, decisions, removedFor, currentOpId: op.id, whyOpen: false };
+  const lastAdded = state.lastAdded === op.id ? null : state.lastAdded;
+  return { ...state, decisions, removedFor, lastAdded, currentOpId: op.id, whyOpen: false };
 }
 
 function choosePageFit(state: ReviewState, optionId: string, causedBy: string | null): ReviewState {

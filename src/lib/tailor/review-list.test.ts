@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fromStored, type ReviewState } from "./review";
+import { createReviewReducer, fromStored, type ReviewState } from "./review";
 import { decisionAnnouncement, pageFitOptions, reviewList, undoAnnouncement, withDecisions } from "./review-list";
 import type { Layout, PlannedOp, TailorPlan } from "./types";
 
@@ -116,6 +116,33 @@ describe("reviewList", () => {
     const list = reviewList(plan, layout, state({ decisions: { ins1: true }, pages: 2, pagesAllowed: 1 }));
     expect(list.pageFit).not.toBeNull();
     expect(list.status).toBe("1 to decide · 2 pages");
+  });
+
+  it("files the overflow under the Add, even when a rewording sits later in the document", () => {
+    // reph2 rewords b8, which comes after ins1's line: the last changed line
+    // in document order is the rewording, but the Add is what made it grow.
+    const reph2: PlannedOp = { ...base, id: "reph2", op: "rephrase", block: "b8", text: "Built a nightly job.", evidence: ["b8"] };
+    const later = { ...plan, operations: [ins1, reph2, rem] };
+    const grown = state({ decisions: { ins1: true }, lastAdded: "ins1", pages: 2, pagesAllowed: 1 });
+    const list = reviewList(later, layout, grown);
+    expect(list.pageFit?.causedBy).toBe("ins1");
+    expect(list.pageFit!.options[0].id).toBe("shorter:ins1:1");
+  });
+
+  it("brings back the line removed for an Add when that Add is undone, with a rewording after it", () => {
+    const reph2: PlannedOp = { ...base, id: "reph2", op: "rephrase", block: "b8", text: "Built a nightly job.", evidence: ["b8"] };
+    const later = { ...plan, operations: [ins1, reph2, rem] };
+    const reduce = createReviewReducer(later.operations);
+
+    let s = reduce(state({ pages: 1, pagesAllowed: 1 }), { type: "decide", opId: "ins1", approved: true });
+    s = reduce(s, { type: "measuredPages", pages: 2 });
+    const causedBy = reviewList(later, layout, s).pageFit!.causedBy;
+    s = reduce(s, { type: "choosePageFit", optionId: "remove:rem", causedBy });
+    expect(reviewList(later, layout, s).removed.map((i) => i.op.id)).toEqual(["rem"]);
+
+    s = reduce(s, { type: "undo", opId: "ins1" });
+    expect(s.decisions.rem).toBeUndefined();
+    expect(reviewList(later, layout, s).removed).toEqual([]);
   });
 
   it("never asks about length while comparing", () => {

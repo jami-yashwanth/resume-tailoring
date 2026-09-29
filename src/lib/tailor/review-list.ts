@@ -128,15 +128,20 @@ export function reviewList(plan: TailorPlan, layout: Layout, state: ReviewState)
   if (!state.compare && state.pagesAllowed !== null && state.pages > state.pagesAllowed) {
     const lines = buildLines(layout, operations, state.decisions, false, state.wordings);
     const lastChanged = [...lines].reverse().find((l) => l.state === "added" || l.state === "reworded");
+    /* The Add the user just made, when there is one: the last changed line in
+       document order can be a rewording further down, and filing the removal
+       under it meant undoing the Add did not bring the removed line back. */
+    const lastAdded = state.lastAdded && state.decisions[state.lastAdded] === true ? state.lastAdded : null;
+    const causedBy = lastAdded ?? lastChanged?.opId ?? null;
     pageFit = {
-      causedBy: lastChanged?.opId ?? null,
+      causedBy,
       pages: state.pages,
       allowed: state.pagesAllowed,
       options: pageFitOptions({
         operations,
         layout,
         wordings: state.wordings,
-        changedOpId: lastChanged?.opId,
+        changedOpId: causedBy ?? undefined,
         pages: state.pages,
       }),
     };

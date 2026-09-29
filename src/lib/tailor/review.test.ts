@@ -16,6 +16,17 @@ const reduce = createReviewReducer(ops);
 const start = (over: Partial<ReviewState> = {}): ReviewState => ({ ...fromStored(null), ...over });
 
 describe("decide", () => {
+  it("remembers the most recent Add, and forgets it when that Add is undone", () => {
+    let state = reduce(start(), { type: "decide", opId: "ins1", approved: true });
+    expect(state.lastAdded).toBe("ins1");
+    state = reduce(state, { type: "decide", opId: "ins2", approved: false });
+    expect(state.lastAdded).toBe("ins1");
+    state = reduce(state, { type: "undo", opId: "ins2" });
+    expect(state.lastAdded).toBe("ins1");
+    state = reduce(state, { type: "undo", opId: "ins1" });
+    expect(state.lastAdded).toBeNull();
+  });
+
   it("records the answer and lets the list pick the next card", () => {
     const next = reduce(start({ currentOpId: "ins1", whyOpen: true }), { type: "decide", opId: "ins1", approved: true });
     expect(next.decisions.ins1).toBe(true);
