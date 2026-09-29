@@ -88,7 +88,7 @@ const STEPS = [
     n: "2",
     title: "Add the job",
     when: "Every job after that",
-    body: "Paste the job description. That's all we need to read its requirements.",
+    body: "Paste the job description, or just the posting's link. You see what we read before anything happens.",
   },
   {
     /* No numeral: this one is the outcome, not a step. The arrow is a drawn

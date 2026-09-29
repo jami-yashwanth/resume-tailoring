@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { FlowHeader } from "@/components/flow/FlowHeader";
 import { Button } from "@/components/rezz/Button";
 import { box, lead, offset, title } from "@/components/rezz/skin";
+import { looksLikeUrl } from "@/lib/job-fetch";
 import { session } from "@/lib/session";
 
 /**
@@ -24,6 +25,8 @@ export default function JobPage() {
   const [text, setText] = useState("");
   const [filename, setFilename] = useState<string | null>(null);
   const [checked, setChecked] = useState(false);
+  const [fetching, setFetching] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   useEffect(() => {
     // No resume means this page was opened directly; send them to step one
@@ -47,14 +50,41 @@ export default function JobPage() {
     router.push("/tailoring");
   }
 
+  // A lone pasted link is an offer, not a command: the fetched text fills the
+  // textarea so the user sees and can edit exactly what will be used.
+  const pastedUrl = looksLikeUrl(text) ? text.trim() : null;
+
+  async function fetchPosting() {
+    if (!pastedUrl || fetching) return;
+    setFetching(true);
+    setFetchError(null);
+    try {
+      const response = await fetch("/api/job-fetch", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: pastedUrl }),
+      });
+      const body = await response.json();
+      if (!response.ok) {
+        setFetchError(body.error ?? "That page wouldn't let us read it — paste the description instead.");
+        return;
+      }
+      setText(body.text);
+    } catch {
+      setFetchError("That page wouldn't let us read it — paste the description instead.");
+    } finally {
+      setFetching(false);
+    }
+  }
+
   return (
     <div className={page}>
       <FlowHeader step="Step 2 of 2" />
       <main className={column}>
         <h1 className={title}>Add the job.</h1>
         <p className={`mt-6 max-w-[54ch] ${lead}`}>
-          Paste the description. We read what it asks for, then show you which of those your
-          resume already covers.
+          Paste the description &mdash; or just the posting&rsquo;s link. We read what it asks for,
+          then show you which of those your resume already covers.
         </p>
 
         {filename && (
@@ -79,14 +109,33 @@ export default function JobPage() {
                       font-ui text-[15px] leading-6 text-ink placeholder:text-ink-muted`}
         />
 
+        {pastedUrl && (
+          <div className="mt-4 flex items-center gap-4">
+            <Button variant="secondary" onClick={() => void fetchPosting()} disabled={fetching}>
+              {fetching ? "Reading that page…" : "Read the posting from that link"}
+            </Button>
+            <p className="m-0 text-sm leading-[21px] text-ink-muted">
+              You&rsquo;ll see the text before anything happens.
+            </p>
+          </div>
+        )}
+
+        {fetchError && (
+          <p role="alert" className="mt-4 max-w-[58ch] text-[15px] leading-6 font-semibold text-gap">
+            {fetchError}
+          </p>
+        )}
+
         <div className="mt-8 flex items-center gap-5 max-[680px]:flex-col max-[680px]:items-stretch">
-          <Button onClick={submit} disabled={short} size="lg">
+          <Button onClick={submit} disabled={short || Boolean(pastedUrl)} size="lg">
             Tailor my resume
           </Button>
           <p className="m-0 text-sm leading-[21px] text-ink-muted">
-            {short
-              ? "Paste the job description to continue."
-              : "About fifteen seconds. Nothing is added without your OK."}
+            {pastedUrl
+              ? "Read the posting first, or paste its text."
+              : short
+                ? "Paste the job description to continue."
+                : "About fifteen seconds. Nothing is added without your OK."}
           </p>
         </div>
       </main>
