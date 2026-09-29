@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Layout, PlannedOp } from "./types";
-import { anchorLabel, buildLines, groupIntoBlocks, wordingFor, wordingOptions } from "./view";
+import { anchorLabel, buildLines, cleanText, groupIntoBlocks, stripBullet, wordingFor, wordingOptions } from "./view";
 
 const layout: Layout = {
   format: "docx",
@@ -160,5 +160,37 @@ describe("anchorLabel", () => {
   it("says nothing rather than guessing when there is no role above", () => {
     expect(anchorLabel(withRole, "b4")).toBeNull();
     expect(anchorLabel(withRole, "nope")).toBeNull();
+  });
+});
+
+describe("stripBullet", () => {
+  it("drops a leading bullet glyph the way the renderer does", () => {
+    expect(stripBullet("• Worked on APIs")).toBe("Worked on APIs");
+    expect(stripBullet("•  ▪ Did two things")).toBe("Did two things");
+    expect(stripBullet("Plain line")).toBe("Plain line");
+  });
+
+  it("strips only bullets, never paragraphs", () => {
+    expect(cleanText("bullet", "- Led a team")).toBe("Led a team");
+    expect(cleanText("paragraph", "- not a bullet")).toBe("- not a bullet");
+  });
+});
+
+describe("buildLines bullet text", () => {
+  const bulleted: Layout = {
+    ...layout,
+    blocks: layout.blocks.map((b) => (b.id === "b6" ? { ...b, text: "• Worked on backend APIs for payments." } : b)),
+  };
+
+  it("shows a bullet once, not twice", () => {
+    const line = buildLines(bulleted, [], {}).find((l) => l.blockId === "b6");
+    expect(line?.text).toBe("Worked on backend APIs for payments.");
+  });
+
+  it("strips a rewording that arrives with its own glyph", () => {
+    const lines = buildLines(bulleted, [op({ text: "• Designed REST APIs." })], {});
+    const line = lines.find((l) => l.blockId === "b6");
+    expect(line?.text).toBe("Designed REST APIs.");
+    expect(line?.original).toBe("Worked on backend APIs for payments.");
   });
 });

@@ -61,6 +61,26 @@ export function inheritRun(text: string, from: Run[]): Run[] {
 }
 
 /**
+ * The renderer's own bullet set (`BULLET_CHARS` in template_render.py), so the
+ * preview strips exactly what the PDF strips. A resume whose bullets carry a
+ * typed "•" otherwise shows two: the text's and the list's.
+ */
+const BULLET_CHARS = "•◦▪‣·-*";
+
+export function stripBullet(text: string): string {
+  let start = 0;
+  while (start < text.length && (BULLET_CHARS.includes(text[start]) || text[start] === " ")) {
+    start += 1;
+  }
+  return text.slice(start).trim();
+}
+
+/** Bullet text without its glyph; every other kind untouched. */
+export function cleanText(kind: BlockKind, text: string): string {
+  return kind === "bullet" ? stripBullet(text) : text;
+}
+
+/**
  * What the user decided about each operation.
  *
  * `true` / `false` mean different things per operation, and deliberately so —
@@ -118,7 +138,7 @@ export function buildLines(
     kind: block.kind,
     section: block.section,
     style: block.style,
-    text: block.text,
+    text: cleanText(block.kind, block.text),
     state: "unchanged",
     runs: block.runs ?? [],
     size: block.size ?? 11,
@@ -148,12 +168,12 @@ export function buildLines(
       // reach the popover and take the rewording again.
       lines.push({ ...line, opId: rephrase.id, state: "reverted" });
     } else if (rephrase) {
-      const text = wordingFor(rephrase, wordings);
+      const text = cleanText(block.kind, wordingFor(rephrase, wordings));
       lines.push({
         ...line,
         opId: rephrase.id,
         text,
-        original: block.text,
+        original: cleanText(block.kind, block.text),
         state: "reworded",
         runs: inheritRun(text, line.runs),
       });
@@ -166,7 +186,7 @@ export function buildLines(
       // A skipped line leaves no trace. The spec forbids re-asking, and a
       // greyed-out reminder of what you declined is a way of re-asking.
       if (decision === false) continue;
-      const text = wordingFor(insert, wordings);
+      const text = cleanText(block.kind, wordingFor(insert, wordings));
       lines.push({
         key: `line-${insert.id}`,
         blockId: block.id,
