@@ -14,9 +14,19 @@ type Size = "sm" | "md" | "lg";
    button. Overriding the hover transform with a `disabled:` utility would put
    two rules for the same property in one class string and hand the outcome to
    Tailwind's generated order again; removing the hover entirely cannot be
-   beaten by ordering. */
+   beaten by ordering.
+
+   The `before:` box is an invisible hit-area guard for the press-in. Hover moves
+   the button 2px down and right, which uncovers a 2px strip along its top and
+   left edges; a pointer resting in that strip then un-hovers, the button springs
+   back, it re-hovers, and the button shivers forever (and Playwright never sees
+   it as stable). A new decision card lands its buttons under a pointer that
+   just clicked, so this is reachable. The guard is a child of the button, so it
+   moves with it and keeps covering the strip: 4px past the padding edge is 2px
+   past the 2px border. */
 const base =
-  "inline-flex items-center justify-center rounded-md " +
+  "relative inline-flex items-center justify-center rounded-md " +
+  "before:absolute before:-left-1 before:-top-1 before:bottom-0 before:right-0 before:content-[''] " +
   "font-semibold no-underline cursor-pointer " +
   "disabled:cursor-not-allowed disabled:opacity-45 disabled:pointer-events-none " +
   "transition-[background-color,border-color,color,box-shadow,transform] duration-150";
