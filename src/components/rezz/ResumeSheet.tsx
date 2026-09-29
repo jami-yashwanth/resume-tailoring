@@ -69,16 +69,18 @@ export function ResumeSheet({
   className?: string;
   /**
    * "doc" (default) is the user's own font, parsed out of their file.
-   * "ui" is Geist — used only by the v1 default-template render, which has
-   * no original file to keep a font from (see CLAUDE.md's dated override).
+   * "template" is the v1 default template's Helvetica/Arial, which has no
+   * original file to keep a font from (see CLAUDE.md's dated override). It
+   * matches what `template_render.py` draws with, so the preview wraps where
+   * the downloaded file wraps — see `--font-sheet` in globals.css.
    */
-  font?: "doc" | "ui";
+  font?: "doc" | "template";
 }) {
   const sheet = (
     <article
       aria-label={label ?? (name ? `${name}'s resume, tailored` : "Your resume, tailored")}
       className={`sheet rounded-sheet bg-sheet text-sheet-ink shadow-sheet
-                  ${font === "ui" ? "font-ui" : "font-doc"} text-[13.5px] leading-[21px]
+                  ${font === "template" ? "font-sheet" : "font-doc"} text-[13.5px] leading-[21px]
                   ${pad === "tight" ? TIGHT_PAD : ""} ${className}`}
       style={pad === "page" ? pageStyle : undefined}
     >

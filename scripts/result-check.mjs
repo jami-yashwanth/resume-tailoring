@@ -30,23 +30,28 @@ function longLayout(layout, count = 40) {
   return { ...layout, blocks: [...layout.blocks, ...extra] };
 }
 
-/* Pad counts measured at all four widths: with 23 the user's own resume is one
-   page and adding the three drafts makes it two; 25 is two pages and 24 is one,
-   so removing the last pad bullet brings it back to one. */
-const JUST_UNDER_ONE_PAGE = 23;
-const JUST_OVER_ONE_PAGE = 25;
+/* The first pad count that runs to two pages, measured per width against the
+   template's compiled metrics (re-measured 30 Sep 2026 after the re-cut to
+   the owner's LaTeX reference). Per width rather than one constant: every
+   length in the preview is cqi so pagination scales in exact math, but the
+   sheet renders at a different absolute width per breakpoint and browser text
+   rasterisation is not perfectly linear — a sample bullet that wraps to two
+   lines at 794px fits one at 844px, and the boundary moves a pad. One pad
+   under sits at one page everywhere; removing one pad from the boundary
+   brings it back under everywhere. */
+const PAGE_BOUNDARY = { 1440: 21, 1240: 20, 1100: 20, 880: 21 };
 
 /** The sample plan plus a removal the page-fit card can offer: the last pad line. */
-const planWithRemoval = {
+const planWithRemoval = (padCount) => ({
   ...fixture.plan,
   operations: [
     ...fixture.plan.operations,
     {
-      id: "rm-pad", op: "remove", block: `pad${JUST_OVER_ONE_PAGE - 1}`, alternatives: [], claim: "reworded",
+      id: "rm-pad", op: "remove", block: `pad${padCount - 1}`, alternatives: [], claim: "reworded",
       value: 1, requirements: [], evidence: [], needsDecision: false,
     },
   ],
-};
+});
 
 async function openResult(
   browser,
@@ -91,6 +96,8 @@ const browser = await chromium.launch();
 
 for (const width of WIDTHS) {
   console.log(`\n${width}px`);
+  const JUST_OVER_ONE_PAGE = PAGE_BOUNDARY[width];
+  const JUST_UNDER_ONE_PAGE = JUST_OVER_ONE_PAGE - 1;
 
   for (const theme of ["light", "dark"]) {
     const shot = await openResult(browser, width, { theme });
@@ -219,7 +226,7 @@ for (const width of WIDTHS) {
   {
     const { context, page } = await openResult(browser, width, {
       layout: longLayout(fixture.layout, JUST_OVER_ONE_PAGE),
-      plan: planWithRemoval,
+      plan: planWithRemoval(JUST_OVER_ONE_PAGE),
       decisions: { decisions: {}, wordings: {}, pagesAllowed: 1, growthAllowed: false, removedFor: {} },
     });
     const heading = page.getByRole("heading", { name: /(makes it|runs to) \d+ pages\./ });

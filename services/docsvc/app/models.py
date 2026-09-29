@@ -24,6 +24,10 @@ class BlockKind(str, Enum):
     CONTACT = "contact"
     HEADING = "heading"
     ROLE = "role"
+    #: The job title under a role. Never parsed out of a file — the web app's
+    #: `view.ts` splits a run of role lines into the employer line and this one,
+    #: so the two carry different weight. See `shared/template.json`.
+    JOB_TITLE = "job_title"
     BULLET = "bullet"
     PARAGRAPH = "paragraph"
 

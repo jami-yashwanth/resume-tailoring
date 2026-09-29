@@ -65,7 +65,9 @@ export function DecisionCard({
         className="m-0 mt-1 text-[15px] font-semibold leading-[22px] outline-offset-4"
       >
         {item.skill ? `${item.skill} isn't in your resume.` : "This line isn't in your resume."}{" "}
-        {item.where ? `Add this line to your ${item.where} role?` : "Add it?"}
+        {item.where
+          ? `Add this line to your ${item.where.label}${item.where.kind === "role" ? " role" : ""}?`
+          : "Add it?"}
       </h3>
       <p className="m-0 mt-2 rounded-md bg-paper-sunken px-3 py-2 text-sm leading-[21px]">{item.text}</p>
       <p className="m-0 mt-2 text-[13px] leading-[19px] text-ink-muted">

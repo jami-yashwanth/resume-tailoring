@@ -64,7 +64,7 @@ describe("reviewList", () => {
   it("describes a card in words that make sense on their own", () => {
     const item = reviewList(plan, layout, state()).current!;
     expect(item).toMatchObject({
-      skill: "Apache Kafka", where: "Razorfin", wordingIndex: 0, wordingCount: 3,
+      skill: "Apache Kafka", where: { label: "Razorfin", kind: "role" }, wordingIndex: 0, wordingCount: 3,
       reason: "Kafka is a must-have for this role.", jobSays: ["Apache Kafka in production"], sources: [],
     });
   });

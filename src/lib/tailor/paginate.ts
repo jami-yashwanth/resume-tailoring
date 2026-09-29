@@ -13,7 +13,28 @@
  * function: the rule can be read and tested without a DOM.
  */
 
+import { CONTENT } from "./template-metrics";
 import type { LineState } from "./view";
+
+/**
+ * How much a block may overrun the page by and still be treated as fitting:
+ * one point, in whatever pixels this preview draws a point at.
+ *
+ * Not a fudge factor — it is the difference between the two things being
+ * compared. The renderer decides in exact points against a fixed A4 page. The
+ * browser reports `getBoundingClientRect()` heights that have been laid out at
+ * a device-pixel grid and summed over forty-odd blocks, so its answer carries
+ * accumulated float error. Comparing the two exactly means a document that
+ * fills its page is always one rounding error away from growing a second one.
+ *
+ * Measured, not guessed: a fixture that the renderer puts at exactly one page
+ * came to −0.033px, +0.102px, −0.003px and −0.202px against the page height at
+ * the four checked widths. The +0.102px reported a two-page file — a phantom
+ * page off a tenth of a pixel. One point is ten times that noise, and still a
+ * fraction of the shortest block there is (a 14.7pt bullet), so it can absorb
+ * measurement error and never a real line.
+ */
+const SLACK_PT = 1;
 
 /**
  * Assign blocks to pages, returning each page's block indices.
@@ -27,13 +48,14 @@ import type { LineState } from "./view";
  */
 export function paginate(heights: number[], pageHeight: number): number[][] {
   const pages: number[][] = [[]];
+  const slack = (pageHeight / CONTENT.height) * SLACK_PT;
   let used = 0;
 
   heights.forEach((height, index) => {
     const page = pages[pages.length - 1];
     const startsThePage = page.length === 0;
-    const overruns = used + height > pageHeight;
-    const couldFitAlone = height <= pageHeight;
+    const overruns = used + height > pageHeight + slack;
+    const couldFitAlone = height <= pageHeight + slack;
 
     if (!startsThePage && overruns && couldFitAlone) {
       pages.push([]);

@@ -10,7 +10,16 @@ import {
 } from "react";
 import { ResumeSheet } from "@/components/rezz/ResumeSheet";
 import { filePageCount, paginate } from "@/lib/tailor/paginate";
-import { TYPE, contentHeightFor, cqi } from "@/lib/tailor/template-metrics";
+import {
+  COLOR,
+  type KeyedKind,
+  RULE,
+  TYPE,
+  contentHeightFor,
+  cqi,
+  gapBetween,
+  resolveBulletLevels,
+} from "@/lib/tailor/template-metrics";
 import type { BlockKind, Layout } from "@/lib/tailor/types";
 import { MARK_LABEL, type RenderedLine, groupIntoBlocks } from "@/lib/tailor/view";
 
@@ -18,10 +27,11 @@ import { MARK_LABEL, type RenderedLine, groupIntoBlocks } from "@/lib/tailor/vie
  * The one default Rezz template.
  *
  * v1 override (28 Sep 2026, see CLAUDE.md's dated override): the result
- * renders into this fixed layout instead of `TailoredSheet`, which reproduces
- * the file the user uploaded. Only `kind` and the post-edit `text` are used
- * here — the original runs/size/align/rule that `TailoredSheet` carries don't
- * apply, because there is no "original design" to keep for this render path.
+ * renders into this fixed layout instead of reproducing the file the user
+ * uploaded (the in-place `TailoredSheet` path — deleted 29 Sep 2026, in git
+ * history if the override is revisited). Only `kind` and the post-edit `text`
+ * are used here — original runs/size/align/rule don't apply, because there is
+ * no "original design" to keep for this render path.
  * The highlighter marks for changed text are the one thing kept identical:
  * that part of the promise ("nothing added behind your back") doesn't depend
  * on whose template the text sits in.
@@ -98,8 +108,8 @@ function Line({
         event.preventDefault();
         onSelect(line.opId!);
       }}
-      className={`cursor-pointer ${faded ? "opacity-35" : ""}
-                  ${active ? "outline outline-2 outline-offset-4 outline-ink" : ""}
+      className={`cursor-pointer rounded-[4px] ${faded ? "opacity-35" : ""}
+                  ${active ? "outline outline-2 outline-offset-2 outline-ink" : ""}
                   transition-opacity duration-150`}
     >
       <Body line={line} />
@@ -108,53 +118,67 @@ function Line({
 }
 
 /**
- * The template's typography per block kind — the renderer's, not this file's.
+ * The template's typography per block kind — the compiled file's, measured.
  *
- * Every size and every gap comes from `template-metrics.ts`, which holds the
- * numbers `template_render.py` draws with, so the preview and the download are
- * one template rather than two that resemble each other. Hand-set pixels here
- * are what let the two drift: headings ended up smaller than the body text
- * they head, and bullets 29% further apart than the PDF's.
+ * Every size, line-height and gap comes from `template-metrics.ts`, which
+ * holds the numbers measured off the LaTeX template's compiled PDF (docsvc's
+ * `test_latex_parity.py` re-measures on every run), so the preview and the
+ * download are one template rather than two that resemble each other.
  *
- * A block's `leading` is how far the renderer's cursor advances over it, which
- * is exactly what CSS `line-height` does — so the leading is the line-height,
- * and only the renderer's `space()` calls become margins. `line.runs`/`size`/
- * `align` are still unread here: v1 has no original design to carry over.
+ * The box model: a block's `leading` is its wrapped-line advance, which is
+ * exactly CSS `line-height`; the space between two blocks is the measured
+ * `gapBetween(prev, next)`, applied as the next block's margin-top. Nothing
+ * here carries its own margins — adjacency decides them, because TeX's
+ * spacing is per-pair, not per-kind. `line.runs`/`size`/`align` are still
+ * unread here: v1 has no original design to carry over.
  */
 const KIND_STYLE: Record<BlockKind, CSSProperties> = {
+  /* The header is the reference template's centered block: a \Huge bold name
+     over a centered \small contact line. Weights are 700 — the compiled file
+     sets Roboto Bold, and 600 was visibly lighter next to it. */
   name: {
     fontSize: cqi(TYPE.name.size),
     lineHeight: cqi(TYPE.name.leading),
-    fontWeight: 600,
-    letterSpacing: "-0.01em",
+    fontWeight: 700,
+    textAlign: "center",
   },
   contact: {
     fontSize: cqi(TYPE.contact.size),
     lineHeight: cqi(TYPE.contact.leading),
-    marginBottom: cqi(TYPE.contact.after),
-    color: "var(--ink-muted)",
+    textAlign: "center",
   },
   heading: {
     fontSize: cqi(TYPE.heading.size),
     lineHeight: cqi(TYPE.heading.leading),
-    marginTop: cqi(TYPE.heading.before),
-    marginBottom: cqi(TYPE.heading.after),
-    fontWeight: 600,
+    fontWeight: 700,
+    // The reference's \scshape under this Roboto setup renders as plain
+    // uppercase (measured: one span, one size), so uppercase is exact — and
+    // it adds no tracking, so neither do we.
     textTransform: "uppercase",
-    // The one departure, and it costs no vertical space: the renderer's
-    // base-14 Helvetica cannot track uppercase, and unset caps at this size
-    // set too tight to scan.
-    letterSpacing: "0.06em",
-    /* The section rule, drawn rather than laid out. `render_template` draws
-       its line without advancing the cursor, so a `border-bottom` here would
-       add a pixel per heading that the file does not have. An inset shadow
-       paints in the same place and costs no height. */
-    boxShadow: "inset 0 -1px 0 0 var(--line)",
+    /* The section rule, drawn rather than laid out: the compiled \titlerule
+       sits at the heading box's bottom edge without advancing the cursor, so
+       a border-bottom would add height the file does not have. An inset
+       shadow paints in the same place and costs none. The colour and width
+       are the document's own (template.json), not theme tokens: the sheet is
+       paper-white in both themes and the file draws exactly this. */
+    boxShadow: `inset 0 calc(-1 * ${cqi(RULE.width)}) 0 0 ${COLOR.rule}`,
   },
+  /* role and job_title are the two rows of the reference's indented
+     0.97\textwidth tabular*: bold employer row with its dates flush against
+     the row's right edge, italic title row under it. */
   role: {
     fontSize: cqi(TYPE.role.size),
     lineHeight: cqi(TYPE.role.leading),
-    fontWeight: 600,
+    fontWeight: 700,
+    marginLeft: cqi(TYPE.role.indent),
+    width: cqi(TYPE.role.width),
+  },
+  job_title: {
+    fontSize: cqi(TYPE.job_title.size),
+    lineHeight: cqi(TYPE.job_title.leading),
+    fontStyle: "italic",
+    marginLeft: cqi(TYPE.job_title.indent),
+    width: cqi(TYPE.role.width),
   },
   bullet: { fontSize: cqi(TYPE.bullet.size), lineHeight: cqi(TYPE.bullet.leading) },
   paragraph: { fontSize: cqi(TYPE.paragraph.size), lineHeight: cqi(TYPE.paragraph.leading) },
@@ -208,61 +232,98 @@ function Blocks({
       />
     );
 
-  /* One marker per line, which `measure()` reads back in document order —
+  /* One probe per line, which `measure()` reads back in document order —
      the order `groupIntoBlocks` preserves, and so the order of `lines`. */
-  const marker = measuring ? { "data-mi": "" } : {};
+  const probe = measuring ? { "data-mi": "" } : {};
 
-  return (
-    <>
-      {groupIntoBlocks(lines).map((entry) => {
-        if (Array.isArray(entry)) {
-          return (
-            /* No margins anywhere in here: the renderer runs bullets straight
-               off each other's leading, and the `my-[5px]` this used to carry
-               was most of the 29% the preview drifted looser than the PDF. */
-            <ul
-              key={entry[0].key}
-              className="my-0 list-disc"
-              style={{ paddingLeft: cqi(TYPE.bullet.indent) }}
+  /* Bullet depth follows the compiled file's nesting: level two under a role,
+     level one straight under a heading. Resolved over this render's lines, so
+     a page that starts mid-role continues at the level its bullets ended the
+     previous page on only when the role travelled with them — the same
+     compromise the drawn fallback makes. */
+  const keyed = resolveBulletLevels(lines.map((line) => line.kind));
+
+  /* Every vertical space on the page is `gapBetween(prev, next)`, applied as
+     margin-top on the line that follows (the li, for bullets — the probes
+     carry the margins so `measure()` counts them). The first block of a
+     render gets none, which is also TeX's rule at the top of a page. */
+  const rendered: React.ReactNode[] = [];
+  let cursor = 0;
+  let prev: KeyedKind | null = null;
+
+  for (const entry of groupIntoBlocks(lines)) {
+    if (Array.isArray(entry)) {
+      const level = keyed[cursor] as "bullet" | "bullet2";
+      const indent = level === "bullet2" ? TYPE.bullet.indentNested : TYPE.bullet.indent;
+      const first = prev;
+      rendered.push(
+        /* list-none with the marker as literal text: that is what the
+           compiled file carries ("• " in the item, wrapped lines returning to
+           the item's left edge, no hanging indent), so the preview wraps and
+           measures exactly where the file does. */
+        <ul
+          key={entry[0].key}
+          className="m-0 list-none p-0"
+          style={{ marginLeft: cqi(indent) }}
+        >
+          {entry.map((line, i) => (
+            <li
+              key={line.key}
+              className="mx-0 mb-0"
+              style={{
+                ...KIND_STYLE.bullet,
+                marginTop: cqi(gapBetween(i === 0 ? first : level, level)),
+              }}
+              {...probe}
             >
-              {entry.map((line) => (
-                <li key={line.key} className="my-0" style={KIND_STYLE.bullet} {...marker}>
-                  {leaf(line)}
-                </li>
-              ))}
-            </ul>
-          );
-        }
+              <span aria-hidden>{TYPE.bullet.marker}</span>
+              {leaf(line)}
+            </li>
+          ))}
+        </ul>,
+      );
+      cursor += entry.length;
+      prev = level;
+      continue;
+    }
 
-        const style = KIND_STYLE[entry.kind];
-        // Only split a role's date column off when nothing marks it up — a
-        // reworded/added/removed role would lose its highlight if rendered
-        // as two plain strings instead of through `Body`.
-        const role =
-          entry.kind === "role" && entry.state === "unchanged" ? splitRole(entry.text) : null;
+    const kind = keyed[cursor] as Exclude<KeyedKind, "bullet2">;
+    const style = {
+      ...KIND_STYLE[entry.kind],
+      marginTop: cqi(gapBetween(prev, kind)),
+    };
+    cursor += 1;
+    prev = kind;
 
-        if (role) {
-          return (
-            <p
-              key={entry.key}
-              className="m-0 flex justify-between gap-3"
-              style={style}
-              {...marker}
-            >
-              <span>{role.left}</span>
-              <span className="shrink-0 whitespace-nowrap">{role.right}</span>
-            </p>
-          );
-        }
+    // Only split a role's date column off when nothing marks it up — a
+    // reworded/added/removed role would lose its highlight if rendered
+    // as two plain strings instead of through `Body`.
+    const role =
+      entry.kind === "role" && entry.state === "unchanged" ? splitRole(entry.text) : null;
 
-        return (
-          <p key={entry.key} className="m-0" style={style} {...marker}>
-            {leaf(entry)}
-          </p>
-        );
-      })}
-    </>
-  );
+    if (role) {
+      rendered.push(
+        <p
+          key={entry.key}
+          className="mx-0 mb-0 flex justify-between gap-3"
+          style={style}
+          {...probe}
+        >
+          <span>{role.left}</span>
+          <span className="shrink-0 whitespace-nowrap">{role.right}</span>
+        </p>,
+      );
+      continue;
+    }
+
+    rendered.push(
+      <p key={entry.key} className="mx-0 mb-0" style={style} {...probe}>
+        {leaf(entry)}
+      </p>,
+    );
+  }
+
+  return <>{rendered}</>;
 }
 
 /* The measuring pass has to land before the browser paints, or the reader
@@ -418,8 +479,13 @@ export function DefaultTemplateSheet({
         aria-hidden
         className="pointer-events-none invisible absolute inset-x-0 top-0 -z-10"
       >
-        <ResumeSheet font="ui">
-          <Blocks lines={lines} measuring />
+        <ResumeSheet font="template">
+          {/* The document's own ink (template.json), not the sheet token: the
+              compiled file is pure black and the parity promise covers colour
+              too. The sheet token still inks UI annotations on the page. */}
+          <div style={{ color: COLOR.ink }}>
+            <Blocks lines={lines} measuring />
+          </div>
         </ResumeSheet>
       </div>
 
@@ -427,14 +493,16 @@ export function DefaultTemplateSheet({
         <div key={page} data-page={page}>
           <ResumeSheet
             label={`${who} resume, tailored — page ${page + 1} of ${sheets.length}`}
-            font="ui"
+            font="template"
           >
-            <Blocks
-              lines={indices.map((index) => lines[index])}
-              activeOpId={activeOpId}
-              highlightBlocks={highlightBlocks}
-              onSelect={onSelect}
-            />
+            <div style={{ color: COLOR.ink }}>
+              <Blocks
+                lines={indices.map((index) => lines[index])}
+                activeOpId={activeOpId}
+                highlightBlocks={highlightBlocks}
+                onSelect={onSelect}
+              />
+            </div>
           </ResumeSheet>
         </div>
       ))}

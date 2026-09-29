@@ -1,3 +1,4 @@
+import { standardHeading } from "./headings";
 import type { BlockKind, Layout, PlannedOp, Run } from "./types";
 
 /**
@@ -77,7 +78,12 @@ export function stripBullet(text: string): string {
 
 /** Bullet text without its glyph; every other kind untouched. */
 export function cleanText(kind: BlockKind, text: string): string {
-  return kind === "bullet" ? stripBullet(text) : text;
+  if (kind === "bullet") return stripBullet(text);
+  // Contact separators normalise to the template's pipes on both sides —
+  // the compiled file sets ` $|$ ` between fields, which reads as a
+  // single-spaced pipe — so the preview wraps where the file does.
+  if (kind === "contact") return text.replace(/\s*[·|\t]\s*/g, " | ");
+  return text;
 }
 
 /**
@@ -149,7 +155,10 @@ export function buildLines(
 
   // Comparing shows the file exactly as it was uploaded: no marks, no drafts,
   // nothing pending. The spec is explicit that this view is "approved as is".
-  if (compareWithOriginal) return layout.blocks.map(base);
+  // Still grouped, though — under the v1 template override both sides render
+  // into the same template, and a diff that moved the layout as well as the
+  // words would report the template as a change the user made.
+  if (compareWithOriginal) return groupRoles(layout.blocks.map(base));
 
   const lines: RenderedLine[] = [];
 
@@ -207,7 +216,92 @@ export function buildLines(
     }
   }
 
-  return lines;
+  // Last, so the fold sees the decided document: a role line the user reworded
+  // keeps its own key and its mark rather than being folded away.
+  return groupRoles(lines);
+}
+
+/* ---------------------------------------------------------------------------
+   A job's header.
+
+   Parsers hand back what the file had: "Inncircles", "Senior Software
+   Engineer" and "Hyderabad, Telangana" as three separate `role` blocks. Drawn
+   literally that is three bold lines carrying no hierarchy and costing 48pt of
+   a 741pt page, and it is not the shape a resume parser reads best either —
+   the guidance is one entry line with its dates, and the title beneath.
+
+   So a run of role lines is folded into two: the employer with its location
+   and dates (bold, `role`), then the title (regular, `job_title`).
+   --------------------------------------------------------------------------- */
+
+/** Words that make a line a job title rather than an employer or a place. */
+const TITLE_WORDS =
+  /\b(engineer|developer|manager|intern|lead|architect|analyst|consultant|designer|scientist|director|head|officer|associate|specialist|administrator|technician|researcher|president|founder|trainee)\b/i;
+
+/** "Hyderabad, Telangana" — short, comma'd, no digits, and not a title. */
+function isLocation(text: string): boolean {
+  return (
+    text.includes(",") &&
+    text.trim().split(/\s+/).length <= 5 &&
+    !/\d/.test(text) &&
+    !TITLE_WORDS.test(text)
+  );
+}
+
+/**
+ * One run of consecutive `role` lines, folded into an employer line and a title.
+ *
+ * Returns the run untouched whenever it cannot be read confidently, which is
+ * the point: a wrong guess rewrites a line of the user's resume, and every
+ * caller is better off with today's three bold lines than with a location
+ * glued onto a job title.
+ *
+ * It also bails on any run carrying an operation or a state — folding two
+ * lines into one drops a `key`, and ops, margin marks and `focusLine` all
+ * address lines by it. Employer, title and location lines are never rewritten
+ * (they are knockout facts; the product rule is that Rezz doesn't touch them),
+ * so the folded path is the one that actually runs.
+ */
+export function groupRoleRun(run: RenderedLine[]): RenderedLine[] {
+  if (run.length < 2) return run;
+  if (run.some((l) => l.opId || l.state !== "unchanged")) return run;
+
+  const dated = run.find((l) => l.text.includes("\t"));
+  const employer = dated ?? run[0];
+  const rest = run.filter((l) => l !== employer);
+
+  const location = rest.find((l) => isLocation(l.text));
+  const others = rest.filter((l) => l !== location);
+  // Nothing left to sit under the employer line: leave the run alone rather
+  // than produce a lone bold line whose title we just deleted.
+  if (!others.length) return run;
+
+  const [left, dates] = employer.text.includes("\t")
+    ? employer.text.split("\t", 2)
+    : [employer.text, ""];
+  const head = location ? `${left.trim()} — ${location.text.trim()}` : left.trim();
+
+  return [
+    { ...employer, text: dates ? `${head}\t${dates.trim()}` : head },
+    ...others.map((l) => ({ ...l, kind: "job_title" as const })),
+  ];
+}
+
+/** Every run of role lines in the document, folded. */
+export function groupRoles(lines: RenderedLine[]): RenderedLine[] {
+  const out: RenderedLine[] = [];
+  for (let i = 0; i < lines.length; ) {
+    if (lines[i].kind !== "role") {
+      out.push(lines[i]);
+      i += 1;
+      continue;
+    }
+    let end = i;
+    while (end < lines.length && lines[end].kind === "role") end += 1;
+    out.push(...groupRoleRun(lines.slice(i, end)));
+    i = end;
+  }
+  return out;
 }
 
 /** Consecutive bullets become one list, so the document keeps its structure. */
@@ -226,21 +320,33 @@ export function groupIntoBlocks(lines: RenderedLine[]): Array<RenderedLine | Ren
 }
 
 /**
- * The employer whose role a block sits under, for "Add this line to your
- * Razorfin role?".
+ * Where a drafted line would land, for "Add this line to your Razorfin role?"
+ * / "Add this line to your Skills?".
  *
  * The spec's decision copy names the place the line would land, because "add
- * this line" is a different question depending on which job it joins. Role
- * blocks carry "Employer · Title\tDates", so the employer is the first segment.
+ * this line" is a different question depending on where it joins. An anchor in
+ * a recognised non-experience section names that section — walking back to the
+ * nearest role from inside Skills would caption the line with a job the user
+ * never claimed. Inside experience, role blocks carry "Employer · Title\tDates",
+ * so the employer is the first segment.
  */
-export function anchorLabel(layout: Layout, blockId: string): string | null {
+export type AnchorLabel = { label: string; kind: "role" | "section" };
+
+export function anchorLabel(layout: Layout, blockId: string): AnchorLabel | null {
   const index = layout.blocks.findIndex((b) => b.id === blockId);
   if (index < 0) return null;
+
+  const section = layout.blocks[index].section;
+  if (section) {
+    const standard = standardHeading(section);
+    if (standard && standard !== "Experience") return { label: standard, kind: "section" };
+  }
+
   for (let i = index; i >= 0; i--) {
     const block = layout.blocks[i];
     if (block.kind !== "role") continue;
     const employer = block.text.split("\t")[0].split("·")[0].trim();
-    return employer || null;
+    return employer ? { label: employer, kind: "role" } : null;
   }
   return null;
 }

@@ -44,6 +44,15 @@ export function useMarginAnchors<T extends HTMLElement>() {
       el.style.top = `${top}px`;
       floor = top + el.offsetHeight + 8;
     }
+
+    /* Only now are the marks safe to take out of flow. Until this runs they
+       carry no `top`, so absolute positioning would pile every one of them at
+       the top of the margin — which is exactly what a visitor saw on the
+       landing page when the bundle failed to hydrate. MarginColumn keeps them
+       in normal flow until this flips, so the worst case is a plain stacked
+       list beside the resume rather than five marks printed on top of each
+       other. */
+    container.dataset.aligned = "true";
   }, []);
 
   useEffect(() => {

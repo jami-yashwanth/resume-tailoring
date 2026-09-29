@@ -1,6 +1,6 @@
 import { MISSING_CREDENTIALS, resolveCredentials } from "@/lib/anthropic";
 import { DocsvcError } from "@/lib/tailor/docsvc";
-import { tailor } from "@/lib/tailor/pipeline";
+import { estimateCost, tailor } from "@/lib/tailor/pipeline";
 
 /**
  * Tailoring, streamed.
@@ -55,6 +55,14 @@ export async function POST(request: Request) {
           send("progress", { stage, detail }),
         );
         send("done", { layout: result.layout, plan: result.plan });
+        // The cost-per-resume metric the architecture doc asks for, measured
+        // where it happens. Server log only — never sent to the client.
+        const cost = estimateCost(result.usage, result.models.planner);
+        console.log(
+          `[tailor] planner=${result.models.planner} verifier=${result.models.verifier} ` +
+            `tokens in=${result.usage.input} cached=${result.usage.cacheRead} ` +
+            `out=${result.usage.output} ≈ ₹${cost.toFixed(2)}`,
+        );
       } catch (error) {
         // The commonest failure by far is the file service being down, and
         // "fetch failed" tells nobody anything.

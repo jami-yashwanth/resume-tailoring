@@ -12,6 +12,7 @@ import shutil
 import tempfile
 from pathlib import Path
 
+import pymupdf
 from fastapi import Depends, FastAPI, Header, HTTPException
 from pydantic import BaseModel
 
@@ -19,6 +20,7 @@ from . import render
 from .docx_ops import parse_docx
 from .fitter import fit
 from .models import ApplyRequest, ApplyResponse, BlockKind, Layout
+from .latex_render import render_latex
 from .pdf_ops import parse_pdf
 from .template_render import render_template
 
@@ -123,6 +125,14 @@ class TemplateBlock(BaseModel):
 
 class RenderTemplateRequest(BaseModel):
     blocks: list[TemplateBlock]
+    #: Also render each page as a PNG — the Result screen's exact preview,
+    #: pictures of the same bytes the download gets. Off for downloads.
+    images: bool = False
+
+
+#: 2x A4 (~144dpi): crisp at any preview width the Result screen renders,
+#: ~100-200KB per text page.
+_IMAGE_SCALE = 2
 
 
 @app.post("/render-template", dependencies=[Depends(require_token)])
@@ -134,8 +144,36 @@ def render_template_endpoint(request: RenderTemplateRequest) -> dict:
     the plan and the user's Add it / Skip decisions into a final ordered
     list of (kind, text) pairs — nothing here touches an original file.
     """
-    data, pages = render_template([b.model_dump() for b in request.blocks])
-    return {"file": base64.b64encode(data).decode(), "pages": pages, "format": "pdf"}
+    blocks = [b.model_dump() for b in request.blocks]
+
+    # The LaTeX path IS the template (owner's call, 30 Sep 2026): the owner's
+    # reference .tex, stored verbatim, compiled with Tectonic — true
+    # typesetting, ~0.5s warm. On by default; REZZ_LATEX_TEMPLATE survives
+    # only as an off switch ("false", for a machine without tectonic). Any
+    # failure — tectonic missing, compile error, timeout — still falls back
+    # to the drawn template, so the download can never fail because of this.
+    data: bytes | None = None
+    pages = 0
+    if os.environ.get("REZZ_LATEX_TEMPLATE", "").strip().lower() != "false":
+        try:
+            data = render_latex(blocks)
+            with pymupdf.open(stream=data, filetype="pdf") as compiled:
+                pages = compiled.page_count
+        except Exception:
+            data = None  # the drawn template below is the never-fails path
+
+    if data is None:
+        data, pages = render_template(blocks)
+
+    payload = {"file": base64.b64encode(data).decode(), "pages": pages, "format": "pdf"}
+    if request.images:
+        matrix = pymupdf.Matrix(_IMAGE_SCALE, _IMAGE_SCALE)
+        with pymupdf.open(stream=data, filetype="pdf") as doc:
+            payload["images"] = [
+                base64.b64encode(page.get_pixmap(matrix=matrix).tobytes("png")).decode()
+                for page in doc
+            ]
+    return payload
 
 
 @app.post("/apply", response_model=ApplyResponse, dependencies=[Depends(require_token)])

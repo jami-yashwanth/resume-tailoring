@@ -100,6 +100,9 @@ Give exactly one match per requirement, describing the resume AS IT IS TODAY, be
 any of your edits.
 - matched: the resume already evidences it. Cite the blocks that do.
 - needs_ok: the job asks for it, the resume does not evidence it, and you drafted a line.
+  Never mark a requirement needs_ok without writing its insert_after draft: a gap with no
+  line to offer takes the decision away from the candidate. Draft one for every missing,
+  non-knockout requirement — the candidate chooses; you don't choose for them by omitting it.
 - cannot_change: a knockout the candidate does not meet.
 A requirement you wrote a rephrase for is still "matched" — rewording does not change
 whether the candidate has the skill, only how clearly it reads.

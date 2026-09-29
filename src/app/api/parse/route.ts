@@ -24,6 +24,28 @@ export async function POST(request: Request) {
     return Response.json({ error: "No file received." }, { status: 400 });
   }
 
+  // The browser enforces 3 MB before uploading; this catches anyone posting
+  // to the API directly. 4.5M base64 characters ≈ 3.4 MB decoded, a little
+  // over the client cap so a legitimate boundary file never bounces here.
+  if (body.file.length > 4_500_000) {
+    return Response.json({ error: "That file is over the 3 MB limit." }, { status: 413 });
+  }
+
+  // Magic bytes, not the filename: a renamed file gets caught here instead of
+  // confusing the parser. PDF starts "%PDF" (JVBER in base64), DOCX is a ZIP
+  // ("PK\x03\x04" → UEsDB).
+  const isPdf = (body.filename ?? "").toLowerCase().endsWith(".pdf");
+  if (!body.file.startsWith(isPdf ? "JVBER" : "UEsDB")) {
+    return Response.json(
+      {
+        error: isPdf
+          ? "That file has a .pdf name but isn't a PDF inside. Export a fresh copy and try again."
+          : "That file has a .docx name but isn't a Word file inside. Save it again from Word as .docx.",
+      },
+      { status: 422 },
+    );
+  }
+
   try {
     const layout = await parseResume(body.file, body.filename);
     return Response.json({
@@ -42,6 +64,14 @@ export async function POST(request: Request) {
 
     if (error instanceof DocsvcError && !unreadable) {
       return Response.json({ error: message }, { status: 503 });
+    }
+    // A locked file is fixable in a way a scanned one is not, so it gets its
+    // own advice instead of the scanned-resume message.
+    if (/password/i.test(message)) {
+      return Response.json(
+        { error: "This PDF is password-protected. Remove the password and upload it again." },
+        { status: 422 },
+      );
     }
     return Response.json(
       {

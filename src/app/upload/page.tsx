@@ -5,6 +5,7 @@ import { useRef, useState } from "react";
 import { FlowHeader } from "@/components/flow/FlowHeader";
 import { Button } from "@/components/rezz/Button";
 import { box, lead, offsetGap, offsetPage, title } from "@/components/rezz/skin";
+import { track } from "@/lib/analytics";
 import { session } from "@/lib/session";
 
 /**
@@ -22,7 +23,12 @@ import { session } from "@/lib/session";
  */
 
 const ACCEPTED = ".docx,.pdf";
-const MAX_BYTES = 10 * 1024 * 1024;
+/* 3 MB, not 10: the file crosses to /job and /result through sessionStorage
+   as base64 (×1.33 ≈ 4M chars), and the tailored result shares the same
+   ~5M-char quota — a bigger file survives the upload and then silently fails
+   to persist, or evicts the result. Real resumes are well under 1 MB; 3 MB
+   already means embedded photos. */
+const MAX_BYTES = 3 * 1024 * 1024;
 
 /* The app screens sit on the same flat white the landing page does. The grey
    ground exists to sink the resume canvas on the Result screen; there is no
@@ -59,19 +65,35 @@ export default function UploadPage() {
     const lower = file.name.toLowerCase();
     if (!lower.endsWith(".docx") && !lower.endsWith(".pdf")) {
       setError(
-        `Rezz reads Word or PDF resumes today, so it needs a .docx or .pdf. “${file.name}” isn’t one. `,
+        `Rezz reads Word or PDF resumes today, so it needs a .docx or .pdf. “${file.name}” isn’t one. Export a .pdf or .docx and try again.`,
       );
       return;
     }
     if (file.size > MAX_BYTES) {
-      setError(`That file is ${(file.size / 1024 / 1024).toFixed(1)} MB. The limit is 10 MB.`);
+      setError(`That file is ${(file.size / 1024 / 1024).toFixed(1)} MB. The limit is 3 MB.`);
       return;
     }
 
     setError(null);
     setBusy(true);
+    track("upload_started");
     try {
-      const base64 = toBase64(await file.arrayBuffer());
+      const buffer = await file.arrayBuffer();
+      // Magic bytes, not just the name: PDF opens "%PDF", DOCX is a ZIP
+      // ("PK\x03\x04"). A renamed file fails here, before any upload.
+      const head = new Uint8Array(buffer.slice(0, 4));
+      const isPdf = lower.endsWith(".pdf");
+      const expected = isPdf ? [0x25, 0x50, 0x44, 0x46] : [0x50, 0x4b, 0x03, 0x04];
+      if (!expected.every((byte, i) => head[i] === byte)) {
+        setError(
+          isPdf
+            ? `“${file.name}” has a .pdf name but isn't a PDF inside. Export a fresh copy and try again.`
+            : `“${file.name}” has a .docx name but isn't a Word file inside. Save it again from Word as .docx.`,
+        );
+        setBusy(false);
+        return;
+      }
+      const base64 = toBase64(buffer);
       const response = await fetch("/api/parse", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -80,12 +102,21 @@ export default function UploadPage() {
       const body = await response.json();
 
       if (!response.ok) {
+        track("parse_failed");
         setError(body.error ?? "We couldn't read that file.");
         setBusy(false);
         return;
       }
 
-      session.setResume(base64, file.name);
+      track("parse_ok", { pages: body.pages ?? 0 });
+      if (!session.setResume(base64, file.name)) {
+        setError(
+          "Your browser couldn't hold this file for the next step — it may be too large, or " +
+            "storage is blocked in this window. Try a copy under 3 MB, or a regular window.",
+        );
+        setBusy(false);
+        return;
+      }
       setFilename(file.name);
 
       // Nothing to say about a clean file, so don't make them click through a
@@ -195,7 +226,7 @@ export default function UploadPage() {
             {busy ? "Reading your resume…" : "Drop your resume here"}
           </p>
           <p className="m-0 mt-1 text-sm leading-[21px] text-ink-muted">
-            Word (.docx) or PDF, up to 10 MB
+            Word (.docx) or PDF, up to 3 MB
           </p>
           <div className="mt-7 flex justify-center">
             <Button onClick={() => inputRef.current?.click()} disabled={busy}>

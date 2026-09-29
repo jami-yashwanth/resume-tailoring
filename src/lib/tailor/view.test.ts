@@ -1,6 +1,17 @@
 import { describe, expect, it } from "vitest";
 import type { Layout, PlannedOp } from "./types";
-import { anchorLabel, buildLines, cleanText, groupIntoBlocks, stripBullet, wordingFor, wordingOptions } from "./view";
+import {
+  type RenderedLine,
+  anchorLabel,
+  buildLines,
+  cleanText,
+  groupIntoBlocks,
+  groupRoleRun,
+  groupRoles,
+  stripBullet,
+  wordingFor,
+  wordingOptions,
+} from "./view";
 
 const layout: Layout = {
   format: "docx",
@@ -154,12 +165,27 @@ describe("anchorLabel", () => {
   it("names the job a drafted line would join", () => {
     /* "Add this line to your Razorfin role?" is a different question from
        "Add it?", and it is the one the spec asks. */
-    expect(anchorLabel(withRole, "b6")).toBe("Razorfin");
+    expect(anchorLabel(withRole, "b6")).toEqual({ label: "Razorfin", kind: "role" });
   });
 
   it("says nothing rather than guessing when there is no role above", () => {
     expect(anchorLabel(withRole, "b4")).toBeNull();
     expect(anchorLabel(withRole, "nope")).toBeNull();
+  });
+
+  it("names the section, not the last role above it, for a non-experience anchor", () => {
+    /* An anchor in Skills sits after the Experience roles; walking back to the
+       nearest role would caption a skills line "Add this line to your OldCo
+       role?" — a claim about a job the user never made. */
+    const withSkills: Layout = {
+      ...withRole,
+      blocks: [
+        ...withRole.blocks,
+        { id: "b7", kind: "heading", text: "TECHNICAL SKILLS", section: null, style: null, lines: 1, has_bold: false, runs: [], size: 11, space_before: 0 },
+        { id: "b8", kind: "paragraph", text: "Python, SQL", section: "TECHNICAL SKILLS", style: null, lines: 1, has_bold: false, runs: [], size: 10.5, space_before: 0 },
+      ],
+    };
+    expect(anchorLabel(withSkills, "b8")).toEqual({ label: "Skills", kind: "section" });
   });
 });
 
@@ -173,6 +199,12 @@ describe("stripBullet", () => {
   it("strips only bullets, never paragraphs", () => {
     expect(cleanText("bullet", "- Led a team")).toBe("Led a team");
     expect(cleanText("paragraph", "- not a bullet")).toBe("- not a bullet");
+  });
+
+  it("normalises contact separators to the compiled file's single-spaced pipe", () => {
+    // The template sets ` $|$ ` between fields, which extracts as " | " —
+    // the preview shows the same so the header reads identically.
+    expect(cleanText("contact", "a@b.c · Bengaluru\t+91 98")).toBe("a@b.c | Bengaluru | +91 98");
   });
 });
 
@@ -192,5 +224,120 @@ describe("buildLines bullet text", () => {
     const line = lines.find((l) => l.blockId === "b6");
     expect(line?.text).toBe("Designed REST APIs.");
     expect(line?.original).toBe("Worked on backend APIs for payments.");
+  });
+});
+
+describe("groupRoleRun", () => {
+  const roles = (...texts: string[]): RenderedLine[] =>
+    texts.map((text, i) => ({
+      key: `line-r${i}`,
+      blockId: `r${i}`,
+      kind: "role",
+      section: "EXPERIENCE",
+      style: null,
+      text,
+      state: "unchanged",
+      runs: [],
+      size: 10.5,
+      spaceBefore: 0,
+      align: "left",
+      ruleBelow: false,
+    }));
+
+  it("folds employer, title and location into two lines", () => {
+    // What every parser actually emits for one job, and what the template drew
+    // literally until 29 Sep 2026: three bold lines, no hierarchy, 48pt.
+    const out = groupRoleRun(
+      roles("Inncircles\tJun 2023 - Jun 2026", "Senior Software Engineer", "Hyderabad, Telangana"),
+    );
+    expect(out).toHaveLength(2);
+    expect(out[0]).toMatchObject({
+      kind: "role",
+      text: "Inncircles — Hyderabad, Telangana\tJun 2023 - Jun 2026",
+    });
+    expect(out[1]).toMatchObject({ kind: "job_title", text: "Senior Software Engineer" });
+  });
+
+  it("keeps the employer block's id, so marks and ops still find the line", () => {
+    const out = groupRoleRun(roles("Inncircles\tJun 2023", "Senior Engineer", "Pune, Maharashtra"));
+    expect(out[0].key).toBe("line-r0");
+    expect(out[0].blockId).toBe("r0");
+  });
+
+  it("works when the dates are not on the first line", () => {
+    const out = groupRoleRun(roles("Senior Engineer", "Inncircles\tJun 2023 - Jun 2026"));
+    expect(out[0].text).toBe("Inncircles\tJun 2023 - Jun 2026");
+    expect(out[1]).toMatchObject({ kind: "job_title", text: "Senior Engineer" });
+  });
+
+  it("folds a run that carries no dates at all", () => {
+    const out = groupRoleRun(roles("Inncircles", "Senior Engineer", "Hyderabad, Telangana"));
+    expect(out[0].text).toBe("Inncircles — Hyderabad, Telangana");
+    expect(out[1].kind).toBe("job_title");
+  });
+
+  it("leaves a run carrying an operation exactly as it was", () => {
+    // Folding drops a line, and ops, margin marks and focusLine all address
+    // lines by key. Better three bold lines than a mark pointing at nothing.
+    const run = roles("Inncircles\tJun 2023", "Senior Engineer", "Hyderabad, Telangana");
+    run[1] = { ...run[1], opId: "o9", state: "reworded" };
+    expect(groupRoleRun(run)).toEqual(run);
+  });
+
+  it("leaves a run it cannot read confidently alone", () => {
+    // One line is an employer and nothing else — folding would leave a bold
+    // line whose title we had just deleted.
+    expect(groupRoleRun(roles("Inncircles\tJun 2023"))).toHaveLength(1);
+    expect(groupRoleRun(roles("Inncircles\tJun 2023", "Bengaluru, Karnataka"))).toHaveLength(2);
+  });
+
+  it("does not mistake a comma'd job title for a location", () => {
+    const out = groupRoleRun(
+      roles("Inncircles\tJun 2023", "Engineer, Platform Team", "Hyderabad, Telangana"),
+    );
+    expect(out[0].text).toBe("Inncircles — Hyderabad, Telangana\tJun 2023");
+    expect(out[1].text).toBe("Engineer, Platform Team");
+  });
+});
+
+describe("groupRoles", () => {
+  it("folds each job separately and leaves everything else in place", () => {
+    const line = (kind: RenderedLine["kind"], id: string, text: string): RenderedLine => ({
+      key: `line-${id}`,
+      blockId: id,
+      kind,
+      section: null,
+      style: null,
+      text,
+      state: "unchanged",
+      runs: [],
+      size: 10.5,
+      spaceBefore: 0,
+      align: "left",
+      ruleBelow: false,
+    });
+
+    const out = groupRoles([
+      line("heading", "h1", "EXPERIENCE"),
+      line("role", "r0", "Inncircles\tJun 2023 - Jun 2026"),
+      line("role", "r1", "Senior Software Engineer"),
+      line("role", "r2", "Hyderabad, Telangana"),
+      line("bullet", "b1", "Built things."),
+      line("role", "r3", "Inncircles\tJan 2023 - Jun 2023"),
+      line("role", "r4", "Software Engineer Intern"),
+      line("bullet", "b2", "Built other things."),
+    ]);
+
+    expect(out.map((l) => l.kind)).toEqual([
+      "heading",
+      "role",
+      "job_title",
+      "bullet",
+      "role",
+      "job_title",
+      "bullet",
+    ]);
+    expect(out[1].text).toBe("Inncircles — Hyderabad, Telangana\tJun 2023 - Jun 2026");
+    expect(out[4].text).toBe("Inncircles\tJan 2023 - Jun 2023");
   });
 });

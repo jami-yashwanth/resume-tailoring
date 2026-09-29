@@ -6,6 +6,7 @@ import { FlowHeader } from "@/components/flow/FlowHeader";
 import { TailoringSheet } from "@/components/flow/TailoringSheet";
 import { ButtonLink } from "@/components/rezz/Button";
 import { box, lead, offsetGap, offsetPage, title } from "@/components/rezz/skin";
+import { track } from "@/lib/analytics";
 import { session } from "@/lib/session";
 import type { Stage } from "@/lib/tailor/pipeline";
 
@@ -83,10 +84,22 @@ export default function TailoringPage() {
         }
         if (event.detail) setDetails((d) => ({ ...d, [event.stage]: event.detail }));
       } else if (event.kind === "done") {
-        session.setResult(event.data as Parameters<typeof session.setResult>[0]);
+        track("tailor_done");
+        // setResult says whether the result actually survived the write —
+        // layout + plan share the resume's sessionStorage quota, and a
+        // silently lost result used to bounce the user back to /job with no
+        // explanation.
+        if (!session.setResult(event.data as Parameters<typeof session.setResult>[0])) {
+          setError(
+            "Your tailored result is ready, but this browser couldn't hold it for the next screen. " +
+              "Free some space or use a regular window, then tailor again.",
+          );
+          return;
+        }
         setLeaving(true);
         window.setTimeout(() => router.push("/result"), LEAVE);
       } else {
+        track("tailor_failed");
         setError(event.message);
       }
     },
