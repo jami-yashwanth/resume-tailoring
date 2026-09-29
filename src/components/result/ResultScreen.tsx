@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { session } from "@/lib/session";
 import { coverageOf } from "@/lib/tailor/coverage";
 import { downloadResume } from "@/lib/tailor/download";
@@ -47,6 +47,15 @@ export function ResultScreen({
      effect raced the effect that persists. */
   const [state, dispatch] = useReducer(reducer, null, () => fromStored(session.getDecisions()));
   const [announcement, setAnnouncement] = useState("");
+  const announceFrame = useRef(0);
+  /* Cleared, then set on the next frame: a live region only speaks when its
+     text changes, so the second "Line removed to fit." in a row was silent. */
+  const announce = useCallback((text: string) => {
+    cancelAnimationFrame(announceFrame.current);
+    setAnnouncement("");
+    announceFrame.current = requestAnimationFrame(() => setAnnouncement(text));
+  }, []);
+  useEffect(() => () => cancelAnimationFrame(announceFrame.current), []);
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
 
@@ -69,18 +78,18 @@ export function ResultScreen({
   function decide(opId: string, approved: boolean) {
     const item = list.toDecide.find((i) => i.op.id === opId);
     dispatch({ type: "decide", opId, approved });
-    setAnnouncement(decisionAnnouncement(item?.skill ?? null, approved, list.toDecide.length - 1));
+    announce(decisionAnnouncement(item?.skill ?? null, approved, list.toDecide.length - 1));
   }
 
   function undo(opId: string) {
     const item = [...list.decided, ...list.reworded, ...list.removed].find((i) => i.op.id === opId);
     dispatch({ type: "undo", opId });
-    setAnnouncement(item ? undoAnnouncement(item) : "");
+    announce(item ? undoAnnouncement(item) : "");
   }
 
   function choosePageFit(optionId: string) {
     dispatch({ type: "choosePageFit", optionId, causedBy: list.pageFit?.causedBy ?? null });
-    setAnnouncement(
+    announce(
       optionId.startsWith("remove:")
         ? "Line removed to fit."
         : optionId.startsWith("shorter:")

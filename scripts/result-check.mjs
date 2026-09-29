@@ -78,6 +78,15 @@ async function visible(locator) {
   return (await locator.count()) > 0 && (await locator.first().isVisible());
 }
 
+/** What has keyboard focus: its id and the start of its text. */
+async function focused(page) {
+  return page.evaluate(() => ({
+    id: document.activeElement?.id ?? "",
+    text: (document.activeElement?.textContent ?? "").trim().slice(0, 40),
+    tag: document.activeElement?.tagName ?? "",
+  }));
+}
+
 const browser = await chromium.launch();
 
 for (const width of WIDTHS) {
@@ -120,6 +129,13 @@ for (const width of WIDTHS) {
     const download = page.getByRole("button", { name: "Download resume" });
     check((await download.count()) === 1, "exactly one Download button");
     check(await visible(page.getByText(/^All decided\./)), "the list says all decided");
+    check((await focused(page)).text.startsWith("All decided."), "focus moves to \"All decided\" after the last decision");
+
+    await page.getByRole("button", { name: /^Undo adding .+ line$/ }).last().click();
+    await page.waitForTimeout(450);
+    check((await focused(page)).id.startsWith("decision-"), "Undo from \"All decided\" focuses the reopened card");
+    await add.first().click();
+    await page.waitForTimeout(450);
     await page.screenshot({ path: path.join(OUT, `result-${width}-ready.png`) });
 
     await page.route("**/api/download", (route) =>
@@ -128,6 +144,38 @@ for (const width of WIDTHS) {
     await download.click();
     const reached = await page.waitForURL("**/done", { timeout: 5000 }).then(() => true, () => false);
     check(reached, "Download goes to the finish screen");
+    await context.close();
+  }
+
+  // ── The live region speaks a repeated message again ──────────────────────
+  {
+    // Far over one page with two lines on offer, so removing one still does not
+    // fit and the second removal says exactly what the first did.
+    const removal = (id, block) => ({
+      id, op: "remove", block, alternatives: [], claim: "reworded", value: 1, requirements: [], evidence: [],
+      needsDecision: false,
+    });
+    const { context, page } = await openResult(browser, width, {
+      layout: longLayout(fixture.layout),
+      plan: { ...fixture.plan, operations: [...fixture.plan.operations, removal("rm-a", "pad38"), removal("rm-b", "pad39")] },
+      decisions: { decisions: {}, wordings: {}, pagesAllowed: 1, growthAllowed: false, removedFor: {} },
+    });
+    await page.evaluate(() => {
+      const region = document.querySelector('[aria-live="polite"]');
+      window.__spoken = [];
+      new MutationObserver(() => window.__spoken.push(region.textContent)).observe(region, {
+        childList: true, subtree: true, characterData: true,
+      });
+    });
+    for (let i = 0; i < 2; i++) {
+      await page.getByRole("button", { name: "Remove that line" }).click();
+      await page.waitForTimeout(300);
+    }
+    const spoken = (await page.evaluate(() => window.__spoken)).filter(Boolean);
+    check(
+      spoken.length === 2 && spoken.every((text) => text === "Line removed to fit."),
+      "the same announcement twice is spoken twice",
+    );
     await context.close();
   }
 
@@ -179,6 +227,7 @@ for (const width of WIDTHS) {
     await page.getByRole("button", { name: "Remove that line" }).click();
     await page.waitForTimeout(300);
     check(!(await visible(heading)), "removing a line closes the page-fit card");
+    check((await focused(page)).id.startsWith("decision-"), "after a page-fit choice, focus moves to the open card");
     await context.close();
   }
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { CircleAlert } from "lucide-react";
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect, useRef } from "react";
 import type { ReviewState } from "@/lib/tailor/review";
 import type { ReviewItem, ReviewList as ReviewListData } from "@/lib/tailor/review-list";
 import type { Coverage } from "@/lib/tailor/types";
@@ -46,6 +46,59 @@ export function ReviewList({
 }) {
   const whyFor = (opId: string) => state.whyOpen && state.currentOpId === opId;
   const pages = `${state.pages} page${state.pages === 1 ? "" : "s"}`;
+  const pageFitLength = list.pageFit ? `${list.pageFit.pages}-${list.pageFit.allowed}` : null;
+  const pageFitKey = list.pageFit
+    ? `${pageFitLength}-${list.pageFit.options.map((o) => o.id).join(",")}`
+    : null;
+  const currentId = list.current?.op.id ?? null;
+
+  const allDecidedRef = useRef<HTMLParagraphElement>(null);
+  /** undefined until the first paint, so nothing is focused on arrival. */
+  const previousCurrent = useRef<string | null | undefined>(undefined);
+  /** The length in question when the user answered the page-fit card, until
+   *  focus has moved on. */
+  const answeredPageFit = useRef<string | null>(null);
+
+  /* Where focus goes next when the thing that had it disappears. The card
+     that was answered unmounts, and a focused element that unmounts drops
+     focus to <body>: a keyboard user would start again from the top. */
+  const focusNext = (opId: string | null) => {
+    const target = opId
+      ? document.getElementById(`decision-${opId}`)
+      : (allDecidedRef.current ?? document.getElementById("page-fit-heading"));
+    target?.focus();
+  };
+
+  useEffect(() => {
+    const before = previousCurrent.current;
+    previousCurrent.current = currentId;
+    if (before === undefined) return;
+    // The last decision made: say so where the card was.
+    if (before !== null && currentId === null) focusNext(null);
+    // A card came back with nothing open before it — an Undo from "All decided".
+    // A card replacing a card focuses itself.
+    if (before === null && currentId !== null) focusNext(currentId);
+  }, [currentId]);
+
+  useEffect(() => {
+    const answered = answeredPageFit.current;
+    if (answered === null) return;
+    /* The options change as soon as a removal is chosen, but the length only
+       once the page is measured again, so the length is what says whether the
+       question went away or became a different one. */
+    if (state.compare || (pageFitLength !== null && pageFitLength !== answered)) {
+      // Comparing, or still too long by a different count: the new card takes focus itself.
+      answeredPageFit.current = null;
+    } else if (pageFitLength === null) {
+      answeredPageFit.current = null;
+      focusNext(currentId);
+    }
+  }, [pageFitLength, currentId, state.compare]);
+
+  const choosePageFit = (optionId: string) => {
+    answeredPageFit.current = pageFitLength;
+    onChoosePageFit(optionId);
+  };
 
   return (
     <section aria-label="Your review" className={`flex flex-col gap-3 p-1 font-ui ${className}`}>
@@ -62,9 +115,11 @@ export function ReviewList({
       >
         {list.pageFit && (
           <PageFitCard
-            key={`${list.pageFit.pages}-${list.pageFit.allowed}`}
+            /* Keyed by the options too, so a removal that changes them resets
+               the chosen radio to the new first option. */
+            key={pageFitKey}
             pageFit={list.pageFit}
-            onChoose={onChoosePageFit}
+            onChoose={choosePageFit}
           />
         )}
 
@@ -105,7 +160,12 @@ export function ReviewList({
           </>
         ) : (
           !list.pageFit && (
-            <p className="m-0 rounded-lg border border-line bg-paper-raised p-4 text-[15px] font-semibold leading-[22px]">
+            <p
+              ref={allDecidedRef}
+              tabIndex={-1}
+              className="m-0 rounded-lg border border-line bg-paper-raised p-4 text-[15px] font-semibold leading-[22px]
+                         outline-offset-4"
+            >
               All decided. Covers {coverage.covered} of {coverage.total} · {pages}.
             </p>
           )
