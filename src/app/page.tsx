@@ -1,3 +1,5 @@
+import { ArrowRight } from "lucide-react";
+
 import { Wordmark } from "@/components/rezz/Wordmark";
 import { Badge } from "@/components/rezz/Badge";
 import { Button, ButtonLink } from "@/components/rezz/Button";
@@ -9,6 +11,7 @@ import {
   NotYours,
 } from "@/components/rezz/ResumeSheet";
 import { MarginColumn, type Mark } from "@/components/rezz/MarginColumn";
+import { Reveal } from "@/components/rezz/Reveal";
 /* PromiseStrip is deliberately not imported — see its file header. The four
    promises are still made on this page, each where its objection actually
    arises, and the footer still carries the line verbatim. */
@@ -32,6 +35,23 @@ import {
    otherwise (CLAUDE.md) — these keep the desktop page from breaking, they are
    not a phone design. */
 const wrap = "mx-auto max-w-[1312px] px-16 max-[1100px]:px-8 max-[680px]:px-4";
+
+/* Every section below the hero is a ruled register: a 2px rule across the page,
+   then 112px of air, then the heading. The proof band used to be the only ruled
+   thing on the page and everything after it — how it works, pricing, questions —
+   floated in white at the same altitude with nothing to say where one ended and
+   the next began. A page whose whole argument is "this is a document" should be
+   ruled like one.
+
+   The rule sits at the TOP of each register rather than around the band, so no
+   two rules ever meet: a `border-y` band followed by a `border-t` section drew
+   4px of doubled line at the seam.
+
+   The seam is 112px everywhere. It was 96 above the proof band and 112 below it,
+   which made a band with symmetric internal padding sit asymmetrically in the
+   page. The band keeps its tighter 96px interior — inside a register may breathe
+   less than between two of them. */
+const register = "border-t-2 border-ink py-28 max-[1100px]:py-16";
 
 /* The skin — 2px ink outlines, hard offset shadows, the type scale — now lives
    in `@/components/rezz/skin`, where its rules are written down. It was local
@@ -62,16 +82,20 @@ const STEPS = [
     n: "1",
     title: "Upload your resume",
     when: "First time only",
-    body: "PDF, DOCX, LaTeX or your LinkedIn PDF. We read your facts and never invent ones you didn't give us.",
+    body: "PDF or Word (.docx). We read your facts and use only what you gave us.",
   },
   {
     n: "2",
     title: "Add the job",
     when: "Every job after that",
-    body: "Paste the description, upload a screenshot, or click the Rezz extension on a career page.",
+    body: "Paste the job description. That's all we need to read its requirements.",
   },
   {
-    n: "→",
+    /* No numeral: this one is the outcome, not a step. The arrow is a drawn
+       Lucide glyph rather than the character → , which came out of Geist a
+       hairline lighter than the 1 and 2 beside it and was the only mark in the
+       square that the icon system had not drawn. */
+    n: "download",
     outcome: true,
     title: "Download",
     when: "About fifteen seconds later",
@@ -94,23 +118,28 @@ export default function LandingPage() {
         <div className={`${wrap} flex min-h-20 flex-wrap items-center justify-between gap-3 py-3`}>
           {/* Boxed, the way the reference boxes its mark: on a page drawn
               entirely in 2px ink, an unboxed wordmark reads as unfinished. */}
-          <span className={`inline-flex items-center ${box} rounded-md bg-paper-raised px-3 py-1.5 ${offset}`}>
+          <span className={`inline-flex items-center ${box} rounded-md bg-sheet px-3 py-1.5 ${offset}`}>
             <Wordmark />
           </span>
           {/* py-3 on the links is a tap target, not spacing: at their natural
               26px they were well under the 44px the brand book requires. */}
-          <nav aria-label="Main" className="flex flex-wrap items-center gap-8 text-[15px] font-semibold leading-5 max-[680px]:gap-4">
+          {/* `grow justify-end`: the nav wraps below ~720px, and without it the
+              wrapped rows aligned left inside a right-hand flex item — the theme
+              toggle ended up alone at the left edge of its own row, under the
+              middle of the bar. Wrapped rows now stack against the right gutter,
+              where the nav already sits. */}
+          <nav aria-label="Main" className="flex grow flex-wrap items-center justify-end gap-8 text-[15px] font-semibold leading-5 max-[680px]:gap-4">
             <a href="#how" className="py-3 no-underline hover:underline hover:underline-offset-4">How it works</a>
             <a href="#pricing" className="py-3 no-underline hover:underline hover:underline-offset-4">Pricing</a>
             <a href="#faq" className="py-3 no-underline hover:underline hover:underline-offset-4">Questions</a>
-            <ButtonLink href="#extension" variant="secondary">Get the Chrome extension</ButtonLink>
+            <ButtonLink href="/upload" variant="secondary">Tailor a resume</ButtonLink>
             <ThemeToggle />
           </nav>
         </div>
       </header>
 
       <main>
-        <section className={`${wrap} pt-20 max-[1100px]:pt-12`}>
+        <section className={`${wrap} pt-20 pb-28 max-[1100px]:pt-12 max-[1100px]:pb-16`}>
           {/* Headline and document side by side.
 
               Both columns flex, and the margin column drops at 1215px rather
@@ -140,9 +169,17 @@ export default function LandingPage() {
                 own facts back, reworded for that job, with every change marked.
               </p>
               <div className="mt-8 flex flex-col items-start gap-5">
-                <ButtonLink href="/upload" size="lg">
-                  Upload your resume
-                </ButtonLink>
+                <div className="flex flex-wrap items-center gap-4">
+                  <ButtonLink href="/upload" size="lg">
+                    Upload your resume
+                  </ButtonLink>
+                  {/* The demo is the whole Result screen on saved sample data —
+                      the one thing no screenshot can carry. Nothing to upload,
+                      nothing to sign. */}
+                  <ButtonLink href="/result?demo" variant="secondary" size="lg">
+                    See a sample result
+                  </ButtonLink>
+                </div>
                 <div className="flex flex-wrap items-center gap-3">
                   <Badge tone="drawn">No sign-up to try</Badge>
                   <Badge tone="drawn">1 free resume a week</Badge>
@@ -156,57 +193,59 @@ export default function LandingPage() {
                   in its own class string and two shadow utilities are resolved
                   by Tailwind's generated order, not by ours. The Result screen's
                   sheet is untouched — it keeps the real lift off the grey well. */}
-              <ResumeSheet
-                name="Priya Sharma"
-                contact="Backend Engineer · Bengaluru · Notice period 30 days · priya.sharma@example.com"
-                pad="tight"
-                className={`${box} ${offsetPageOverride}`}
-              >
-                <SheetRule />
-                <p id="l-sum" className="m-0">
-                  <mark>
-                    Backend engineer with 3 years building payment and ledger services in Java and
-                    Spring Boot on AWS.
-                  </mark>
-                </p>
-                <SheetRule />
-                {/* `as="div"`: here the sheet is an illustration, so its headings
-                    must stay out of the page outline. See SheetHeading. */}
-                <SheetHeading as="div">Experience</SheetHeading>
-                <SheetRole role="Razorfin — Software Engineer, Backend" dates="Aug 2024 – present" />
-                <ul className="mt-1.5 list-disc pl-4">
-                  <li id="l-p95" className="my-[5px]">
-                    <mark style={{ animationDelay: "150ms" }}>
-                      Cut payment API p95 latency from 820&nbsp;ms to 310&nbsp;ms using async Spring
-                      Boot workers on AWS ECS.
+              <Reveal>
+                <ResumeSheet
+                  name="Priya Sharma"
+                  contact="Backend Engineer · Bengaluru · Notice period 30 days · priya.sharma@example.com"
+                  pad="tight"
+                  className={`${box} ${offsetPageOverride}`}
+                >
+                  <SheetRule />
+                  <p id="l-sum" className="m-0">
+                    <mark className="mark-onview">
+                      Backend engineer with 3 years building payment and ledger services in Java and
+                      Spring Boot on AWS.
                     </mark>
-                  </li>
-                  <li className="my-[5px]">
-                    Built a nightly reconciliation job that matches 2.1 lakh transactions against bank
-                    files.
-                  </li>
-                  <li id="l-split" className="my-[5px]">
-                    <mark style={{ animationDelay: "300ms" }}>
-                      Split the refunds module into 4 microservices, each deployed on its own.
+                  </p>
+                  <SheetRule />
+                  {/* `as="div"`: here the sheet is an illustration, so its headings
+                      must stay out of the page outline. See SheetHeading. */}
+                  <SheetHeading as="div">Experience</SheetHeading>
+                  <SheetRole role="Razorfin — Software Engineer, Backend" dates="Aug 2024 – present" />
+                  <ul className="mt-1.5 list-disc pl-4">
+                    <li id="l-p95" className="my-[5px]">
+                      <mark className="mark-onview" style={{ animationDelay: "150ms" }}>
+                        Cut payment API p95 latency from 820&nbsp;ms to 310&nbsp;ms using async Spring
+                        Boot workers on AWS ECS.
+                      </mark>
+                    </li>
+                    <li className="my-[5px]">
+                      Built a nightly reconciliation job that matches 2.1 lakh transactions against bank
+                      files.
+                    </li>
+                    <li id="l-split" className="my-[5px]">
+                      <mark className="mark-onview" style={{ animationDelay: "300ms" }}>
+                        Split the refunds module into 4 microservices, each deployed on its own.
+                      </mark>
+                    </li>
+                    <li id="l-kafka" className="my-[5px]">
+                      <NotYours>Consumed payment events from Kafka topics to update the ledger.</NotYours>
+                    </li>
+                  </ul>
+                  <SheetRule />
+                  <SheetHeading as="div">Skills</SheetHeading>
+                  <p id="l-skills" className="m-0">
+                    <mark className="mark-onview" style={{ animationDelay: "450ms" }}>
+                      Java, Spring Boot, AWS (ECS, SQS, RDS), microservices
                     </mark>
-                  </li>
-                  <li id="l-kafka" className="my-[5px]">
-                    <NotYours>Consumed payment events from Kafka topics to update the ledger.</NotYours>
-                  </li>
-                </ul>
-                <SheetRule />
-                <SheetHeading as="div">Skills</SheetHeading>
-                <p id="l-skills" className="m-0">
-                  <mark style={{ animationDelay: "450ms" }}>
-                    Java, Spring Boot, AWS (ECS, SQS, RDS), microservices
-                  </mark>
-                  , PostgreSQL, Redis, Docker, Git
-                </p>
-              </ResumeSheet>
+                    , PostgreSQL, Redis, Docker, Git
+                  </p>
+                </ResumeSheet>
+              </Reveal>
 
-              <div className="max-[1215px]:hidden">
+              <Reveal delayMs={100} className="max-[1215px]:hidden">
                 <MarginColumn marks={MARKS} label="What changed" />
-              </div>
+              </Reveal>
             </div>
           </div>
         </section>
@@ -222,9 +261,9 @@ export default function LandingPage() {
             fill, but #f7f8fa against #ffffff is a 3% difference — on a page
             built from hard contrast that reads as a rendering accident rather
             than a decision, and the rule already does the job. */}
-        <section className="mt-24 border-y-2 border-ink py-24 max-[1100px]:mt-16 max-[1100px]:py-16">
+        <section className={register}>
           <div className={`${wrap} grid grid-cols-[minmax(0,1fr)_560px] items-start gap-16 max-[1100px]:grid-cols-1 max-[1100px]:gap-8`}>
-            <div>
+            <Reveal>
               <h2 className={`${h2} max-w-[18ch]`}>Nothing added behind your back.</h2>
               <p className={`mt-6 max-w-[58ch] ${lead}`}>
                 Rezz rewords what you already did so it matches how this job describes it. Every
@@ -240,18 +279,18 @@ export default function LandingPage() {
                 Your result comes back in one clean template &mdash; no gallery, no colour picker.
                 We picked one, so you don&rsquo;t have to.
               </p>
-            </div>
+            </Reveal>
 
             {/* Each change is its own drawn object rather than a ruled row, so
                 the third one — the one that asks — is visibly a thing you act
                 on, not a paragraph you scroll past. */}
             <div className="flex flex-col gap-5">
-              <div className={`${box} ${offset} rounded-md bg-paper-raised p-6`}>
+              <Reveal className={`${box} ${offset} rounded-md bg-paper-raised p-6`}>
                 <div className="font-doc text-sm leading-[22px] text-ink-muted line-through">
                   Worked on backend APIs for payments.
                 </div>
                 <div className="mt-[5px] font-doc text-[15px] leading-[23px]">
-                  <mark>
+                  <mark className="mark-onview">
                     Cut payment API p95 latency from 820&nbsp;ms to 310&nbsp;ms using async Spring
                     Boot workers on AWS ECS.
                   </mark>
@@ -259,26 +298,26 @@ export default function LandingPage() {
                 <div className="mt-3 flex items-center gap-2 font-mark text-xs leading-4 text-verified before:h-[2px] before:w-[18px] before:bg-verified before:content-['']">
                   your Razorfin project, facts #2 and #4
                 </div>
-              </div>
+              </Reveal>
 
-              <div className={`${box} ${offset} rounded-md bg-paper-raised p-6`}>
+              <Reveal delayMs={80} className={`${box} ${offset} rounded-md bg-paper-raised p-6`}>
                 <div className="font-doc text-sm leading-[22px] text-ink-muted line-through">
                   Mentored 2 junior engineers.
                 </div>
                 <div className="mt-[5px] font-doc text-[15px] leading-[23px]">
-                  <mark style={{ animationDelay: "200ms" }}>
+                  <mark className="mark-onview" style={{ animationDelay: "200ms" }}>
                     Mentored 2 junior engineers through their first on-call rotations.
                   </mark>
                 </div>
                 <div className="mt-3 flex items-center gap-2 font-mark text-xs leading-4 text-verified before:h-[2px] before:w-[18px] before:bg-verified before:content-['']">
                   your Razorfin project, fact #9
                 </div>
-              </div>
+              </Reveal>
 
               {/* The one that needs the user is drawn in the corrector's red, not
                   in ink, and is the only box on the page that carries a colour
                   other than the highlighter. */}
-              <div className={`rounded-md border-2 border-gap bg-paper-raised p-6 ${offsetGap}`}>
+              <Reveal delayMs={160} className={`rounded-md border-2 border-gap bg-paper-raised p-6 ${offsetGap}`}>
                 <div className="text-lg font-bold leading-[29px]">
                   Kafka is in the job, but not in your resume.
                 </div>
@@ -295,122 +334,156 @@ export default function LandingPage() {
                   <Button variant="secondary" className="flex-1">Skip</Button>
                   <Button variant="secondary" className="flex-1">Add it</Button>
                 </div>
+              </Reveal>
+            </div>
+          </div>
+        </section>
+
+        <section id="how" className={register}>
+          <div className={wrap}>
+            <Reveal>
+              <h2 className={`${h2} max-w-[20ch]`}>Two steps the first time. One step after that.</h2>
+            </Reveal>
+            {/* Numbered because it genuinely is a sequence. The numerals are set as
+                type in a drawn square — not a pastel icon circle, which is the
+                tell this page is trying hardest to avoid. The outcome card takes
+                the same square unfilled, so "things you do" and "what you get"
+                are told apart before either is read. */}
+            <ol className="mt-12 grid list-none grid-cols-3 gap-6 p-0 max-[1100px]:grid-cols-1">
+              {STEPS.map((s, i) => (
+                <Reveal as="li" key={s.n} delayMs={i * 80} className={`${box} ${offset} rounded-md bg-paper-raised p-7`}>
+                  <div
+                    aria-hidden
+                    className={`flex h-12 w-12 items-center justify-center rounded-md ${box}
+                                text-xl font-bold leading-none tabular-nums
+                                ${s.outcome ? "bg-paper-raised text-ink" : "bg-ink text-paper"}`}
+                  >
+                    {s.outcome ? <ArrowRight className="h-5 w-5" strokeWidth={1.5} /> : s.n}
+                  </div>
+                  <h3 className={`mt-5 mb-2 ${h3}`}>{s.title}</h3>
+                  <p className="m-0 font-mark text-xs font-medium leading-4 text-ink-muted">{s.when}</p>
+                  <p className="m-0 mt-3 text-base leading-[26px] text-ink-muted">{s.body}</p>
+                </Reveal>
+              ))}
+            </ol>
+            {/* Sits here rather than up in the changes section: this is the point
+                where a reader has understood the product and has furthest to
+                scroll before the next chance to act. */}
+            <ButtonLink href="/upload" size="lg" className="mt-12">
+              Upload your resume
+            </ButtonLink>
+          </div>
+        </section>
+
+        <section id="pricing" className={register}>
+          <div className={wrap}>
+            <Reveal>
+              <h2 className={`${h2} max-w-[20ch]`}>Paid once. Does not renew.</h2>
+              <p className={`mt-6 max-w-[58ch] ${lead}`}>
+                Pay by UPI. No card on file, no autopay mandate. When a pass ends, it just ends.
+              </p>
+            </Reveal>
+            <div className="mt-12 grid grid-cols-3 items-stretch gap-8 max-[1100px]:grid-cols-1">
+              <Reveal className="h-full">
+                <PassCard
+                  name="Free"
+                  price="₹0"
+                  per="One tailored resume a week"
+                  /* "One tailored resume a week" is already the `per` line two
+                   rows above; repeating it verbatim as the first tick read as a
+                   rendering bug. What the free pass actually gets is the same
+                   check and the same template as a paid one, so say that. */
+                features={["Every change marked and sourced", "Honest check included", "One clean template"]}
+                  cta="Start free"
+                  href="/upload"
+                />
+              </Reveal>
+              <Reveal delayMs={80} className="h-full">
+                <PassCard
+                  name="Sprint"
+                  price="₹149"
+                  per="15 resumes, 30 days"
+                  features={["15 tailored resumes", "Honest check on each one", "Interview prep and tracker"]}
+                  cta="Passes open soon — you'll pay at download"
+                  featured
+                />
+              </Reveal>
+              <Reveal delayMs={160} className="h-full">
+                <PassCard
+                  name="Job-hunt"
+                  price="₹399"
+                  per="Unlimited, 90 days"
+                  features={[
+                    "Unlimited tailored resumes (fair use)",
+                    "Honest check on each one",
+                    "Interview prep and tracker",
+                  ]}
+                  cta="Passes open soon — you'll pay at download"
+                />
+              </Reveal>
+            </div>
+          </div>
+        </section>
+
+        <section id="faq" className={register}>
+          <div className={wrap}>
+            <Reveal className="grid grid-cols-[340px_minmax(0,1fr)] gap-16 max-[1100px]:grid-cols-1 max-[1100px]:gap-8">
+              {/* pt-4 is optical alignment. Both columns start at the same y, but
+                the first question's caps land 28px down (2px rule, 12px of
+                list padding, 8px of summary padding, then its own half-leading)
+                while a 46px heading's caps land almost at its own top edge — so
+                the heading floated a line-height above the list it labels.
+                Nudged, the two cap-heights sit on one line. Dropped below 1100,
+                where the two columns stack and there is nothing to align to. */}
+            <h2 className={`${h2} pt-6 max-[1100px]:pt-0`}>Questions</h2>
+              <div>
+                <FaqItem question="Will it add skills I don't have?" defaultOpen>
+                  Only if you say so. When a job asks for a skill that isn&rsquo;t in your resume, we
+                  draft the line, mark it &ldquo;Not in your resume&rdquo; and ask. It goes in only if
+                  you choose Add it, and we give you interview prep for it afterwards.
+                </FaqItem>
+                <FaqItem question="Do you give an ATS score?">
+                  No. Applicant tracking systems don&rsquo;t publish a score, so any number would be
+                  invented. We show whether your file parses cleanly and which of the job&rsquo;s
+                  requirements it covers.
+                </FaqItem>
+                <FaqItem question="Will my resume look different?">
+                  Yes, for now. Your result comes back in one clean Rezz template &mdash; no gallery,
+                  no colour picker, just one layout we picked so nothing breaks. Keeping your own
+                  file&rsquo;s design in place is what we&rsquo;re building toward next.
+                </FaqItem>
+                <FaqItem question="Does the pass renew?">
+                  No. You pay once by UPI. When the 30 or 90 days are over, it stops. There is nothing
+                  to cancel.
+                </FaqItem>
+                <FaqItem question="Do I need to sign up?">
+                  Not to try. You sign in with your phone number and a one-time code only when you
+                  download.
+                </FaqItem>
+                {/* TODO(owner): storage region and deletion time are still unconfirmed, so this
+                    answer deliberately does not state them. Add them here once they are settled —
+                    do not put the reminder back in the copy: it shipped as a visible
+                    "[Draft: …]" note inside the one answer about handling people's personal data. */}
+                <FaqItem question="What happens to my resume data?">
+                  Your file stays in your browser for the session &mdash; we don&rsquo;t keep a copy of
+                  your resume on our servers. It is used only to tailor your resume, never sold, and
+                  never used to train AI models. Close the tab and it&rsquo;s gone.
+                </FaqItem>
               </div>
-            </div>
-          </div>
-        </section>
-
-        <section id="how" className={`${wrap} pt-28 max-[1100px]:pt-16`}>
-          <h2 className={`${h2} max-w-[20ch]`}>Two steps the first time. One step after that.</h2>
-          {/* Numbered because it genuinely is a sequence. The numerals are set as
-              type in a drawn square — not a pastel icon circle, which is the
-              tell this page is trying hardest to avoid. The outcome card takes
-              the same square unfilled, so "things you do" and "what you get"
-              are told apart before either is read. */}
-          <ol className="mt-12 grid list-none grid-cols-3 gap-6 p-0 max-[1100px]:grid-cols-1">
-            {STEPS.map((s) => (
-              <li key={s.n} className={`${box} ${offset} rounded-md bg-paper-raised p-7`}>
-                <div
-                  aria-hidden
-                  className={`flex h-12 w-12 items-center justify-center rounded-md ${box}
-                              text-xl font-bold leading-none tabular-nums
-                              ${s.outcome ? "bg-paper-raised text-ink" : "bg-ink text-paper"}`}
-                >
-                  {s.n}
-                </div>
-                <h3 className={`mt-5 mb-2 ${h3}`}>{s.title}</h3>
-                <p className="m-0 font-mark text-xs font-medium leading-4 text-ink-muted">{s.when}</p>
-                <p className="m-0 mt-3 text-base leading-[26px] text-ink-muted">{s.body}</p>
-              </li>
-            ))}
-          </ol>
-          {/* Sits here rather than up in the changes section: this is the point
-              where a reader has understood the product and has furthest to
-              scroll before the next chance to act. */}
-          <ButtonLink href="/upload" size="lg" className="mt-12">
-            Upload your resume
-          </ButtonLink>
-        </section>
-
-        <section id="pricing" className={`${wrap} pt-28 max-[1100px]:pt-16`}>
-          <h2 className={`${h2} max-w-[20ch]`}>Paid once. Does not renew.</h2>
-          <p className={`mt-6 max-w-[58ch] ${lead}`}>
-            Pay by UPI. No card on file, no autopay mandate. When a pass ends, it just ends.
-          </p>
-          <div className="mt-12 grid grid-cols-3 items-stretch gap-8 max-[1100px]:grid-cols-1">
-            <PassCard
-              name="Free"
-              price="₹0"
-              per="One tailored resume a week"
-              features={["One tailored resume a week", "Honest check included", "One clean template"]}
-              cta="Start free"
-            />
-            <PassCard
-              name="Sprint"
-              price="₹149"
-              per="15 resumes, 30 days"
-              features={["15 tailored resumes", "Honest check on each one", "Interview prep and tracker"]}
-              cta="Buy Sprint with UPI"
-              featured
-            />
-            <PassCard
-              name="Job-hunt"
-              price="₹399"
-              per="Unlimited, 90 days"
-              features={[
-                "Unlimited tailored resumes (fair use)",
-                "Honest check on each one",
-                "Interview prep and tracker",
-              ]}
-              cta="Buy Job-hunt with UPI"
-            />
-          </div>
-        </section>
-
-        <section id="faq" className={`${wrap} pt-28 max-[1100px]:pt-16`}>
-          <div className="grid grid-cols-[340px_minmax(0,1fr)] gap-16 max-[1100px]:grid-cols-1 max-[1100px]:gap-8">
-            <h2 className={h2}>Questions</h2>
-            <div>
-              <FaqItem question="Will it add skills I don't have?" defaultOpen>
-                Only if you say so. When a job asks for a skill that isn&rsquo;t in your resume, we
-                draft the line, mark it &ldquo;Not in your resume&rdquo; and ask. It goes in only if
-                you choose Add it, and we give you interview prep for it afterwards.
-              </FaqItem>
-              <FaqItem question="Do you give an ATS score?">
-                No. Applicant tracking systems don&rsquo;t publish a score, so any number would be
-                invented. We show whether your file parses cleanly and which of the job&rsquo;s
-                requirements it covers.
-              </FaqItem>
-              <FaqItem question="Will my resume look different?">
-                Yes, for now. Your result comes back in one clean Rezz template &mdash; no gallery,
-                no colour picker, just one layout we picked so nothing breaks. Keeping your own
-                file&rsquo;s design in place is what we&rsquo;re building toward next.
-              </FaqItem>
-              <FaqItem question="Does the pass renew?">
-                No. You pay once by UPI. When the 30 or 90 days are over, it stops. There is nothing
-                to cancel.
-              </FaqItem>
-              <FaqItem question="Do I need to sign up?">
-                Not to try. You sign in with your phone number and a one-time code only when you
-                download.
-              </FaqItem>
-              {/* TODO(owner): storage region and deletion time are still unconfirmed, so this
-                  answer deliberately does not state them. Add them here once they are settled —
-                  do not put the reminder back in the copy: it shipped as a visible
-                  "[Draft: …]" note inside the one answer about handling people's personal data. */}
-              <FaqItem question="What happens to my resume data?">
-                Your resume is used only to tailor your resumes. It is stored encrypted, never sold,
-                and never used to train AI models. You can delete everything from Settings at any
-                time.
-              </FaqItem>
-            </div>
+            </Reveal>
           </div>
         </section>
 
         {/* The page used to end on the FAQ, so a reader who scrolled the whole
-            thing arrived at the footer with nothing to do. */}
-        <section className={`${wrap} pt-28 max-[1100px]:pt-16`}>
-          <div className={`${box} rounded-md bg-paper-raised px-12 py-14 ${offsetAccent} max-[680px]:px-6`}>
+            thing arrived at the footer with nothing to do.
+
+            This is the one seam on the page with no rule across it, so it is
+            also the one that closes up: 64px above instead of 112. A ruled seam
+            can afford 112 on both sides because the rule holds the two apart;
+            an unruled one has only the gap, and at 224px of white the closing
+            offer read as a separate page rather than the end of this one. */}
+        <section className={`${wrap} pt-16 pb-28 max-[1100px]:pt-10 max-[1100px]:pb-16`}>
+          <Reveal className={`${box} rounded-md bg-paper-raised px-12 py-14 ${offsetAccent} max-[680px]:px-6`}>
             <h2 className={`${h2} max-w-[18ch]`}>Try it on the job you&rsquo;re looking at now.</h2>
             <p className={`mt-5 max-w-[52ch] ${lead}`}>
               One resume a week is free, and you don&rsquo;t need an account to see what changes.
@@ -421,7 +494,7 @@ export default function LandingPage() {
               </ButtonLink>
               <Badge tone="drawn">No sign-up to try</Badge>
             </div>
-          </div>
+          </Reveal>
         </section>
       </main>
 
@@ -429,10 +502,15 @@ export default function LandingPage() {
           is bracketed by the two places Rezz speaks in its own voice.
           --focus is ink, which would draw an invisible ring on an ink ground.
           Flip it for this block the same way .sheet flips its tokens. */}
-      <footer className="mt-28 border-t-2 border-ink bg-ink py-14 text-paper [--focus:var(--paper)] max-[1100px]:mt-16">
+      <footer className="border-t-2 border-ink bg-ink py-14 text-paper [--focus:var(--paper)]">
         <div className={`${wrap} flex items-start justify-between gap-16 max-[680px]:flex-col max-[680px]:gap-6`}>
           <div>
-            <span className="inline-flex items-center rounded-md border-2 border-paper bg-paper px-3 py-1.5">
+            {/* `bg-sheet` with a `sheet-ink` edge, not `bg-paper`: the mark now
+                pins its own dark ink (see Wordmark), so it needs white behind
+                it in both themes — and in dark, where this footer inverts to a
+                light slab, a white plaque needs a dark edge to be a plaque at
+                all rather than a hole. */}
+            <span className="inline-flex items-center rounded-md border-2 border-sheet-ink bg-sheet px-3 py-1.5">
               <Wordmark />
             </span>
             <p className="mt-4 max-w-[46ch] text-sm leading-[22px] text-paper/70">
@@ -440,11 +518,12 @@ export default function LandingPage() {
               No auto-renew.
             </p>
           </div>
-          <nav aria-label="Footer" className="flex gap-6 text-sm font-medium leading-[22px]">
+          {/* `mt-1.5` sits the link row on the wordmark's optical centre. Both
+              were top-aligned, so 14px links hung off the top of a 41px plaque. */}
+          <nav aria-label="Footer" className="mt-1.5 flex gap-6 text-sm font-medium leading-[22px] max-[680px]:mt-0">
             <a href="#pricing" className="py-3 text-paper">Pricing</a>
-            <a href="#privacy" className="py-3 text-paper">Privacy</a>
-            <a href="#terms" className="py-3 text-paper">Terms</a>
-            <a href="#contact" className="py-3 text-paper">Contact</a>
+            <a href="/privacy" className="py-3 text-paper">Privacy</a>
+            <a href="/terms" className="py-3 text-paper">Terms</a>
           </nav>
         </div>
       </footer>

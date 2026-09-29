@@ -22,11 +22,23 @@ export const metadata = {
 
 type Fixture = { layout: Layout; plan: TailorPlan };
 
-export default function ResultPage() {
-  const file = path.join(process.cwd(), "fixtures", "sample-plan.json");
-  const fallback = fs.existsSync(file)
-    ? (JSON.parse(fs.readFileSync(file, "utf8")) as Fixture)
-    : null;
+export default async function ResultPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ demo?: string }>;
+}) {
+  /* The sample is a demo you ask for (the landing page links here as
+     /result?demo), never a stranger's resume shown to whoever types /result.
+     Without it, ResultLoader sends a visitor with no session back to the
+     start of the flow. */
+  const { demo } = await searchParams;
+  let fallback: Fixture | null = null;
+  if (demo !== undefined) {
+    const file = path.join(process.cwd(), "fixtures", "sample-plan.json");
+    fallback = fs.existsSync(file)
+      ? (JSON.parse(fs.readFileSync(file, "utf8")) as Fixture)
+      : null;
+  }
 
   return <ResultLoader fallback={fallback} />;
 }

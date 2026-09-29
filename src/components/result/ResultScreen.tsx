@@ -73,6 +73,12 @@ export function ResultScreen({
   const rows = requirementRows(plan.requirements, plan.matches, operations);
   const highlightBlocks = rows.find((r) => r.requirement.id === state.selectedRequirement)?.pointsTo ?? null;
 
+  // A decided line's border tracks whether its "why" explanation is actually
+  // open, not just whether it was last clicked — else a second click can't
+  // clear it. An undecided line's border tracks which card is open instead.
+  const openOpId = state.currentOpId ?? list.current?.op.id ?? null;
+  const activeOpId = list.toDecide.some((i) => i.op.id === openOpId) ? openOpId : state.whyOpen ? state.currentOpId : null;
+
   const onPageCount = useCallback((pages: number) => dispatch({ type: "measuredPages", pages }), []);
 
   function decide(opId: string, approved: boolean) {
@@ -145,7 +151,8 @@ export function ResultScreen({
         {downloadError ??
           (sample ? (
             <>
-              Showing a saved sample tailoring. <a href="/upload">Tailor your own resume</a> to download a file.
+              This is a demo of a saved sample tailoring. <a href="/upload">Tailor your own resume</a> to download a
+              file.
             </>
           ) : (
             <>
@@ -182,7 +189,8 @@ export function ResultScreen({
                    max-[900px]:[grid-template-columns:minmax(0,1fr)] max-[900px]:gap-4 max-[900px]:p-4"
       >
         <SummaryPanel
-          className="self-start min-[1240px]:sticky min-[1240px]:top-0 max-[1240px]:col-span-2 max-[900px]:col-span-1"
+          className="self-start min-[1240px]:sticky min-[1240px]:top-0 min-[1240px]:max-h-[calc(100dvh-8rem)]
+                     min-[1240px]:overflow-y-auto max-[1240px]:col-span-2 max-[900px]:col-span-1"
           rows={rows}
           coverage={coverage}
           selected={state.selectedRequirement}
@@ -193,7 +201,7 @@ export function ResultScreen({
           className="max-[900px]:order-3"
           layout={layout}
           lines={lines}
-          activeOpId={state.currentOpId ?? list.current?.op.id ?? null}
+          activeOpId={activeOpId}
           highlightBlocks={highlightBlocks}
           onSelect={focusLine}
           onPageCount={onPageCount}

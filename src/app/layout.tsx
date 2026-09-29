@@ -21,7 +21,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Rezz — your resume, reworded for the job",
   description:
-    "Upload your own Word, PDF or LaTeX resume once. Paste any job. Get that same file back, in your own design, reworded for that job, with every change marked.",
+    "Upload your Word or PDF resume once. Paste any job. Get your own facts back, reworded for that job in one clean template, with every change marked — nothing added behind your back.",
 };
 
 /* Applied before the first paint, which is the only reason it is an inline
@@ -45,6 +45,13 @@ export default function RootLayout({
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: applyTheme }} />
+        {/* Reveal (components/rezz/Reveal.tsx) hides its content until an
+            IntersectionObserver fires. Without JS that never happens, so this
+            is the fallback that keeps the landing page's content from staying
+            invisible forever. */}
+        <noscript>
+          <style>{".reveal{opacity:1!important;transform:none!important}"}</style>
+        </noscript>
       </head>
       <body className="min-h-screen">{children}</body>
     </html>
