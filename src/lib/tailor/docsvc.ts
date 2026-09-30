@@ -79,20 +79,23 @@ export const exportResume = (file: string, format: "docx" | "pdf") =>
 
 export type TemplateBlock = { kind: Layout["blocks"][number]["kind"]; text: string };
 
-/** Flat blocks (no outline) or the structured document (outline resolved). */
-export type TemplateInput = { blocks: TemplateBlock[] } | { document: TemplateDocument };
+export type PrintResult = {
+  file: string | null;
+  pages: number;
+  renderer: "chromium" | "fallback";
+};
 
 /**
- * Render the tailored content into the one default Rezz template.
+ * Print the tailored resume: the rendered HTML through Chromium, with the
+ * structured document riding along for the fallback layout.
  *
- * v1 override (28 Sep 2026, see CLAUDE.md): every download goes through this
- * instead of `applyOps` + `exportResume`, which edit the user's own file.
- *
- * `images: true` also returns one PNG per page — the Result screen's exact
- * preview, pictures of the same bytes the download gets.
+ * v1 override (28 Sep 2026, see CLAUDE.md): every download and page count goes
+ * through this one endpoint, so the count always matches the file.
+ * `countOnly` skips the PDF bytes (`file` comes back null).
  */
-export const renderTemplate = (input: TemplateInput, options: { images?: boolean } = {}) =>
-  post<{ file: string; pages: number; format: string; images?: string[] }>("/render-template", {
-    ...input,
-    ...(options.images ? { images: true } : {}),
+export const printResume = (input: { html: string; document: TemplateDocument; countOnly?: boolean }) =>
+  post<PrintResult>("/print", {
+    html: input.html,
+    document: input.document,
+    ...(input.countOnly ? { count_only: true } : {}),
   });

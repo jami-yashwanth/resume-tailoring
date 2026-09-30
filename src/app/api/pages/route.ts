@@ -3,12 +3,9 @@ import { DocsvcError, printResume } from "@/lib/tailor/docsvc";
 import { renderResumeHtml } from "@/lib/tailor/resume-html";
 
 /**
- * Print the user's decisions through the one default Rezz template and hand
- * back a PDF.
- *
- * v1 override (28 Sep 2026, see CLAUDE.md): the client resolves the final
- * document, so there is no original file to touch here. `/api/pages` prints
- * through the same `printResume`, so its count always matches this file.
+ * The page count of the file `/api/download` would write. It prints through
+ * the same `printResume`, so the number can never disagree with the download;
+ * only the PDF bytes are left out.
  */
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -23,23 +20,20 @@ export async function POST(request: Request) {
 
   const document = body.document;
   if (!document || (!document.name && document.contact.length === 0 && document.sections.length === 0)) {
-    return Response.json({ error: "Nothing to download yet." }, { status: 400 });
+    return Response.json({ error: "Nothing to count yet." }, { status: 400 });
   }
 
   try {
     const html = renderResumeHtml(document);
-    const printed = await printResume({ html, document });
-    if (printed.file === null) {
-      return Response.json({ error: "Could not write your file." }, { status: 502 });
-    }
-    return Response.json({ file: printed.file, pages: printed.pages, renderer: printed.renderer });
+    const printed = await printResume({ html, document, countOnly: true });
+    return Response.json({ pages: printed.pages, renderer: printed.renderer });
   } catch (error) {
     const message =
       error instanceof DocsvcError
         ? error.message
         : error instanceof Error
           ? error.message
-          : "Could not write your file.";
+          : "Could not count pages.";
     return Response.json({ error: message }, { status: 502 });
   }
 }
