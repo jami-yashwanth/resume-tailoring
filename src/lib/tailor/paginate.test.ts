@@ -2,9 +2,9 @@ import { describe, expect, test } from "vitest";
 import { filePageCount, paginate } from "./paginate";
 
 /**
- * The same rule `_Writer._ensure` in `services/docsvc/app/template_render.py`
- * applies, which is the point: the preview and the downloaded file have to
- * break in the same places, so they decide it the same way.
+ * The rule the printer applies to `.rz-block { break-inside: avoid }`, so the
+ * preview's sheets break about where the downloaded file does. Only a display
+ * guide: the count the user sees is the printer's.
  */
 describe("paginate", () => {
   test("keeps everything on one page when it all fits", () => {

@@ -24,7 +24,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const html = renderResumeHtml(document);
+    const html = await renderResumeHtml(document);
     const printed = await printResume({ html, document, countOnly: true });
     return Response.json({ pages: printed.pages, renderer: printed.renderer });
   } catch (error) {

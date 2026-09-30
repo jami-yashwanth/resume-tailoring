@@ -69,6 +69,9 @@ describe("ResumePage", () => {
     const out = html(d);
     expect(out).toContain('data-key="line-op1" data-block="7" data-op="op1" data-state="reworded"');
     expect(html(d, false)).not.toMatch(/data-(key|block|op|state)=/);
+    // A changed line is a keyboard control on screen, and plain text in print.
+    expect(out).toContain('role="button" tabindex="0" aria-label="Reworded: Built the billing service. Why this line changed."');
+    expect(html(d, false)).not.toContain('role="button"');
   });
 
   it("breaks pages only between blocks", () => {
@@ -84,6 +87,22 @@ describe("ResumePage", () => {
     expect(css).toMatch(/\.rz-heading\{break-after:avoid/);
   });
 
+  it("renders only the blocks in range, counted in emission order", () => {
+    const all = html().match(/class="rz-block[^"]*"/g) ?? [];
+    // The entry header and the first bullet: the range splits the bullet run.
+    const part = renderToStaticMarkup(<ResumePage document={doc} range={[5, 7]} />);
+    const blocks = part.match(/class="rz-block[^"]*"/g) ?? [];
+    expect(blocks).toEqual(all.slice(5, 7));
+    expect(part).toContain("Inncircles");
+    expect(part).toContain("Built the billing service");
+    expect(part).not.toContain("Shipped search");
+    // No empty list is left behind for a run of bullets outside the range.
+    const none = renderToStaticMarkup(<ResumePage document={doc} range={[0, 2]} />);
+    expect(none).not.toContain(`class="rz-list"`);
+    expect(none).toContain("Priya Sharma");
+    expect(none).not.toContain("Summary");
+  });
+
   it("omits empty sections and entries", () => {
     const d: TemplateDocument = {
       name: null, contact: [],
@@ -95,8 +114,8 @@ describe("ResumePage", () => {
 });
 
 describe("renderResumeHtml", () => {
-  it("embeds fonts and css", () => {
-    const out = renderResumeHtml(doc);
+  it("embeds fonts and css", async () => {
+    const out = await renderResumeHtml(doc);
     expect(out.startsWith("<!doctype html>")).toBe(true);
     expect(out.split("data:font/woff2;base64,").length - 1).toBe(2);
     expect(out).toContain(RESUME_CSS);

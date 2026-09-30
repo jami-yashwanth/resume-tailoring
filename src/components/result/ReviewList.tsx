@@ -45,7 +45,8 @@ export function ReviewList({
   onChoosePageFit: (optionId: string) => void;
 }) {
   const whyFor = (opId: string) => state.whyOpen && state.currentOpId === opId;
-  const pages = `${state.pages} page${state.pages === 1 ? "" : "s"}`;
+  const pages =
+    state.pages === null ? "checking pages…" : `${state.pages} page${state.pages === 1 ? "" : "s"}`;
   const pageFitLength = list.pageFit ? `${list.pageFit.pages}-${list.pageFit.allowed}` : null;
   const pageFitKey = list.pageFit
     ? `${pageFitLength}-${list.pageFit.options.map((o) => o.id).join(",")}`

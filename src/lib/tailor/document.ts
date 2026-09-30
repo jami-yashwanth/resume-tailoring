@@ -62,17 +62,32 @@ export function splitSkillRow(
 }
 
 /**
+ * What a document is for. The file (the default) holds only what the user has
+ * kept; the preview also shows the drafts waiting for Add it / Skip and the
+ * lines chosen for removal, marked, so both can be seen and reached on the page.
+ */
+export type DocumentOptions = { drafts?: boolean };
+
+/** Whether a line belongs in the document being built. */
+const kept = (l: RenderedLine, drafts: boolean) => drafts || (l.state !== "removed" && l.state !== "pending");
+
+/**
  * Resolve the outline against `lines` (built with `group = false`). A block's
  * text is every line carrying its id that is not removed or pending, in order,
  * so rewordings replace, approved inserts follow their anchor and removals drop.
+ * With `drafts`, removed and pending lines stay in, carrying their marks.
  */
-export function resolveDocument(outline: Outline, lines: RenderedLine[]): TemplateDocument {
+export function resolveDocument(
+  outline: Outline,
+  lines: RenderedLine[],
+  { drafts = false }: DocumentOptions = {},
+): TemplateDocument {
   const byBlock = new Map<string, RenderedLine[]>();
   // Where a block first appears in `lines` (document order), whatever its state.
   const position = new Map<string, number>();
   lines.forEach((l, i) => {
     if (!position.has(l.blockId)) position.set(l.blockId, i);
-    if (l.state === "removed" || l.state === "pending") return;
+    if (!kept(l, drafts)) return;
     const list = byBlock.get(l.blockId);
     if (list) list.push(l);
     else byBlock.set(l.blockId, [l]);
@@ -86,9 +101,11 @@ export function resolveDocument(outline: Outline, lines: RenderedLine[]): Templa
   });
   const items = (ids: string[]): Item[] =>
     byPosition(ids).flatMap((id) => resolved(id).map((l) => mark(l, l.kind === "bullet")));
-  // Inserted lines are the `added` ones; the rest is the block's own line.
-  const own = (id: string) => resolved(id).find((l) => l.state !== "added")?.text ?? null;
-  const insertedLines = (id: string) => resolved(id).filter((l) => l.state === "added");
+  // Inserted lines are the `added` ones (and, in a preview, the `pending`
+  // drafts); the rest is the block's own line.
+  const isInsert = (l: RenderedLine) => l.state === "added" || l.state === "pending";
+  const own = (id: string) => resolved(id).find((l) => !isInsert(l))?.text ?? null;
+  const insertedLines = (id: string) => resolved(id).filter(isInsert);
   const inserted = (id: string) => insertedLines(id).map((l) => l.text);
   // An insert anchored to a header or heading has no slot of its own: it
   // leads what follows, as a plain line.
@@ -144,7 +161,13 @@ export function resolveDocument(outline: Outline, lines: RenderedLine[]): Templa
  * a following job_title is its title, and bullets and paragraphs attach to the
  * current entry (or, before any role, to the section). Nothing is reworded.
  */
-export function blocksToDocument(blocks: { kind: BlockKind; text: string }[]): TemplateDocument {
+type FlatBlock = { kind: BlockKind; text: string } & Pick<Item, "key" | "state" | "opId" | "blockId">;
+
+/** An item's review marks, when the block carries them (a RenderedLine does). */
+const marksOf = (b: FlatBlock): Omit<Item, "text" | "bullet"> =>
+  b.key === undefined ? {} : { key: b.key, state: b.state, opId: b.opId, blockId: b.blockId };
+
+export function blocksToDocument(blocks: FlatBlock[]): TemplateDocument {
   const doc: TemplateDocument = { name: null, contact: [], sections: [] };
   const newSection = (heading: string | null): TemplateSection => {
     const s: TemplateSection = { heading, kind: "other", lead: [], entries: [], skills: [], items: [] };
@@ -177,13 +200,23 @@ export function blocksToDocument(blocks: { kind: BlockKind; text: string }[]): T
       else {
         // No entry to title, or it already has one: keep the text as a plain line.
         section ??= newSection(null);
-        (entry ? entry.items : section.items).push({ text: b.text, bullet: false });
+        (entry ? entry.items : section.items).push({ text: b.text, bullet: false, ...marksOf(b) });
       }
     } else {
       section ??= newSection(null);
-      const item: Item = { text: cleanText(b.kind, b.text), bullet: b.kind === "bullet" };
+      const item: Item = { text: cleanText(b.kind, b.text), bullet: b.kind === "bullet", ...marksOf(b) };
       (entry ? entry.items : section.items).push(item);
     }
   }
   return doc;
+}
+
+/**
+ * The document for a result with no outline: the screen's grouped lines (role
+ * runs already folded), less what the file leaves out, through
+ * `blocksToDocument`. Items keep their lines' marks. `cleanText` there is a
+ * no-op on text `buildLines` has already cleaned.
+ */
+export function linesToDocument(lines: RenderedLine[], { drafts = false }: DocumentOptions = {}): TemplateDocument {
+  return blocksToDocument(lines.filter((l) => kept(l, drafts)));
 }

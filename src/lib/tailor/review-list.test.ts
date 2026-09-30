@@ -43,7 +43,7 @@ const plan: TailorPlan = {
   operations: [ins2, reph, ins1, rem],
   coverage: { covered: 0, total: 2, originalCovered: 0 },
 };
-const state = (over: Partial<ReviewState> = {}): ReviewState => ({ ...fromStored(null), pagesAllowed: 1, ...over });
+const state = (over: Partial<ReviewState> = {}): ReviewState => ({ ...fromStored(null), pages: 1, pagesAllowed: 1, ...over });
 
 describe("reviewList", () => {
   it("lists what is left to decide in document order and opens the first", () => {
@@ -51,6 +51,9 @@ describe("reviewList", () => {
     expect(list.toDecide.map((i) => i.op.id)).toEqual(["ins1", "ins2"]);
     expect(list.current?.op.id).toBe("ins1");
     expect(list).toMatchObject({ position: 1, totalDecisions: 2, status: "2 to decide · 1 page", ready: false });
+    // Before the printer has answered, the status says so and asks nothing about length.
+    const unchecked = reviewList(plan, layout, state({ pages: null }));
+    expect(unchecked).toMatchObject({ status: "2 to decide · checking pages…", pageFit: null });
   });
 
   it("opens the card the user chose", () => {

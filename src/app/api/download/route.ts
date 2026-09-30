@@ -27,7 +27,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const html = renderResumeHtml(document);
+    const html = await renderResumeHtml(document);
     const printed = await printResume({ html, document });
     if (printed.file === null) {
       return Response.json({ error: "Could not write your file." }, { status: 502 });

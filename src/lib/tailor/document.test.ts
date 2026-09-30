@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { blocksToDocument, resolveDocument, splitSkillRow } from "./document";
+import { blocksToDocument, linesToDocument, resolveDocument, splitSkillRow } from "./document";
 import type { Outline, Section } from "./types";
 import type { RenderedLine } from "./view";
 
@@ -282,5 +282,62 @@ describe("resolveDocument marks", () => {
     expect(doc.sections[0].entries[0].items[0]).toMatchObject({
       text: "Better words", bullet: true, state: "reworded", opId: "op1", blockId: "b1", key: l.key,
     });
+  });
+});
+
+describe("linesToDocument", () => {
+  const grouped = () => [
+    line("n", "Priya Sharma", "unchanged", "name"),
+    line("h", "Experience", "unchanged", "heading"),
+    line("r", "Acme\t2020 - 2024", "unchanged", "role"),
+    { ...line("b1", "Better words.", "reworded"), opId: "op1" },
+    { ...line("b2", "Gone.", "removed"), opId: "op2" },
+    { ...line("b2", "Needs OK.", "pending"), opId: "op3" },
+    { ...line("b3", "Added line.", "added"), opId: "op4" },
+  ];
+
+  it("builds a document when there is no outline", () => {
+    const doc = linesToDocument(grouped());
+    const json = JSON.stringify(doc);
+    expect(json).not.toContain("Gone.");
+    expect(json).not.toContain("Needs OK.");
+    expect(doc.name).toBe("Priya Sharma");
+    expect(doc.sections[0].entries[0]).toMatchObject({ org: "Acme", dates: "2020 - 2024" });
+    expect(doc.sections[0].entries[0].items).toMatchObject([
+      { text: "Better words.", bullet: true, state: "reworded", opId: "op1", blockId: "b1" },
+      { text: "Added line.", bullet: true, state: "added", opId: "op4", blockId: "b3" },
+    ]);
+  });
+
+  it("keeps drafts and removed lines for the preview when asked", () => {
+    const items = linesToDocument(grouped(), { drafts: true }).sections[0].entries[0].items;
+    expect(items.map((i) => [i.text, i.state])).toEqual([
+      ["Better words.", "reworded"],
+      ["Gone.", "removed"],
+      ["Needs OK.", "pending"],
+      ["Added line.", "added"],
+    ]);
+  });
+});
+
+describe("resolveDocument drafts", () => {
+  it("leaves drafts out of the file and keeps them, marked, for the preview", () => {
+    const o = outline([section({ heading: "h", entries: [entry({ bullets: ["b1"] })] })]);
+    const lines = [
+      line("h", "Experience", "unchanged", "heading"),
+      { ...line("h", "Heading draft.", "pending", "heading"), opId: "p0" },
+      line("b1", "First."),
+      { ...line("b1", "Needs OK.", "pending"), opId: "p1" },
+    ];
+    const file = resolveDocument(o, lines);
+    expect(JSON.stringify(file)).not.toContain("Needs OK.");
+    expect(JSON.stringify(file)).not.toContain("Heading draft.");
+    const preview = resolveDocument(o, lines, { drafts: true });
+    expect(preview.sections[0].heading).toBe("Experience");
+    expect(preview.sections[0].lead).toMatchObject([{ text: "Heading draft.", state: "pending", opId: "p0" }]);
+    expect(preview.sections[0].entries[0].items).toMatchObject([
+      { text: "First." },
+      { text: "Needs OK.", state: "pending", opId: "p1" },
+    ]);
   });
 });

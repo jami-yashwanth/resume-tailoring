@@ -1,7 +1,6 @@
 import { createElement } from "react";
 import fs from "node:fs";
 import path from "node:path";
-import { renderToStaticMarkup } from "react-dom/server";
 import { ResumePage } from "@/components/resume/ResumePage";
 import { RESUME_CSS } from "@/components/resume/resumeCss";
 import type { TemplateDocument } from "./document";
@@ -25,7 +24,11 @@ const FONT_CSS =
   fontFace("SourceSerif4Variable-Roman.otf.woff2", "normal") +
   fontFace("SourceSerif4Variable-Italic.otf.woff2", "italic");
 
-export function renderResumeHtml(document: TemplateDocument): string {
+/* `react-dom/server` is imported when called, not at the top: Next refuses a
+   static import of it anywhere in a route handler's graph ("You're importing a
+   component that imports react-dom/server"), which took both print routes down. */
+export async function renderResumeHtml(document: TemplateDocument): Promise<string> {
+  const { renderToStaticMarkup } = await import("react-dom/server");
   const body = renderToStaticMarkup(createElement(ResumePage, { document, marks: false }));
   return (
     `<!doctype html><html><head><meta charset="utf-8"><style>${FONT_CSS}</style>` +

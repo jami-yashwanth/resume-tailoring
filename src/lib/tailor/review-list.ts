@@ -127,7 +127,7 @@ export function reviewList(plan: TailorPlan, layout: Layout, state: ReviewState)
   const totalDecisions = toDecide.length + decided.length;
 
   let pageFit: PageFit | null = null;
-  if (!state.compare && state.pagesAllowed !== null && state.pages > state.pagesAllowed) {
+  if (!state.compare && state.pages !== null && state.pagesAllowed !== null && state.pages > state.pagesAllowed) {
     const lines = buildLines(layout, operations, state.decisions, false, state.wordings);
     const lastChanged = [...lines].reverse().find((l) => l.state === "added" || l.state === "reworded");
     /* The Add the user just made, when there is one: the last changed line in
@@ -149,7 +149,8 @@ export function reviewList(plan: TailorPlan, layout: Layout, state: ReviewState)
     };
   }
 
-  const pagesText = `${state.pages} page${state.pages === 1 ? "" : "s"}`;
+  // The printer has not answered yet: say so rather than guess a length.
+  const pagesText = state.pages === null ? "checking pages…" : `${state.pages} page${state.pages === 1 ? "" : "s"}`;
   const status = toDecide.length
     ? `${toDecide.length} to decide · ${pagesText}`
     : pageFit

@@ -28,8 +28,8 @@ export type ReviewState = {
   whyOpen: boolean;
   selectedRequirement: string | null;
   compare: boolean;
-  /** Pages the preview last measured. */
-  pages: number;
+  /** Pages the printer last counted for the file; null until it has answered. */
+  pages: number | null;
 };
 
 export type ReviewAction =
@@ -69,7 +69,7 @@ export function fromStored(stored: Persisted | null): ReviewState {
     whyOpen: false,
     selectedRequirement: null,
     compare: false,
-    pages: 1,
+    pages: null,
   };
 }
 
@@ -174,7 +174,8 @@ function choosePageFit(state: ReviewState, optionId: string, causedBy: string | 
 
   if (kind === "grow") {
     // Agreeing to this length is not agreeing to any length: growing again asks again.
-    return { ...state, growthAllowed: true, pagesAllowed: state.pages };
+    // With no count yet there is no new length to agree to; the allowance stands.
+    return { ...state, growthAllowed: true, pagesAllowed: state.pages ?? state.pagesAllowed };
   }
 
   return state;

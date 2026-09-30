@@ -30,16 +30,11 @@ function longLayout(layout, count = 40) {
   return { ...layout, blocks: [...layout.blocks, ...extra] };
 }
 
-/* The first pad count that runs to two pages, measured per width against the
-   template's compiled metrics (re-measured 30 Sep 2026 after the re-cut to
-   the owner's LaTeX reference). Per width rather than one constant: every
-   length in the preview is cqi so pagination scales in exact math, but the
-   sheet renders at a different absolute width per breakpoint and browser text
-   rasterisation is not perfectly linear — a sample bullet that wraps to two
-   lines at 794px fits one at 844px, and the boundary moves a pad. One pad
-   under sits at one page everywhere; removing one pad from the boundary
-   brings it back under everywhere. */
-const PAGE_BOUNDARY = { 1440: 21, 1240: 20, 1100: 20, 880: 21 };
+/* The first pad count whose file runs to two pages, as the printer counts it
+   (measured 1 Oct 2026 against the Chromium print of ResumePage: 34 pads is
+   one page, 35 is two). One number for every width: the count is the printed
+   file's, and the file does not depend on the window. */
+const PAGE_BOUNDARY = 35;
 
 /** The sample plan plus a removal the page-fit card can offer: the last pad line. */
 const planWithRemoval = (padCount) => ({
@@ -73,9 +68,12 @@ async function openResult(
   );
   const page = await context.newPage();
   page.on("pageerror", (e) => failures.push(`page error at ${width}px: ${e.message}`));
+  // The page count is the printer's, asked after a debounce: wait for its first answer.
+  const counted = page.waitForResponse((r) => r.url().includes("/api/pages"), { timeout: 15000 }).catch(() => {});
   await page.goto(`${BASE}/result`);
+  await counted;
   await page.waitForLoadState("networkidle").catch(() => {});
-  await page.waitForTimeout(900);
+  await page.waitForTimeout(300);
   return { context, page };
 }
 
@@ -96,7 +94,7 @@ const browser = await chromium.launch();
 
 for (const width of WIDTHS) {
   console.log(`\n${width}px`);
-  const JUST_OVER_ONE_PAGE = PAGE_BOUNDARY[width];
+  const JUST_OVER_ONE_PAGE = PAGE_BOUNDARY;
   const JUST_UNDER_ONE_PAGE = JUST_OVER_ONE_PAGE - 1;
 
   for (const theme of ["light", "dark"]) {
@@ -213,6 +211,8 @@ for (const width of WIDTHS) {
       await add.first().click();
       await page.waitForTimeout(450);
     }
+    // The card waits for the printer's recount of the file.
+    await heading.waitFor({ timeout: 8000 }).catch(() => {});
     check(await visible(heading), "adding every draft to a full page shows the page-fit card");
     check(
       await page.getByRole("button", { name: "Download resume" }).isDisabled(),
@@ -232,7 +232,7 @@ for (const width of WIDTHS) {
     const heading = page.getByRole("heading", { name: /(makes it|runs to) \d+ pages\./ });
     check(await visible(heading), "a resume just over its agreed page asks about length");
     await page.getByRole("button", { name: "Remove that line" }).click();
-    await page.waitForTimeout(300);
+    await heading.waitFor({ state: "hidden", timeout: 8000 }).catch(() => {});
     check(!(await visible(heading)), "removing a line closes the page-fit card");
     check((await focused(page)).id.startsWith("decision-"), "after a page-fit choice, focus moves to the open card");
     await context.close();

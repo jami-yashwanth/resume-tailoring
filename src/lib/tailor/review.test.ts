@@ -102,6 +102,19 @@ describe("page fit", () => {
 });
 
 describe("measuredPages", () => {
+  it("starts with pages null and adopts the first printed count as the allowance", () => {
+    const fresh = start();
+    expect(fresh.pages).toBeNull();
+    expect(fresh.pagesAllowed).toBeNull();
+    const state = reduce(fresh, { type: "measuredPages", pages: 2 });
+    expect(state).toMatchObject({ pages: 2, pagesAllowed: 2 });
+  });
+
+  it("growing before any count keeps the stored allowance", () => {
+    const next = reduce(start({ pagesAllowed: 1 }), { type: "choosePageFit", optionId: "grow", causedBy: null });
+    expect(next.pagesAllowed).toBe(1);
+  });
+
   it("takes the first measurement as the allowance and never lowers or raises it after", () => {
     let state = reduce(start(), { type: "measuredPages", pages: 2 });
     expect(state).toMatchObject({ pages: 2, pagesAllowed: 2 });

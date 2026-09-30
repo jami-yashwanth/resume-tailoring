@@ -1,4 +1,5 @@
 import type { Item, TemplateDocument, TemplateEntry, TemplateSection } from "@/lib/tailor/document";
+import { MARK_LABEL } from "@/lib/tailor/view";
 import { RESUME_CSS } from "./resumeCss";
 
 /**
@@ -6,105 +7,168 @@ import { RESUME_CSS } from "./resumeCss";
  * to a string and printed, the downloaded PDF — so it stays a plain function
  * component: no hooks, no browser APIs. Text goes in as React children only,
  * which escapes it; rendering never alters what the user wrote.
+ *
+ * Every unit a page may break between is one `.rz-block`, numbered in the
+ * order it is emitted. `range` renders only the blocks numbered in
+ * [start, end), which is how the preview puts each of its pages on its own
+ * sheet from the same template. The helpers below are plain calls, not
+ * components, so the numbering is one synchronous pass over the document.
  */
 
-type Marks = { marks: boolean };
+type Walk = {
+  marks: boolean;
+  /** The next block's number. */
+  n: number;
+  range: [number, number] | null;
+};
 
-const marksOf = (item: Item, on: boolean) =>
-  on
-    ? { "data-key": item.key, "data-block": item.blockId, "data-op": item.opId, "data-state": item.state }
-    : {};
+/** Claim the next block number; whether that block is drawn in this render. */
+const take = (w: Walk) => {
+  const index = w.n;
+  w.n += 1;
+  return w.range === null || (index >= w.range[0] && index < w.range[1]);
+};
 
-function ItemBlock({ item, marks }: { item: Item } & Marks) {
-  return (
-    <div className="rz-block rz-item" {...marksOf(item, marks)}>
-      {item.text}
-    </div>
-  );
-}
+/**
+ * With marks on, every item says where it came from and what happened to it,
+ * and a changed line is a control: it opens its decision card or the
+ * explanation for that change, where Undo lives — so the preview is reachable
+ * by keyboard, not only by mouse. The print render passes marks off.
+ */
+const marksOf = (item: Item, on: boolean) => {
+  if (!on) return {};
+  const data = { "data-key": item.key, "data-block": item.blockId, "data-op": item.opId, "data-state": item.state };
+  if (!item.opId) return data;
+  const mark = item.state && item.state !== "unchanged" ? MARK_LABEL[item.state] : "Changed";
+  // A draft opens its decision card, not an explanation.
+  const action = item.state === "pending" ? "Open this decision." : "Why this line changed.";
+  return { ...data, role: "button", tabIndex: 0, "aria-label": `${mark}: ${item.text}. ${action}` };
+};
+
+/* The text sits in its own span so a mark can be drawn behind the words
+   rather than across the whole block; it carries no style of its own. */
+const text = (item: Item) => <span className="rz-text">{item.text}</span>;
 
 /** Runs of bullets share one <ul>; plain lines between them break the run. */
-function Items({ items, marks }: { items: Item[] } & Marks) {
+function items(list: Item[], w: Walk, key: string): React.ReactNode[] {
   const out: React.ReactNode[] = [];
-  for (let i = 0; i < items.length; ) {
-    if (!items[i].bullet) {
-      out.push(<ItemBlock key={i} item={items[i]} marks={marks} />);
+  for (let i = 0; i < list.length; ) {
+    if (!list[i].bullet) {
+      if (take(w)) {
+        out.push(
+          <div key={`${key}-${i}`} className="rz-block rz-item" {...marksOf(list[i], w.marks)}>
+            {text(list[i])}
+          </div>,
+        );
+      }
       i += 1;
       continue;
     }
     const start = i;
-    while (i < items.length && items[i].bullet) i += 1;
-    out.push(
-      <ul key={start} className="rz-list">
-        {items.slice(start, i).map((item, j) => (
-          <li key={j} className="rz-block rz-item rz-bullet" {...marksOf(item, marks)}>
-            {item.text}
-          </li>
-        ))}
-      </ul>,
-    );
+    const lis: React.ReactNode[] = [];
+    for (; i < list.length && list[i].bullet; i += 1) {
+      if (!take(w)) continue;
+      lis.push(
+        <li key={i} className="rz-block rz-item rz-bullet" {...marksOf(list[i], w.marks)}>
+          {text(list[i])}
+        </li>,
+      );
+    }
+    // A run wholly outside the range leaves no empty list behind.
+    if (lis.length) {
+      out.push(
+        <ul key={`${key}-${start}`} className="rz-list">
+          {lis}
+        </ul>,
+      );
+    }
   }
-  return <>{out}</>;
+  return out;
 }
 
-function Entry({ entry, marks }: { entry: TemplateEntry } & Marks) {
-  const hasHeader = entry.org || entry.place || entry.dates;
-  return (
-    <>
-      {/* One block, so a title never strands at the foot of a page away from its employer. */}
-      {(hasHeader || entry.title) && (
-        <div className="rz-block">
-          {hasHeader && (
-            <div className="rz-row">
-              <span className="rz-org">
-                {entry.org}
-                {entry.place && <span className="rz-place">{entry.org ? ", " : ""}{entry.place}</span>}
-              </span>
-              {entry.dates && <span className="rz-dates">{entry.dates}</span>}
-            </div>
-          )}
-          {entry.title && <div className="rz-title">{entry.title}</div>}
-        </div>
-      )}
-      <Items items={entry.items} marks={marks} />
-    </>
-  );
+function entry(e: TemplateEntry, w: Walk, key: string): React.ReactNode[] {
+  const hasHeader = e.org || e.place || e.dates;
+  const out: React.ReactNode[] = [];
+  /* One block, so a title never strands at the foot of a page away from its employer. */
+  if ((hasHeader || e.title) && take(w)) {
+    out.push(
+      <div key={`${key}-h`} className="rz-block">
+        {hasHeader && (
+          <div className="rz-row">
+            <span className="rz-org">
+              {e.org}
+              {e.place && <span className="rz-place">{e.org ? ", " : ""}{e.place}</span>}
+            </span>
+            {e.dates && <span className="rz-dates">{e.dates}</span>}
+          </div>
+        )}
+        {e.title && <div className="rz-title">{e.title}</div>}
+      </div>,
+    );
+  }
+  out.push(...items(e.items, w, `${key}-i`));
+  return out;
 }
 
 const isEmpty = (s: TemplateSection) =>
   !s.lead.length && !s.items.length && !s.skills.length &&
   s.entries.every((e) => !e.org && !e.place && !e.dates && !e.title && !e.items.length);
 
-function Section({ section, marks }: { section: TemplateSection } & Marks) {
-  if (isEmpty(section)) return null;
-  return (
-    <>
-      {section.heading && <div className="rz-block rz-heading">{section.heading}</div>}
-      <Items items={section.lead} marks={marks} />
-      {section.entries.map((e, i) => (
-        <Entry key={i} entry={e} marks={marks} />
-      ))}
-      {section.skills.map((row, i) => (
-        <div key={i} className="rz-block rz-skill">
-          {row.label && <b>{row.label}:</b>} {row.items}
-        </div>
-      ))}
-      <Items items={section.items} marks={marks} />
-    </>
-  );
+function section(s: TemplateSection, w: Walk, key: string): React.ReactNode[] {
+  if (isEmpty(s)) return [];
+  const out: React.ReactNode[] = [];
+  if (s.heading && take(w)) {
+    out.push(
+      <div key={`${key}-h`} className="rz-block rz-heading">
+        {s.heading}
+      </div>,
+    );
+  }
+  out.push(...items(s.lead, w, `${key}-l`));
+  s.entries.forEach((e, i) => out.push(...entry(e, w, `${key}-e${i}`)));
+  s.skills.forEach((row, i) => {
+    if (!take(w)) return;
+    out.push(
+      <div key={`${key}-s${i}`} className="rz-block rz-skill">
+        {row.label && <b>{row.label}:</b>} {row.items}
+      </div>,
+    );
+  });
+  out.push(...items(s.items, w, `${key}-t`));
+  return out;
 }
 
-export function ResumePage({ document, marks = true }: { document: TemplateDocument; marks?: boolean }) {
+export function ResumePage({
+  document,
+  marks = true,
+  range = null,
+}: {
+  document: TemplateDocument;
+  marks?: boolean;
+  /** Only the blocks numbered in [start, end); every block when null. */
+  range?: [number, number] | null;
+}) {
+  const w: Walk = { marks, n: 0, range };
+  const out: React.ReactNode[] = [];
+  if (document.name && take(w)) {
+    out.push(
+      <div key="name" className="rz-block rz-name">
+        {document.name}
+      </div>,
+    );
+  }
+  if (document.contact.length > 0 && take(w)) {
+    out.push(
+      <div key="contact" className="rz-block rz-contact">
+        {document.contact.join(" | ")}
+      </div>,
+    );
+  }
+  document.sections.forEach((s, i) => out.push(...section(s, w, `s${i}`)));
   return (
     <div className="rz-page">
       <style dangerouslySetInnerHTML={{ __html: RESUME_CSS }} />
-      {document.name && <div className="rz-block rz-name">{document.name}</div>}
-      {document.contact.length > 0 && (
-        <div className="rz-block rz-contact">{document.contact.join(" | ")}</div>
-      )}
-      {document.sections.map((s, i) => (
-        <Section key={i} section={s} marks={marks} />
-      ))}
+      {out}
     </div>
   );
 }

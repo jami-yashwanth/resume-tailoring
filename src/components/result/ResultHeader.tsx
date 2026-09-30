@@ -16,8 +16,6 @@ export function ResultHeader({
   status,
   compare,
   onToggleCompare,
-  exact,
-  onToggleExact,
   ready,
   onDownload,
   canDownload,
@@ -28,9 +26,6 @@ export function ResultHeader({
   status: string;
   compare: boolean;
   onToggleCompare: () => void;
-  /** Showing the compiled PDF's own pages instead of the working sheet. */
-  exact: boolean;
-  onToggleExact: () => void;
   ready: boolean;
   onDownload: () => void;
   canDownload: boolean;
@@ -50,19 +45,11 @@ export function ResultHeader({
       </h1>
       {/* Not a live region: the screen's sr-only region announces decisions. */}
       <p className="m-0 text-sm leading-5 text-ink-muted">
-        {compare
-          ? "Showing your original wording"
-          : exact
-            ? "Showing the compiled PDF — what you download"
-            : status}
+        {compare ? "Showing your original wording" : status}
       </p>
 
       <div className="ml-auto flex items-center gap-4">
         <Switch on={compare} onToggle={onToggleCompare} label="Compare with original" />
-        {/* The two views are exclusive — the screen turns one off when the
-            other goes on — so these read as two views of the middle column,
-            not two independent flags. */}
-        <Switch on={exact} onToggle={onToggleExact} label="Exact PDF" />
         <Button variant={ready ? "primary" : "secondary"} onClick={onDownload} disabled={!canDownload || downloading}>
           {downloading ? "Writing your file…" : "Download resume"}
         </Button>
