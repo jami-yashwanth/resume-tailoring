@@ -15,3 +15,6 @@ screenshots/
 # graphify: derived knowledge graph, rebuilt by the post-commit hook (no API cost)
 graphify-out/
 .superpowers/
+
+# Local git worktrees
+.worktrees/
