@@ -99,6 +99,50 @@ describe("resolveDocument", () => {
   });
 });
 
+describe("inserts anchored to structure blocks", () => {
+  it("routes an added line on an org block to the front of that entry's lines, once", () => {
+    const o = outline([section({ entries: [entry({ org: ref("o", "Inncircles"), lines: ["l1"] })] })]);
+    const doc = resolveDocument(o, [
+      line("o", "Inncircles", "unchanged", "role"),
+      line("o", "Remote-first team.", "added", "role"),
+      line("l1", "Detail."),
+    ]);
+    expect(doc.sections[0].entries[0].lines).toEqual(["Remote-first team.", "Detail."]);
+    expect(doc.sections[0].entries[0].org).toBe("Inncircles");
+  });
+
+  it("yields a split block's added line once", () => {
+    const o = outline([section({ entries: [entry({ org: ref("o", "Inncircles"), dates: ref("o", "Jun 2023") })] })]);
+    const doc = resolveDocument(o, [
+      line("o", "Inncircles\tJun 2023", "unchanged", "role"),
+      line("o", "Added once.", "added", "role"),
+    ]);
+    expect(doc.sections[0].entries[0].lines).toEqual(["Added once."]);
+  });
+
+  it("routes an added line on a heading to the front of the section's lines", () => {
+    const o = outline([section({ heading: "h", lines: ["l1"] })]);
+    const doc = resolveDocument(o, [
+      line("h", "Experience", "reworded", "heading"),
+      line("h", "Intro.", "added", "heading"),
+      line("l1", "Body."),
+    ]);
+    expect(doc.sections[0].heading).toBe("Experience");
+    expect(doc.sections[0].lines).toEqual(["Intro.", "Body."]);
+  });
+
+  it("puts an added line after the name into contact and keeps the name", () => {
+    const o = outline([], { name: "n", contact: ["c"] });
+    const doc = resolveDocument(o, [
+      line("n", "Priya Sharma", "unchanged", "name"),
+      line("n", "Open to relocation", "added", "name"),
+      line("c", "a@b.c", "unchanged", "contact"),
+    ]);
+    expect(doc.name).toBe("Priya Sharma");
+    expect(doc.contact).toEqual(["Open to relocation", "a@b.c"]);
+  });
+});
+
 describe("splitSkillRow", () => {
   it("keeps the label only when the reworded text still starts with it", () => {
     expect(splitSkillRow("Languages: Python, Go", "Languages")).toEqual({ label: "Languages", items: "Python, Go" });

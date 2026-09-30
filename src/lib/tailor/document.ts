@@ -48,32 +48,42 @@ export function splitSkillRow(
  * so rewordings replace, approved inserts follow their anchor and removals drop.
  */
 export function resolveDocument(outline: Outline, lines: RenderedLine[]): TemplateDocument {
-  const byBlock = new Map<string, string[]>();
+  const byBlock = new Map<string, RenderedLine[]>();
   for (const l of lines) {
     if (l.state === "removed" || l.state === "pending") continue;
     const list = byBlock.get(l.blockId);
-    if (list) list.push(l.text);
-    else byBlock.set(l.blockId, [l.text]);
+    if (list) list.push(l);
+    else byBlock.set(l.blockId, [l]);
   }
-  const texts = (id: string) => byBlock.get(id) ?? [];
+  const resolved = (id: string) => byBlock.get(id) ?? [];
+  const texts = (id: string) => resolved(id).map((l) => l.text);
   const many = (ids: string[]) => ids.flatMap(texts);
+  // Inserted lines are the `added` ones; the rest is the block's own line.
+  const own = (id: string) => resolved(id).find((l) => l.state !== "added")?.text ?? null;
+  const inserted = (id: string) =>
+    resolved(id).filter((l) => l.state === "added").map((l) => l.text);
 
   return {
-    name: outline.name === null ? null : (texts(outline.name)[0] ?? null),
-    contact: many(outline.contact),
+    name: outline.name === null ? null : own(outline.name),
+    // An insert after the name has no slot of its own, so it leads the contact.
+    contact: [...(outline.name === null ? [] : inserted(outline.name)), ...many(outline.contact)],
     sections: outline.sections.map((s) => ({
-      heading: s.heading === null ? null : (texts(s.heading)[0] ?? null),
+      heading: s.heading === null ? null : own(s.heading),
       kind: s.kind,
       // Header fields come from the ref, never from a reworded line: titles and
       // dates are not rewritten by rule. Empty entries are kept, not dropped.
-      entries: s.entries.map((e) => ({
-        org: e.org?.text ?? null,
-        title: e.title?.text ?? null,
-        dates: e.dates?.text ?? null,
-        place: e.place?.text ?? null,
-        bullets: many(e.bullets),
-        lines: many(e.lines),
-      })),
+      entries: s.entries.map((e) => {
+        // A block split across fields (org + dates) is looked up once.
+        const headerBlocks = [...new Set([e.org, e.title, e.dates, e.place].flatMap((r) => (r ? [r.block] : [])))];
+        return {
+          org: e.org?.text ?? null,
+          title: e.title?.text ?? null,
+          dates: e.dates?.text ?? null,
+          place: e.place?.text ?? null,
+          bullets: many(e.bullets),
+          lines: [...headerBlocks.flatMap(inserted), ...many(e.lines)],
+        };
+      }),
       skills: s.skills.flatMap((row) => {
         const [first, ...inserts] = texts(row.block);
         return [
@@ -81,7 +91,7 @@ export function resolveDocument(outline: Outline, lines: RenderedLine[]): Templa
           ...inserts.map((items) => ({ label: null, items })),
         ];
       }),
-      lines: many(s.lines),
+      lines: [...(s.heading === null ? [] : inserted(s.heading)), ...many(s.lines)],
     })),
   };
 }
