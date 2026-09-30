@@ -6,6 +6,7 @@ database and never sees the Claude API key.
 """
 import base64
 import binascii
+import logging
 import os
 import secrets
 import shutil
@@ -16,15 +17,16 @@ import pymupdf
 from fastapi import Depends, FastAPI, Header, HTTPException
 from pydantic import BaseModel
 
-from . import render
+from . import printer, render
 from .docx_ops import parse_docx
 from .fitter import fit
 from .models import ApplyRequest, ApplyResponse, BlockKind, Document, Layout
-from .latex_render import document_to_blocks, render_latex, render_latex_document
+from .latex_render import render_latex, render_latex_document
 from .pdf_ops import parse_pdf
-from .template_render import render_template
+from .template_render import document_to_blocks, render_template
 
 app = FastAPI(title="docsvc", version="0.1.0")
+app.router.add_event_handler("shutdown", printer.shutdown)
 
 
 #: A resume is about as personal as a document gets, and this service will
@@ -184,6 +186,53 @@ def render_template_endpoint(request: RenderTemplateRequest) -> dict:
                 for page in doc
             ]
     return payload
+
+
+class PrintRequest(BaseModel):
+    #: Self-contained page from the web app (fonts inlined, no network).
+    html: str
+    #: The same resume as structure, for the drawn fallback.
+    document: Document
+    count_only: bool = False
+
+
+#: The web app inlines ~1 MB of fonts into the page; past this it is not a
+#: resume page.
+MAX_HTML_BYTES = 4_000_000
+
+_print_log = logging.getLogger("docsvc.print")
+
+
+@app.post("/print", dependencies=[Depends(require_token)])
+async def print_endpoint(request: PrintRequest) -> dict:
+    """Print the web app's HTML resume to PDF; never return a blank result.
+
+    Chromium gets two attempts (the first can land on a browser that just
+    died). If both fail, the drawn template renders the same document, so
+    the download still works and only the typeface differs.
+    """
+    if len(request.html.encode()) > MAX_HTML_BYTES:
+        raise HTTPException(status_code=413, detail="html over 4 MB")
+
+    data: bytes | None = None
+    renderer = "chromium"
+    for attempt in (1, 2):
+        try:
+            data = await printer.print_html(request.html)
+            break
+        except printer.PrintError as exc:
+            _print_log.warning("chromium print failed (attempt %d): %s", attempt, exc)
+    if data is None:
+        data, _ = render_template(document_to_blocks(request.document.model_dump()))
+        renderer = "fallback"
+
+    with pymupdf.open(stream=data, filetype="pdf") as pdf:
+        pages = pdf.page_count
+    return {
+        "pages": pages,
+        "renderer": renderer,
+        "file": None if request.count_only else base64.b64encode(data).decode(),
+    }
 
 
 @app.post("/apply", response_model=ApplyResponse, dependencies=[Depends(require_token)])

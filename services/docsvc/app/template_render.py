@@ -19,6 +19,9 @@ from pathlib import Path
 
 import pymupdf
 
+#: Leading bullet marks a file may carry on its own text.
+_BULLET_PREFIX = re.compile(r"^[•◦▪‣·\-*]+\s*")
+
 #: Four levels up from `services/docsvc/app/template_render.py` is the repo root.
 _SPEC = json.loads((Path(__file__).resolve().parents[3] / "shared" / "template.json").read_text())
 
@@ -337,3 +340,53 @@ def render_template(blocks: list[dict]) -> tuple[bytes, int]:
     pages = w.pages
     doc.close()
     return data, pages
+
+
+def _items(items) -> list[dict]:
+    """The non-empty items, stripped, bullet marks taken off bullet text."""
+    out = []
+    for item in items or []:
+        text = (item.get("text") or "").strip()
+        if not text:
+            continue
+        bullet = bool(item.get("bullet"))
+        out.append({"text": _BULLET_PREFIX.sub("", text) if bullet else text, "bullet": bullet})
+    return out
+
+
+def document_to_blocks(doc: dict) -> list[dict]:
+    """The document flattened to the (kind, text) shape the drawn fallback
+    renderer and the parity tests consume."""
+    blocks: list[dict] = []
+
+    def add(kind: str, text: str):
+        blocks.append({"kind": kind, "text": text})
+
+    def add_items(items):
+        for item in _items(items):
+            if item["bullet"]:
+                add("bullet", "• " + item["text"])
+            else:
+                add("paragraph", item["text"])
+
+    if doc.get("name"):
+        add("name", doc["name"])
+    for c in doc.get("contact") or []:
+        add("contact", c)
+    for section in doc.get("sections") or []:
+        if section.get("heading"):
+            add("heading", section["heading"])
+        add_items(section.get("lead"))
+        for e in section.get("entries") or []:
+            role = " · ".join(x for x in (e.get("org"), e.get("place")) if x)
+            if e.get("dates"):
+                role = f"{role}\t{e['dates']}" if role else e["dates"]
+            if role:
+                add("role", role)
+            if e.get("title"):
+                add("job_title", e["title"])
+            add_items(e.get("items"))
+        for row in section.get("skills") or []:
+            add("paragraph", f"{row['label']}: {row['items']}" if row.get("label") else row["items"])
+        add_items(section.get("items"))
+    return blocks

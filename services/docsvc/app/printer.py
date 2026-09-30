@@ -1,0 +1,78 @@
+"""Prints the web app's HTML resume to an A4 PDF with headless Chromium.
+
+One Chromium is launched lazily and shared; every call gets its own context,
+so nothing (cookies, cache, pages) survives between resumes. The page is
+self-contained by contract, so the network is cut off entirely: a stray
+`<img src>` or `@import` in user text can never make this service fetch a URL.
+"""
+import asyncio
+
+from playwright.async_api import Browser, Playwright, async_playwright
+from playwright.async_api import Error as PlaywrightError
+
+
+class PrintError(Exception):
+    """Chromium could not produce a PDF; the caller falls back to drawing."""
+
+
+_lock = asyncio.Lock()
+_playwright: Playwright | None = None
+_browser: Browser | None = None
+
+
+async def _get_browser(fresh: bool = False) -> Browser:
+    global _playwright, _browser
+    async with _lock:
+        if fresh:
+            await _close()
+        if _browser is None:
+            _playwright = await async_playwright().start()
+            _browser = await _playwright.chromium.launch()
+        return _browser
+
+
+async def _close() -> None:
+    # Callers hold the lock. Each step is best effort: a dead browser must
+    # not stop the relaunch.
+    global _playwright, _browser
+    browser, playwright = _browser, _playwright
+    _browser = _playwright = None
+    for closer in (browser and browser.close, playwright and playwright.stop):
+        if closer:
+            try:
+                await closer()
+            except Exception:
+                pass
+
+
+async def _print(html: str) -> bytes:
+    browser = await _get_browser()
+    try:
+        context = await browser.new_context()
+    except Exception:
+        # The shared browser died since the last call: relaunch once.
+        browser = await _get_browser(fresh=True)
+        context = await browser.new_context()
+    try:
+        page = await context.new_page()
+        await page.route("**/*", lambda route: route.abort())
+        await page.set_content(html, wait_until="load")
+        return await page.pdf(format="A4", prefer_css_page_size=True, print_background=True)
+    finally:
+        await context.close()
+
+
+async def print_html(html: str, timeout: float = 15.0) -> bytes:
+    try:
+        return await asyncio.wait_for(_print(html), timeout)
+    except PrintError:
+        raise
+    except asyncio.TimeoutError as exc:
+        raise PrintError(f"chromium timed out after {timeout:g}s") from exc
+    except (PlaywrightError, OSError) as exc:
+        raise PrintError(f"chromium failed: {exc}") from exc
+
+
+async def shutdown() -> None:
+    async with _lock:
+        await _close()

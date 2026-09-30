@@ -19,6 +19,10 @@ import subprocess
 import tempfile
 from pathlib import Path
 
+# `document_to_blocks` moved to template_render (the fallback is its only
+# consumer now); re-exported until Task 5 deletes this module.
+from .template_render import _BULLET_PREFIX, _items, document_to_blocks  # noqa: F401
+
 TEMPLATE = Path(__file__).resolve().parents[1] / "templates" / "rezz.tex"
 
 #: pdfTeX-only lines that abort XeTeX (Tectonic's engine). The template file
@@ -51,7 +55,6 @@ _ESCAPE = {
     "^": r"\textasciicircum{}",
 }
 
-_BULLET_PREFIX = re.compile(r"^[•◦▪‣·\-*]+\s*")
 
 #: Roboto's tex-text mapping would set a typed -- as an en dash (and --- as an
 #: em dash). The preview shows the user's literal text and nothing is rewritten
@@ -208,18 +211,6 @@ def _contact_fields(text: str) -> list[str]:
     return [escape(f) for f in re.split(r"\s*[·|\t]\s*", text) if f.strip()]
 
 
-def _items(items) -> list[dict]:
-    """The non-empty items, stripped, bullet marks taken off bullet text."""
-    out = []
-    for item in items or []:
-        text = (item.get("text") or "").strip()
-        if not text:
-            continue
-        bullet = bool(item.get("bullet"))
-        out.append({"text": _BULLET_PREFIX.sub("", text) if bullet else text, "bullet": bullet})
-    return out
-
-
 def _section_items(items) -> list[str]:
     """Loose section lines in order: consecutive bullets share one list (as
     the flat path's bullets under a heading do), a plain line is a paragraph
@@ -320,44 +311,6 @@ def document_to_latex(doc: dict) -> str:
 
         out.extend(_section_items(section.get("items")))
     return "\n".join(out).rstrip("\n")
-
-
-def document_to_blocks(doc: dict) -> list[dict]:
-    """The document flattened to the (kind, text) shape the drawn fallback
-    renderer and the parity tests consume."""
-    blocks: list[dict] = []
-
-    def add(kind: str, text: str):
-        blocks.append({"kind": kind, "text": text})
-
-    def add_items(items):
-        for item in _items(items):
-            if item["bullet"]:
-                add("bullet", "• " + item["text"])
-            else:
-                add("paragraph", item["text"])
-
-    if doc.get("name"):
-        add("name", doc["name"])
-    for c in doc.get("contact") or []:
-        add("contact", c)
-    for section in doc.get("sections") or []:
-        if section.get("heading"):
-            add("heading", section["heading"])
-        add_items(section.get("lead"))
-        for e in section.get("entries") or []:
-            role = " · ".join(x for x in (e.get("org"), e.get("place")) if x)
-            if e.get("dates"):
-                role = f"{role}\t{e['dates']}" if role else e["dates"]
-            if role:
-                add("role", role)
-            if e.get("title"):
-                add("job_title", e["title"])
-            add_items(e.get("items"))
-        for row in section.get("skills") or []:
-            add("paragraph", f"{row['label']}: {row['items']}" if row.get("label") else row["items"])
-        add_items(section.get("items"))
-    return blocks
 
 
 def render_latex_source(body: str, timeout: float = 60.0) -> bytes:
