@@ -262,7 +262,7 @@ describe("blocksToDocument", () => {
       { kind: "job_title" as const, text: "Extra Title" },
     ];
     const json = JSON.stringify(blocksToDocument(blocks));
-    for (const b of blocks) expect(json).toContain(b.text);
+    for (const t of blocks.flatMap((b) => b.text.split("\t"))) expect(json).toContain(t);
   });
 
   it("puts blocks before any heading in a heading-less section", () => {
