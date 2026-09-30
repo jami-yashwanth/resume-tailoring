@@ -24,6 +24,8 @@ const entry = (over: Partial<Section["entries"][number]> = {}): Section["entries
   org: null, title: null, dates: null, place: null, bullets: [], lines: [], ...over,
 });
 
+const texts = (items: { text: string }[]) => items.map((i) => i.text);
+
 describe("resolveDocument", () => {
   it("fills entry fields from refs and bullets from decided lines", () => {
     const doc = resolveDocument(
@@ -46,7 +48,7 @@ describe("resolveDocument", () => {
     expect(doc.sections[0].heading).toBe("EXPERIENCE");
     expect(doc.sections[0].entries[0]).toEqual({
       org: "Inncircles", title: "Engineer", dates: "2023 - 2026", place: "Hyderabad",
-      bullets: ["Designed APIs."], lines: [],
+      items: [{ text: "Designed APIs.", bullet: true }],
     });
   });
 
@@ -58,13 +60,13 @@ describe("resolveDocument", () => {
       line("b1", "Needs OK.", "pending"),
       line("b2", "Second."),
     ]);
-    expect(doc.sections[0].entries[0].bullets).toEqual(["First.", "Added.", "Second."]);
+    expect(texts(doc.sections[0].entries[0].items)).toEqual(["First.", "Added.", "Second."]);
   });
 
   it("a removed bullet vanishes", () => {
     const o = outline([section({ entries: [entry({ bullets: ["b1", "b2"] })] })]);
     const doc = resolveDocument(o, [line("b1", "Gone.", "removed"), line("b2", "Stays.")]);
-    expect(doc.sections[0].entries[0].bullets).toEqual(["Stays."]);
+    expect(texts(doc.sections[0].entries[0].items)).toEqual(["Stays."]);
   });
 
   it("applies a heading rename", () => {
@@ -94,7 +96,9 @@ describe("resolveDocument", () => {
   it("keeps structure the user placed even when everything in it resolved to nothing", () => {
     const o = outline([section({ entries: [entry({ bullets: ["b1"], lines: ["l1"] })] })], { contact: ["c1", "c2"] });
     const doc = resolveDocument(o, [line("b1", "x", "removed"), line("c1", "a@b.c"), line("c1", "+91 1", "added")]);
-    expect(doc.sections[0].entries).toEqual([entry()]);
+    expect(doc.sections[0].entries).toEqual([
+      { org: null, title: null, dates: null, place: null, items: [] },
+    ]);
     expect(doc.contact).toEqual(["a@b.c", "+91 1"]);
   });
 });
@@ -107,7 +111,10 @@ describe("inserts anchored to structure blocks", () => {
       line("o", "Remote-first team.", "added", "role"),
       line("l1", "Detail."),
     ]);
-    expect(doc.sections[0].entries[0].lines).toEqual(["Remote-first team.", "Detail."]);
+    expect(doc.sections[0].entries[0].items).toEqual([
+      { text: "Remote-first team.", bullet: false },
+      { text: "Detail.", bullet: true },
+    ]);
     expect(doc.sections[0].entries[0].org).toBe("Inncircles");
   });
 
@@ -117,7 +124,7 @@ describe("inserts anchored to structure blocks", () => {
       line("o", "Inncircles\tJun 2023", "unchanged", "role"),
       line("o", "Added once.", "added", "role"),
     ]);
-    expect(doc.sections[0].entries[0].lines).toEqual(["Added once."]);
+    expect(doc.sections[0].entries[0].items).toEqual([{ text: "Added once.", bullet: false }]);
   });
 
   it("routes an added line on a heading to the front of the section's lines", () => {
@@ -128,7 +135,11 @@ describe("inserts anchored to structure blocks", () => {
       line("l1", "Body."),
     ]);
     expect(doc.sections[0].heading).toBe("Experience");
-    expect(doc.sections[0].lines).toEqual(["Intro.", "Body."]);
+    expect(doc.sections[0].lead).toEqual([
+      { text: "Intro.", bullet: false },
+      { text: "Body.", bullet: true },
+    ]);
+    expect(doc.sections[0].items).toEqual([]);
   });
 
   it("puts an added line after the name into contact and keeps the name", () => {
@@ -140,6 +151,74 @@ describe("inserts anchored to structure blocks", () => {
     ]);
     expect(doc.name).toBe("Priya Sharma");
     expect(doc.contact).toEqual(["Open to relocation", "a@b.c"]);
+  });
+});
+
+describe("document order", () => {
+  it("keeps an entry's Tech line after its bullets when the file has it there", () => {
+    const o = outline([section({ entries: [entry({ org: ref("o", "Acme"), bullets: ["b1", "b2"], lines: ["t"] })] })]);
+    const doc = resolveDocument(o, [
+      line("o", "Acme", "unchanged", "role"),
+      line("b1", "Built A."),
+      line("b2", "Built B."),
+      line("t", "Tech: Go, Postgres", "unchanged", "paragraph"),
+    ]);
+    expect(doc.sections[0].entries[0].items).toEqual([
+      { text: "Built A.", bullet: true },
+      { text: "Built B.", bullet: true },
+      { text: "Tech: Go, Postgres", bullet: false },
+    ]);
+  });
+
+  it("interleaves an entry's lines and bullets as the file does", () => {
+    const o = outline([section({ entries: [entry({ bullets: ["b1", "b2"], lines: ["l1"] })] })]);
+    const doc = resolveDocument(o, [
+      line("b1", "One."),
+      line("l1", "Middle.", "unchanged", "paragraph"),
+      line("b2", "Two."),
+    ]);
+    expect(texts(doc.sections[0].entries[0].items)).toEqual(["One.", "Middle.", "Two."]);
+  });
+
+  it("splits loose section lines into lead (before the entries) and items (after)", () => {
+    const o = outline([section({
+      heading: "h", lines: ["intro", "tail"], entries: [entry({ org: ref("o", "Acme"), bullets: ["b1"] })],
+    })]);
+    const doc = resolveDocument(o, [
+      line("h", "Experience", "unchanged", "heading"),
+      line("h", "Heading insert.", "added", "heading"),
+      line("intro", "Intro.", "unchanged", "paragraph"),
+      line("o", "Acme", "unchanged", "role"),
+      line("b1", "Did."),
+      line("tail", "• Loose bullet.", "unchanged", "bullet"),
+    ]);
+    expect(doc.sections[0].lead).toEqual([
+      { text: "Heading insert.", bullet: false },
+      { text: "Intro.", bullet: false },
+    ]);
+    expect(doc.sections[0].items).toEqual([{ text: "• Loose bullet.", bullet: true }]);
+  });
+
+  it("a loose line after a skills row goes to items; one before it to lead", () => {
+    const o = outline([section({
+      kind: "skills", lines: ["a", "z"], skills: [{ block: "s1", label: null, items: "Go" }],
+    })]);
+    const doc = resolveDocument(o, [
+      line("a", "Before.", "unchanged", "paragraph"),
+      line("s1", "Go", "unchanged", "paragraph"),
+      line("z", "After.", "unchanged", "paragraph"),
+    ]);
+    expect(texts(doc.sections[0].lead)).toEqual(["Before."]);
+    expect(texts(doc.sections[0].items)).toEqual(["After."]);
+  });
+
+  it("a section with only bullets keeps their marks", () => {
+    const o = outline([section({ kind: "achievements", lines: ["a1", "a2"] })]);
+    const doc = resolveDocument(o, [line("a1", "Won X."), line("a2", "Won Y.")]);
+    expect([...doc.sections[0].lead, ...doc.sections[0].items]).toEqual([
+      { text: "Won X.", bullet: true },
+      { text: "Won Y.", bullet: true },
+    ]);
   });
 });
 

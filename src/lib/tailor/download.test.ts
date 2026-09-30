@@ -55,6 +55,6 @@ describe("templateInput", () => {
     const result = templateInput([line("a", "unchanged", "Kept.")], outline);
     expect("document" in result).toBe(true);
     if (!("document" in result)) return;
-    expect(result.document.sections[0].entries[0].bullets[0]).toBe("Kept.");
+    expect(result.document.sections[0].entries[0].items[0]).toEqual({ text: "Kept.", bullet: true });
   });
 });

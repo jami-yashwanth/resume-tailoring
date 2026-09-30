@@ -204,17 +204,49 @@ def blocks_to_latex(blocks: list[dict]) -> str:
     return "\n".join(out)
 
 
-def _contact_fields(text: str) -> str:
-    fields = [escape(f) for f in re.split(r"\s*[·|\t]\s*", text) if f.strip()]
-    return " $|$ ".join(fields)
+def _contact_fields(text: str) -> list[str]:
+    return [escape(f) for f in re.split(r"\s*[·|\t]\s*", text) if f.strip()]
+
+
+def _items(items) -> list[dict]:
+    """The non-empty items, stripped, bullet marks taken off bullet text."""
+    out = []
+    for item in items or []:
+        text = (item.get("text") or "").strip()
+        if not text:
+            continue
+        bullet = bool(item.get("bullet"))
+        out.append({"text": _BULLET_PREFIX.sub("", text) if bullet else text, "bullet": bullet})
+    return out
+
+
+def _section_items(items) -> list[str]:
+    """Loose section lines in order: consecutive bullets share one list (as
+    the flat path's bullets under a heading do), a plain line is a paragraph
+    of body text, blank-line separated, with any open list closed first."""
+    out: list[str] = []
+    in_list = False
+    for item in _items(items):
+        if item["bullet"]:
+            if not in_list:
+                out.append(r"\resumeSubHeadingList")
+                in_list = True
+            out.append(rf"\resumeItem{{\textbullet\ {escape(item['text'])}}}")
+        else:
+            if in_list:
+                out.append(r"\resumeSubHeadingListEnd")
+                in_list = False
+            out.append(escape(item["text"]) + "\n")
+    if in_list:
+        out.append(r"\resumeSubHeadingListEnd")
+    return out
 
 
 def _entry_to_latex(entry: dict) -> list[str]:
     """One entry as macro calls, or nothing when it has no content at all."""
     org, title = entry.get("org"), entry.get("title")
     dates, place = entry.get("dates"), entry.get("place")
-    lines = [ln for ln in entry.get("lines") or [] if ln.strip()]
-    bullets = [b for b in entry.get("bullets") or [] if b.strip()]
+    items = _items(entry.get("items"))
     out: list[str] = []
 
     if title or place:
@@ -230,16 +262,15 @@ def _entry_to_latex(entry: dict) -> list[str]:
             rf"    \textbf{{{escape(org or '')}}} & {escape(dates or '')} \\" + "\n"
             "  \\end{tabular*}\\vspace{-5pt}"
         )
-    elif lines or bullets:
+    elif items:
         out.append(r"\item")  # content with no header still needs its own item
 
-    if lines or bullets:
+    if items:
+        # In the file's order: a "Tech: ..." line after the bullets stays there.
         out.append(r"\resumeSubHeadingList")
-        out.extend(rf"\resumeItem{{{escape(ln.strip())}}}" for ln in lines)
-        out.extend(
-            rf"\resumeItem{{\textbullet\ {escape(_BULLET_PREFIX.sub('', b.strip()))}}}"
-            for b in bullets
-        )
+        for item in items:
+            text = escape(item["text"])
+            out.append(rf"\resumeItem{{\textbullet\ {text}}}" if item["bullet"] else rf"\resumeItem{{{text}}}")
         out.append(r"\resumeSubHeadingListEnd")
     return out
 
@@ -247,23 +278,27 @@ def _entry_to_latex(entry: dict) -> list[str]:
 def document_to_latex(doc: dict) -> str:
     """The structured document as the template's macro calls.
 
-    No state machine: the structure is already known, so each section
-    emits its heading, then entries, skill rows, and loose lines in turn.
+    No state machine: the structure is already known, so each section emits
+    its heading, the lines before its first entry, its entries, skill rows,
+    and the loose lines after, in turn.
     """
     out: list[str] = []
     name = (doc.get("name") or "").strip()
-    contact = [c for c in doc.get("contact") or [] if c.strip()]
+    # Every contact string's fields on one line, as the reference sets it.
+    contact = [f for c in doc.get("contact") or [] for f in _contact_fields(c)]
     if name or contact:
         out.append(r"\begin{center}")
         if name:
             out.append(rf"  \textbf{{\Huge {escape(name)}}} \\")
-        for c in contact:
-            out.append(rf"  \small {_contact_fields(c)}")
+        if contact:
+            out.append(rf"  \small {' $|$ '.join(contact)}")
         out.append(r"\end{center}")
 
     for section in doc.get("sections") or []:
         if section.get("heading"):
             out.append(rf"\section{{{escape(section['heading'])}}}")
+
+        out.extend(_section_items(section.get("lead")))
 
         entries = [e for e in (_entry_to_latex(e) for e in section.get("entries") or []) if e]
         if entries:
@@ -283,9 +318,7 @@ def document_to_latex(doc: dict) -> str:
                     out.append(rf"\item \small{{{items}}}")
             out.append(r"\resumeSubHeadingListEnd")
 
-        for line in section.get("lines") or []:
-            if line.strip():
-                out.append(escape(line.strip()) + "\n")
+        out.extend(_section_items(section.get("items")))
     return "\n".join(out).rstrip("\n")
 
 
@@ -297,6 +330,13 @@ def document_to_blocks(doc: dict) -> list[dict]:
     def add(kind: str, text: str):
         blocks.append({"kind": kind, "text": text})
 
+    def add_items(items):
+        for item in _items(items):
+            if item["bullet"]:
+                add("bullet", "• " + item["text"])
+            else:
+                add("paragraph", item["text"])
+
     if doc.get("name"):
         add("name", doc["name"])
     for c in doc.get("contact") or []:
@@ -304,6 +344,7 @@ def document_to_blocks(doc: dict) -> list[dict]:
     for section in doc.get("sections") or []:
         if section.get("heading"):
             add("heading", section["heading"])
+        add_items(section.get("lead"))
         for e in section.get("entries") or []:
             role = " · ".join(x for x in (e.get("org"), e.get("place")) if x)
             if e.get("dates"):
@@ -312,14 +353,10 @@ def document_to_blocks(doc: dict) -> list[dict]:
                 add("role", role)
             if e.get("title"):
                 add("job_title", e["title"])
-            for ln in e.get("lines") or []:
-                add("paragraph", ln)
-            for b in e.get("bullets") or []:
-                add("bullet", "• " + _BULLET_PREFIX.sub("", b))
+            add_items(e.get("items"))
         for row in section.get("skills") or []:
             add("paragraph", f"{row['label']}: {row['items']}" if row.get("label") else row["items"])
-        for ln in section.get("lines") or []:
-            add("paragraph", ln)
+        add_items(section.get("items"))
     return blocks
 
 

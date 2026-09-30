@@ -257,69 +257,55 @@ def test_render_template_endpoint_compiles_latex_by_default(monkeypatch):
     assert "Helvetica" in fonts_of(client.post("/render-template", json=body))
 
 
+def _b(text):
+    return {"text": text, "bullet": True}
+
+
+def _p(text):
+    return {"text": text, "bullet": False}
+
+
+def _section(heading, kind, **over):
+    return {"heading": heading, "kind": kind, "lead": [], "entries": [], "skills": [], "items": [], **over}
+
+
+def _entry(**over):
+    return {"org": None, "title": None, "dates": None, "place": None, "items": [], **over}
+
+
 DOC = {
     "name": "Priya Sharma",
     "contact": ["priya@example.com · Bengaluru", "+91 98765 43210"],
     "sections": [
-        {
-            "heading": "Summary",
-            "kind": "summary",
-            "entries": [],
-            "skills": [],
-            "lines": ["Backend engineer."],
-        },
-        {
-            "heading": "Experience",
-            "kind": "experience",
-            "entries": [
-                {
-                    "org": "Google",
-                    "title": "Software Engineer",
-                    "dates": "Jun 2022 – Present",
-                    "place": "Bengaluru",
-                    "bullets": ["• Shipped X.", "Cut latency 20%."],
-                    "lines": ["Payments team."],
-                }
+        _section("Summary", "summary", lead=[_p("Backend engineer.")]),
+        _section(
+            "Experience",
+            "experience",
+            entries=[
+                _entry(
+                    org="Google",
+                    title="Software Engineer",
+                    dates="Jun 2022 – Present",
+                    place="Bengaluru",
+                    items=[_p("Payments team."), _b("• Shipped X."), _b("Cut latency 20%.")],
+                )
             ],
-            "skills": [],
-            "lines": [],
-        },
-        {
-            "heading": "Education",
-            "kind": "education",
-            "entries": [
-                {
-                    "org": "IIT Madras",
-                    "title": "B.Tech",
-                    "dates": "2018 – 2022",
-                    "place": None,
-                    "bullets": [],
-                    "lines": ["CGPA: 8.38"],
-                }
-            ],
-            "skills": [],
-            "lines": [],
-        },
-        {
-            "heading": "Projects",
-            "kind": "projects",
-            "entries": [
-                {"org": "Rezz", "title": None, "dates": "2026", "place": None, "bullets": [], "lines": []}
-            ],
-            "skills": [],
-            "lines": [],
-        },
-        {
-            "heading": "Skills",
-            "kind": "skills",
-            "entries": [],
-            "skills": [
+        ),
+        _section(
+            "Education",
+            "education",
+            entries=[_entry(org="IIT Madras", title="B.Tech", dates="2018 – 2022", items=[_p("CGPA: 8.38")])],
+        ),
+        _section("Projects", "projects", entries=[_entry(org="Rezz", dates="2026")]),
+        _section(
+            "Skills",
+            "skills",
+            skills=[
                 {"label": "Languages", "items": "Python, Go"},
                 {"label": None, "items": "Kubernetes"},
             ],
-            "lines": [],
-        },
-        {"heading": None, "kind": "other", "entries": [], "skills": [], "lines": ["Open to work."]},
+        ),
+        _section(None, "other", items=[_p("Open to work.")]),
     ],
 }
 
@@ -356,14 +342,7 @@ def test_section_without_heading_sets_no_section_title():
 def test_empty_entry_renders_nothing():
     from app.latex_render import document_to_latex
 
-    empty = {"org": None, "title": None, "dates": None, "place": None, "bullets": [], "lines": []}
-    doc = {
-        "name": None,
-        "contact": [],
-        "sections": [
-            {"heading": "X", "kind": "other", "entries": [empty], "skills": [], "lines": []}
-        ],
-    }
+    doc = {"name": None, "contact": [], "sections": [_section("X", "other", entries=[_entry()])]}
     assert document_to_latex(doc) == r"\section{X}"
 
 
@@ -378,9 +357,140 @@ def test_document_to_blocks_matches_the_flat_shape():
     assert blocks[i + 1] == {"kind": "job_title", "text": "Software Engineer"}
     assert blocks[i + 2] == {"kind": "paragraph", "text": "Payments team."}
     assert blocks[i + 3] == {"kind": "bullet", "text": "• Shipped X."}
+    assert blocks[i + 4] == {"kind": "bullet", "text": "• Cut latency 20%."}
+    assert by_kind[by_kind.index(("heading", "Summary")) + 1] == ("paragraph", "Backend engineer.")
+    assert by_kind[-1] == ("paragraph", "Open to work.")
     assert ("paragraph", "Languages: Python, Go") in by_kind
     assert ("paragraph", "Kubernetes") in by_kind
     assert ("role", "Rezz\t2026") in by_kind
+
+
+def test_document_to_blocks_keeps_section_bullets_and_order():
+    from app.latex_render import document_to_blocks
+
+    doc = {"name": None, "contact": [], "sections": [
+        _section("Experience", "experience", lead=[_p("Intro.")],
+                 entries=[_entry(org="Acme", items=[_b("Did."), _p("Tech: Go")])],
+                 items=[_b("• Loose.")]),
+    ]}
+    assert [(b["kind"], b["text"]) for b in document_to_blocks(doc)] == [
+        ("heading", "Experience"),
+        ("paragraph", "Intro."),
+        ("role", "Acme"),
+        ("bullet", "• Did."),
+        ("paragraph", "Tech: Go"),
+        ("bullet", "• Loose."),
+    ]
+
+
+def test_entry_items_keep_file_order_and_bullet_marks():
+    """A "Tech: ..." line after an entry's bullets stays after them, and only
+    the bullets carry the bullet mark."""
+    from app.latex_render import document_to_latex
+
+    doc = {"name": None, "contact": [], "sections": [_section("Experience", "experience", entries=[
+        _entry(org="Acme", dates="2024", items=[_b("• Built A."), _b("Built B."), _p("Tech: Go, Postgres")]),
+    ])]}
+    tex = document_to_latex(doc)
+    a = tex.index(r"\resumeItem{\textbullet\ Built A.}")
+    b = tex.index(r"\resumeItem{\textbullet\ Built B.}")
+    t = tex.index(r"\resumeItem{Tech: Go, Postgres}")
+    assert a < b < t
+
+
+def test_bulleted_section_without_entries_renders_one_list():
+    from app.latex_render import document_to_latex
+
+    doc = {"name": None, "contact": [], "sections": [
+        _section("Achievements", "achievements", lead=[_b("• Won X."), _b("Won Y.")]),
+    ]}
+    tex = document_to_latex(doc)
+    assert tex == "\n".join([
+        r"\section{Achievements}",
+        r"\resumeSubHeadingList",
+        r"\resumeItem{\textbullet\ Won X.}",
+        r"\resumeItem{\textbullet\ Won Y.}",
+        r"\resumeSubHeadingListEnd",
+    ])
+
+
+def test_plain_item_closes_an_open_bullet_list():
+    from app.latex_render import document_to_latex
+
+    doc = {"name": None, "contact": [], "sections": [
+        _section("Other", "other", items=[_b("One."), _p("Plain."), _b("Two.")]),
+    ]}
+    tex = document_to_latex(doc)
+    assert len(re.findall(r"\\resumeSubHeadingList\b(?!End)", tex)) == 2
+    assert tex.count(r"\resumeSubHeadingListEnd") == 2
+    end = tex.index(r"\resumeSubHeadingListEnd")
+    assert end < tex.index("Plain.") < tex.index(r"\textbullet\ Two.")
+    assert r"\resumeItem{Plain.}" not in tex
+
+
+def test_heading_insert_in_lead_renders_before_the_first_entry():
+    from app.latex_render import document_to_latex
+
+    doc = {"name": None, "contact": [], "sections": [
+        _section("Experience", "experience", lead=[_p("Open to relocation.")],
+                 entries=[_entry(org="Acme", dates="2024", items=[_b("Did.")])],
+                 items=[_b("Loose after.")]),
+    ]}
+    tex = document_to_latex(doc)
+    assert tex.index(r"\section{Experience}") < tex.index("Open to relocation.") < tex.index(r"\textbf{Acme}")
+    assert tex.index(r"\textbf{Acme}") < tex.index(r"\textbullet\ Loose after.")
+
+
+def test_summary_paragraph_is_plain_and_first():
+    from app.latex_render import document_to_latex
+
+    tex = document_to_latex(DOC)
+    body = tex.split(r"\section{Summary}", 1)[1]
+    assert body.lstrip("\n").startswith("Backend engineer.")
+    assert r"\resumeItem{Backend engineer.}" not in tex
+
+
+def test_contact_strings_join_into_one_line():
+    from app.latex_render import document_to_latex
+
+    tex = document_to_latex(DOC)
+    lines = tex.splitlines()
+    assert r"  \small priya@example.com $|$ Bengaluru $|$ +91 98765 43210" in lines
+    assert not any(ln.strip().endswith("+91 98765 43210") and "Bengaluru" not in ln for ln in lines)
+    assert sum(1 for ln in lines if r"\small" in ln and "$|$" in ln) == 1
+
+
+def test_every_special_character_escapes_on_the_document_path():
+    """Resume text is attacker-supplied: every field the document path writes
+    goes through escape()."""
+    from app.latex_render import document_to_latex
+
+    hostile = "%&_#${}\\"
+
+    def doc(extra):
+        return {
+            "name": "N" + extra,
+            "contact": ["c" + extra],
+            "sections": [
+                _section("H" + extra, "experience",
+                         lead=[_p("lead" + extra)],
+                         entries=[_entry(org="o" + extra, title="t" + extra, dates="d" + extra,
+                                         place="p" + extra,
+                                         items=[_b("b" + extra), _p("l" + extra)])],
+                         skills=[{"label": "k" + extra, "items": "i" + extra}],
+                         items=[_b("x" + extra), _p("y" + extra)]),
+            ],
+        }
+
+    tex = document_to_latex(doc(hostile))
+    escaped = r"\%\&\_\#\$\{\}\textbackslash{}"
+    for tag in ("N", "c", "H", "lead", "o", "t", "d", "p", "b", "l", "k", "i", "x", "y"):
+        assert tag + escaped in tex, tag
+    # Every hostile string came out as exactly its escaped form and nothing
+    # else: take the escapes away and what is left is the benign render, so no
+    # raw special character reached the output outside the template's macros.
+    assert tex.replace(escaped, "") == document_to_latex(doc(""))
+    assert tex.count(escaped) == 14
 
 
 def test_render_template_endpoint_accepts_a_document():
@@ -408,3 +518,20 @@ def test_document_compiles_to_a_readable_pdf():
         text = doc[0].get_text()
     assert "Software Engineer" in text
     assert "Python, Go" in text
+
+
+@needs_tectonic
+def test_section_bullets_and_plain_lines_compile():
+    import pymupdf
+
+    from app.latex_render import render_latex_document
+
+    doc = {"name": "Priya", "contact": ["a@b.c", "+91 1"], "sections": [
+        _section("Achievements", "achievements", lead=[_p("Highlights."), _b("• Won X."), _b("Won Y.")],
+                 items=[_p("And more."), _b("Won Z.")]),
+    ]}
+    pdf = render_latex_document(doc, timeout=180.0)
+    with pymupdf.open(stream=pdf, filetype="pdf") as d:
+        text = d[0].get_text()
+    for s in ("Highlights.", "Won X.", "Won Y.", "And more.", "Won Z.", "a@b.c | +91 1"):
+        assert s in text, s

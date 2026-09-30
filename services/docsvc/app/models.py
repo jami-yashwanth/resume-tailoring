@@ -130,13 +130,19 @@ class SkillRowModel(BaseModel):
     items: str
 
 
+class ItemModel(BaseModel):
+    """One line in document order; `bullet` is whether the file marked it so."""
+
+    text: str
+    bullet: bool = False
+
+
 class EntryModel(BaseModel):
     org: str | None = None
     title: str | None = None
     dates: str | None = None
     place: str | None = None
-    bullets: list[str] = Field(default_factory=list)
-    lines: list[str] = Field(default_factory=list)
+    items: list[ItemModel] = Field(default_factory=list)
 
 
 class SectionModel(BaseModel):
@@ -145,9 +151,11 @@ class SectionModel(BaseModel):
         "summary", "experience", "education", "projects",
         "skills", "certifications", "achievements", "other",
     ]
+    #: Loose lines before the first entry or skill row; `items` are the rest.
+    lead: list[ItemModel] = Field(default_factory=list)
     entries: list[EntryModel] = Field(default_factory=list)
     skills: list[SkillRowModel] = Field(default_factory=list)
-    lines: list[str] = Field(default_factory=list)
+    items: list[ItemModel] = Field(default_factory=list)
 
 
 class Document(BaseModel):
