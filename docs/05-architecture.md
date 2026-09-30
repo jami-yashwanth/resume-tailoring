@@ -25,6 +25,8 @@ Result (~15 s) ─► user decisions (Add it / Skip) ─► re-plan only what ch
 Export (clean file, same design) + claim log + interview prep
 ```
 
+**Reading the resume (`reading_resume`).** After docsvc parses the file into blocks, Claude sorts them into an outline: name, contact, and sections made of entries (employer, title, dates, place, bullets) and skill rows. The model only points at block ids and copies text out of them; it never writes text of its own. `checkOutline` (`src/lib/tailor/outline.ts`) then verifies every reference against the file, so each piece of copied text must appear verbatim in the block it names and every block id must exist. A rejected outline is retried once with the reason fed back. If the retry is also rejected, or the API fails, the parser's own labels are kept and the pipeline carries on (logged, never shown to the user). Design and rationale: [schema extraction spec](superpowers/specs/2026-09-30-schema-extraction.md).
+
 ## Claim levels
 
 | Level | Source | Allowed wording |

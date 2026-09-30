@@ -26,3 +26,4 @@ and the banned generic-AI patterns. Pair it with the **`frontend-design`** skill
 ## AI
 
 Claude API via `@anthropic-ai/sdk`, server-side only. See `docs/05-architecture.md` for the pipeline, claim levels and cost estimates.
+The LLM structures the parsed resume into an outline and never returns text the code has not verified against the file (`src/lib/tailor/outline.ts`).
