@@ -2,14 +2,6 @@ import type { BlockKind, Entry, Outline, SectionKind } from "./types";
 import { cleanText, type LineState, type RenderedLine } from "./view";
 
 /**
- * The resume as the template renders it: the outline's structure filled with
- * the user's decided text. Field names mirror the Pydantic models in docsvc.
- *
- * An Item keeps its bullet mark (a bullet is a fact about the file) and every
- * list of items is in document order, so a "Tech: ..." line after an entry's
- * bullets stays after them.
- */
-/**
  * Review marks, copied from a line's RenderedLine so the editor can anchor to
  * it and show its state. Optional: docsvc ignores them and flat-block
  * documents have none.
@@ -20,6 +12,15 @@ export type Marks = {
   opId?: string;
   blockId?: string;
 };
+
+/**
+ * The resume as the template renders it: the outline's structure filled with
+ * the user's decided text. Field names mirror the Pydantic models in docsvc.
+ *
+ * An Item keeps its bullet mark (a bullet is a fact about the file) and every
+ * list of items is in document order, so a "Tech: ..." line after an entry's
+ * bullets stays after them.
+ */
 export type Item = { text: string; bullet: boolean } & Marks;
 /** "Languages: Python, Go" as label + items, with its line's marks. */
 export type SkillRow = { label: string | null; items: string } & Marks;
