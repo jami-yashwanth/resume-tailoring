@@ -22,7 +22,7 @@ import { box, offset } from "@/components/rezz/skin";
  */
 export function FlowHeader({ step }: { step: ReactNode }) {
   return (
-    <header className="border-b-2 border-ink bg-paper-raised">
+    <header className="border-b-2 border-edge bg-paper-raised dark:bg-paper">
       <div className="mx-auto flex min-h-[72px] max-w-[1312px] flex-wrap items-center justify-between gap-3 px-16 py-3 max-[1100px]:px-8 max-[680px]:px-4">
         {/* Boxed, the way the landing header boxes it: on a screen drawn
             entirely in 2px ink, an unboxed wordmark reads as unfinished. */}

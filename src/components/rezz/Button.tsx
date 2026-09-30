@@ -5,7 +5,7 @@ type Variant = "primary" | "secondary";
 type Size = "sm" | "md" | "lg";
 
 const base =
-  "inline-flex items-center justify-center rounded-md " +
+  "inline-flex items-center justify-center rounded-sheet " +
   "font-semibold no-underline cursor-pointer " +
   "disabled:cursor-not-allowed disabled:opacity-45 disabled:pointer-events-none";
 
@@ -37,7 +37,9 @@ const sizes: Record<Size, string> = {
  * bug, not a visual one.
  */
 const drawn: Record<Variant, string> = {
-  primary: `${box} bg-action text-on-action ${offsetAction} ${pressAction}`,
+  /* Edged in its own fill, not `box`: identical in light (action is ink), and
+     in dark it keeps a grey outline from ringing the yellow fill. */
+  primary: `border-2 border-action bg-action text-on-action ${offsetAction} ${pressAction}`,
   secondary: `${box} bg-paper-raised text-ink hover:bg-paper-sunken ${offset} ${press}`,
 };
 

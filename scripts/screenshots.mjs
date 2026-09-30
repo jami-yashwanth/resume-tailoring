@@ -95,7 +95,7 @@ async function settle(page, theme) {
       attr: document.documentElement.getAttribute("data-theme"),
       bg: getComputedStyle(document.body).backgroundColor,
     }));
-    const want = theme === "dark" ? "rgb(15, 19, 26)" : "rgb(247, 248, 250)";
+    const want = theme === "dark" ? "rgb(0, 0, 0)" : "rgb(247, 248, 250)";
     if (seen.attr !== theme || seen.bg !== want) {
       throw new Error(
         `theme not applied on ${page.url()}: wanted ${theme} / ${want}, ` +

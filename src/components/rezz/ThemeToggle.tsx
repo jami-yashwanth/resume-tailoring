@@ -43,9 +43,9 @@ export function ThemeToggle({ className = "" }: { className?: string }) {
         }
       }}
       className={`inline-flex h-11 w-11 flex-none cursor-pointer items-center justify-center
-                  rounded-md ${box} ${offset} bg-paper-raised text-ink
+                  rounded-sheet ${box} ${offset} bg-paper-raised text-ink
                   transition-[box-shadow,transform] duration-150
-                  hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_0_var(--ink)]
+                  hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_0_var(--offset)]
                   ${className}`}
     >
       <Moon aria-hidden className="h-5 w-5 dark:hidden" strokeWidth={1.5} />

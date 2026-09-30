@@ -145,7 +145,7 @@ export function ReviewList({
                     <button
                       type="button"
                       onClick={() => onOpen(item.op.id)}
-                      className="flex min-h-11 w-full cursor-pointer items-center gap-2 rounded-lg border border-line
+                      className="flex min-h-11 w-full cursor-pointer items-center gap-2 rounded-sheet border border-line
                                  bg-paper-raised px-3 text-left text-[13px] leading-[18px] text-ink
                                  transition-colors duration-150 hover:bg-paper-sunken"
                     >

@@ -21,6 +21,7 @@ from collections import Counter, defaultdict
 
 import pymupdf
 
+from .headings import carries_a_value, looks_like_caps_heading
 from .models import Block, BlockKind, Run
 
 BULLET_CHARS = "•◦▪‣·"
@@ -179,7 +180,9 @@ def _classify(index: int, text: str, bold: bool, italic: bool, size: float, body
         return BlockKind.CONTACT
     if "\t" in text:
         return BlockKind.ROLE
-    if len(text) < 40 and (text.isupper() or (bold and size >= body_size * 1.15)):
+    if looks_like_caps_heading(text) or (
+        len(text) < 40 and bold and size >= body_size * 1.15 and not carries_a_value(text)
+    ):
         return BlockKind.HEADING
     # A role's title is bold in most templates, italic in some (this file's
     # LaTeX template among them) — either is a stronger signal than "not

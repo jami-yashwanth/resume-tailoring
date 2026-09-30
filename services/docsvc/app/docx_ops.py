@@ -19,6 +19,7 @@ from docx.shared import Emu
 from docx.text.paragraph import Paragraph
 from docx.text.run import Run as DocxRun  # distinct from the wire type below
 
+from .headings import looks_like_caps_heading
 from .models import Block, BlockKind, Run
 
 W_NS = "{http://schemas.openxmlformats.org/wordprocessingml/2006/main}"
@@ -166,7 +167,7 @@ def _classify(index: int, text: str, style: str, p) -> BlockKind:
         return BlockKind.NAME
     if index == 1 and ("@" in text or "·" in text):
         return BlockKind.CONTACT
-    if style.startswith("Heading") or (len(text) < 40 and text.isupper()):
+    if style.startswith("Heading") or looks_like_caps_heading(text):
         return BlockKind.HEADING
     # A role line carries a date range pushed to the right with a tab or a
     # right-aligned tab stop; that is what distinguishes it from a sentence.

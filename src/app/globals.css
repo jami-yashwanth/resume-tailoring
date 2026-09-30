@@ -4,6 +4,12 @@
    app has to be able to hold a theme the user chose. */
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
+/* Short windows: a 1366×768 or 1440×900 laptop at 100% zoom leaves 650–790px
+   of page once the browser's own chrome is gone. The flow screens tighten
+   their vertical rhythm there so the one button on each stays above the fold;
+   type sizes never change. */
+@custom-variant short (@media (max-height: 800px));
+
 /* ---------------------------------------------------------------------------
    Raw token values. See design/redesign/PLAN.md.
    Two rules carry the product promise and must not be quietly relaxed:
@@ -41,18 +47,36 @@
     --on-action: #ffffff;
     --focus: #152033;
 
+    /* The drawn skin (see components/rezz/skin.ts). In light theme all three
+       are exactly ink / highlighter, so nothing here changes how light looks.
+       They exist so dark theme can stop inverting them: a 2px near-white edge
+       with a near-white slab behind it on every button, card and header was
+       the loudest thing on every dark screen. */
+    --edge: #152033;
+    --offset: #152033;
+    --action-offset: #e4f264;
+    --accent-offset: #e4f264;
+
     --shadow-sheet: 0 1px 2px #1520330f, 0 8px 24px -8px #15203329;
     --shadow-float: 0 4px 12px #1520331a, 0 16px 40px -8px #15203333;
+
+    color-scheme: light;
+    scrollbar-color: var(--line-strong) transparent;
   }
 
+  /* True black ground (owner, 30 Sep 2026). Nothing sits below black, so the
+     sunken well IS the ground, and depth runs one way: raised panels step up
+     to a near-black grey. Greys are near-neutral with a trace of the light
+     theme's blue. Ink is off-white rather than white, so body text sits at
+     ~17:1 instead of glaring at 21:1. */
   [data-theme="dark"] {
-    --paper: #0f131a;
-    --paper-raised: #171c25;
-    --paper-sunken: #0b0e13;
-    --line: #2a3140;
-    --line-strong: #5c6880;
-    --ink: #e8ecf2;
-    --ink-muted: #a3aebf;
+    --paper: #000000;
+    --paper-raised: #0f1114;
+    --paper-sunken: #000000;
+    --line: #23272e;
+    --line-strong: #5c6573;
+    --ink: #e6e9ee;
+    --ink-muted: #a2abb9;
 
     --highlighter: #d6ea4f;
     --highlighter-soft: #353b12;
@@ -62,13 +86,26 @@
     --gap: #f08a74;
     --gap-soft: #3a1c16;
 
-    /* inverted, NOT the highlighter — that colour is reserved for change */
-    --action: #e8ecf2;
-    --on-action: #0f131a;
-    --focus: #e8ecf2;
+    /* The brand book's dark-theme action: highlighter fill, dark label. One
+       primary per view, so this is still the one yellow object that is not
+       changed text — and it is the one the book names as allowed. */
+    --action: #d6ea4f;
+    --on-action: #000000;
+    --focus: #e6e9ee;
+
+    /* Dark edges are a mid grey that clears 3:1 against the ground (enough to
+       find a control, not enough to shout), and offsets are a flat plate one
+       step up from the ground rather than a white slab. The promise blocks take
+       the same plate: a dimmed yellow one was tried and read as olive mud. */
+    --edge: #555d6b;
+    --offset: #23272e;
+    --action-offset: #23272e;
+    --accent-offset: #23272e;
 
     --shadow-sheet: 0 1px 2px #00000080, 0 12px 32px -8px #000000b3;
     --shadow-float: 0 16px 40px -8px #000000cc;
+
+    color-scheme: dark;
   }
 
   /* The document re-declares every theme-varying token it uses, so dark values
@@ -137,6 +174,7 @@
   --color-action: var(--action);
   --color-on-action: var(--on-action);
   --color-focus: var(--focus);
+  --color-edge: var(--edge);
 
   --shadow-sheet: var(--shadow-sheet);
   --shadow-float: var(--shadow-float);

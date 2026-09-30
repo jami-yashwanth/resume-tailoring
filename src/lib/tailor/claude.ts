@@ -16,6 +16,9 @@ export const models = () => ({
   planner:
     process.env.ANTHROPIC_PLANNER_MODEL ?? process.env.ANTHROPIC_MODEL ?? "claude-sonnet-5",
   verifier: process.env.ANTHROPIC_VERIFIER_MODEL ?? "claude-haiku-4-5",
+  /** Reading the resume's structure (`structure.ts`). The strongest tier: a
+   *  mislabelled line is visible on the page the user downloads. */
+  structure: process.env.ANTHROPIC_STRUCTURE_MODEL ?? "claude-opus-5-5",
 });
 
 export type Usage = { input: number; output: number; cacheRead: number };

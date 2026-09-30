@@ -11,15 +11,15 @@ export const metadata = {
    window stay unstated until the owner confirms them (docs/07-open-items.md). */
 export default function PrivacyPage() {
   return (
-    <div className="min-h-screen bg-paper-raised">
-      <header className="border-b-2 border-ink">
+    <div className="min-h-screen bg-paper-raised dark:bg-paper">
+      <header className="border-b-2 border-edge">
         <div className="mx-auto flex min-h-20 max-w-[720px] items-center px-8">
           <Link href="/" className="no-underline">
             <Wordmark />
           </Link>
         </div>
       </header>
-      <main className="mx-auto max-w-[720px] px-8 py-16">
+      <main className="mx-auto max-w-[720px] px-8 py-[clamp(24px,6dvh,64px)]">
         <h1 className="m-0 text-[34px] font-bold leading-[1.15] tracking-[-0.02em]">Privacy</h1>
         <div className="mt-8 flex flex-col gap-5 text-base leading-[26px] text-ink">
           <p className="m-0">

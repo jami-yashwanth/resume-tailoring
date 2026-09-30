@@ -6,6 +6,7 @@ import { normaliseHeading } from "./headings";
 import { fallbackOffers } from "./offers";
 import { planEdits } from "./planner";
 import { extractRequirements } from "./requirements";
+import { structureLayout } from "./structure";
 import { type Violation, enforce, verifyMatches } from "./rules";
 import { type Layout, type PlannedOp, type TailorPlan, toDocsvcOps } from "./types";
 
@@ -88,10 +89,17 @@ export async function tailor(
   const usage = emptyUsage();
 
   onProgress("reading_resume");
-  const layout = await docsvc.parseResume(resumeBase64, filename);
+  const parsed = await docsvc.parseResume(resumeBase64, filename);
 
+  // Claude re-reads the parser's line labels (see structure.ts) while it reads
+  // the job: neither depends on the other, so the structure pass costs no wait.
   onProgress("reading_job");
-  const jd = await extractRequirements(client, jobDescription);
+  const [structured, jd] = await Promise.all([
+    structureLayout(client, parsed),
+    extractRequirements(client, jobDescription),
+  ]);
+  const layout = structured.layout;
+  addUsage(usage, structured.usage);
   addUsage(usage, jd.usage);
   onProgress("reading_job", `${jd.requirements.length} requirements`);
 

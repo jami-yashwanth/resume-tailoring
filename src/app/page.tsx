@@ -52,7 +52,7 @@ const wrap = "mx-auto max-w-[1312px] px-16 max-[1100px]:px-8 max-[680px]:px-4";
    which made a band with symmetric internal padding sit asymmetrically in the
    page. The band keeps its tighter 96px interior — inside a register may breathe
    less than between two of them. */
-const register = "border-t-2 border-ink py-28 max-[1100px]:py-16";
+const register = "border-t-2 border-edge py-28 max-[1100px]:py-16";
 
 /* The skin — 2px ink outlines, hard offset shadows, the type scale — now lives
    in `@/components/rezz/skin`, where its rules are written down. It was local
@@ -109,8 +109,8 @@ export default function LandingPage() {
     /* The marketing ground is flat white, not `paper`. The grey ground exists to
        sink the resume canvas in the app; here the separation is carried by ink
        rules, and a grey behind a white sheet edged in 2px ink just muddies it. */
-    <div className="bg-paper-raised">
-      <header className="border-b-2 border-ink bg-paper-raised">
+    <div className="bg-paper-raised dark:bg-paper">
+      <header className="border-b-2 border-edge bg-paper-raised dark:bg-paper">
         {/* `min-h-20`, not `h-20`. With a fixed height the bar could not grow
             when the nav wrapped, so between ~681 and ~719px the nav became
             three rows (120px) inside an 80px bar and — being `items-center` —
@@ -502,8 +502,10 @@ export default function LandingPage() {
       {/* Closes on the same inversion the promise strip opens with, so the page
           is bracketed by the two places Rezz speaks in its own voice.
           --focus is ink, which would draw an invisible ring on an ink ground.
-          Flip it for this block the same way .sheet flips its tokens. */}
-      <footer className="border-t-2 border-ink bg-ink py-14 text-paper [--focus:var(--paper)]">
+          Flip it for this block the same way .sheet flips its tokens. In dark
+          theme the inversion is dropped: ink there is off-white, and a light
+          slab closing a dark page was the brightest object on it. */}
+      <footer className="border-t-2 border-edge bg-ink py-14 text-paper [--focus:var(--paper)] dark:bg-paper-sunken dark:text-ink dark:[--focus:var(--ink)]">
         <div className={`${wrap} flex items-start justify-between gap-16 max-[680px]:flex-col max-[680px]:gap-6`}>
           <div>
             {/* `bg-sheet` with a `sheet-ink` edge, not `bg-paper`: the mark now
@@ -514,7 +516,7 @@ export default function LandingPage() {
             <span className="inline-flex items-center rounded-md border-2 border-sheet-ink bg-sheet px-3 py-1.5">
               <Wordmark />
             </span>
-            <p className="mt-4 max-w-[46ch] text-sm leading-[22px] text-paper/70">
+            <p className="mt-4 max-w-[46ch] text-sm leading-[22px] text-paper/70 dark:text-ink-muted">
               Your resume, tailored to each job. Nothing added behind your back. No fake ATS score.
               No auto-renew. One clean template.
             </p>
@@ -522,9 +524,9 @@ export default function LandingPage() {
           {/* `mt-1.5` sits the link row on the wordmark's optical centre. Both
               were top-aligned, so 14px links hung off the top of a 41px plaque. */}
           <nav aria-label="Footer" className="mt-1.5 flex gap-6 text-sm font-medium leading-[22px] max-[680px]:mt-0">
-            <a href="#pricing" className="py-3 text-paper">Pricing</a>
-            <a href="/privacy" className="py-3 text-paper">Privacy</a>
-            <a href="/terms" className="py-3 text-paper">Terms</a>
+            <a href="#pricing" className="py-3 text-paper dark:text-ink">Pricing</a>
+            <a href="/privacy" className="py-3 text-paper dark:text-ink">Privacy</a>
+            <a href="/terms" className="py-3 text-paper dark:text-ink">Terms</a>
           </nav>
         </div>
       </footer>
