@@ -31,11 +31,16 @@ The parsed `Layout`, the verified `Outline`, the plan's operations and the revie
 
 **Preview** is that component rendered live in the right pane. On-screen page boundaries come from measuring blocks against the A4 text height; blocks never split across a boundary. This is a guide, not the count.
 
-**PDF** is that component printed. On download the Next server renders `ResumePage` to a self-contained HTML string (inline CSS, fonts as data URIs) and posts it to docsvc `POST /print` `{ html }`, which loads it in headless Chromium (Playwright for Python; Chromium added to the docsvc image), blocks all network, prints A4 with `prefer_css_page_size` and backgrounds, enforces a 15 s timeout and a 2 MB body cap, and returns `{ file, pages }`.
+**PDF** is that component printed. On download the Next server renders `ResumePage` to a self-contained HTML string (inline CSS, fonts as data URIs) and posts it to docsvc `POST /print` `{ html }`, which loads it in headless Chromium (Playwright for Python; Chromium added to the docsvc image), blocks all network, prints A4 with `prefer_css_page_size` and backgrounds, enforces a 15 s timeout and a 4 MB HTML cap (ruling below), and returns `{ file, pages, renderer }`. The print HTML zeroes the browser's default body margin, so text starts at the 40pt `@page` margin exactly as on screen; `services/docsvc/tests/test_printer.py` prints the real `renderResumeHtml` output (a committed fixture, `npm run fixture:print`) and checks both edges.
 
 **Page count is the printer's.** After edits settle (debounce), the app calls `POST /print` with `count_only: true`; the header status and the page-fit card use that number. The first printed count of the tailored document (original plus automatic rewordings) is the length the user agrees to.
 
-**Fallback.** If printing fails, retry once, then render through docsvc's drawn renderer (`render_template` via `document_to_blocks`) and tell the user: "Saved with the fallback layout; it may differ slightly from the preview." A failed count keeps the last known number and shows "checking pages…". Never a blank result, never silent.
+**Fallback.** If printing fails, retry once, then render through docsvc's drawn renderer (`render_template` via `document_to_blocks`) and tell the user: "Saved with the fallback layout; it may differ slightly from the preview." While a count is in flight the status reads "checking pages…" and Download waits ("Checking pages…"). Never a blank result, never silent.
+
+**Rulings (1 Oct 2026, from the implementation ledger):**
+- *4 MB cap.* The HTML cap is 4 MB, not 2 MB: the two inlined Source Serif 4 faces alone are ~1 MB of base64. Over the cap docsvc answers 413 and the app says "This resume is too large to print. Remove some content and try again."
+- *"page count unavailable".* A count that fails, and fails again on its one retry, keeps the last known number and shows "page count unavailable". Download comes back then; the download backstop still refuses to save a file longer than the agreed length.
+- *Fallback counts never become the allowance.* A count from the drawn fallback is shown with "(fallback layout)" but is never adopted as the agreed length, because the fallback sets differently from the template. The allowance is stored with `pagesSource: "printer"`; a stored allowance without it (from before the printer) is dropped and re-counted.
 
 **Results without an outline** (older sessions, the sample fixture, extraction that fell back) are converted from flat blocks to a one-section document (`blocksToDocument`), so `ResumePage` only ever takes a document.
 
