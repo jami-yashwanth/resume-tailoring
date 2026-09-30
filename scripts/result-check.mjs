@@ -17,6 +17,9 @@ fs.mkdirSync(OUT, { recursive: true });
 const fixture = JSON.parse(fs.readFileSync(path.join(repoRoot, "fixtures/sample-plan.json"), "utf8"));
 const WIDTHS = [1440, 1240, 1100, 880];
 const failures = [];
+/* Download reads "Checking pages…" while the printer counts the document on
+   screen, and "Download resume" once it has. Either is the one Download. */
+const DOWNLOAD = /^(Download resume|Checking pages…)$/;
 
 function check(ok, what) {
   if (!ok) failures.push(what);
@@ -131,7 +134,7 @@ for (const width of WIDTHS) {
       await add.first().click();
       await page.waitForTimeout(450); // longer than the card's 350ms guard
     }
-    const download = page.getByRole("button", { name: "Download resume" });
+    const download = page.getByRole("button", { name: DOWNLOAD });
     check((await download.count()) === 1, "exactly one Download button");
     check(await visible(page.getByText(/^All decided\./)), "the list says all decided");
     check((await focused(page)).text.startsWith("All decided."), "focus moves to \"All decided\" after the last decision");
@@ -163,7 +166,7 @@ for (const width of WIDTHS) {
     const { context, page } = await openResult(browser, width, {
       layout: longLayout(fixture.layout),
       plan: { ...fixture.plan, operations: [...fixture.plan.operations, removal("rm-a", "pad38"), removal("rm-b", "pad39")] },
-      decisions: { decisions: {}, wordings: {}, pagesAllowed: 1, growthAllowed: false, removedFor: {} },
+      decisions: { decisions: {}, wordings: {}, pagesAllowed: 1, pagesSource: "printer", growthAllowed: false, removedFor: {} },
     });
     await page.evaluate(() => {
       const region = document.querySelector('[aria-live="polite"]');
@@ -188,7 +191,7 @@ for (const width of WIDTHS) {
   {
     const { context, page } = await openResult(browser, width, {
       layout: longLayout(fixture.layout),
-      decisions: { decisions: {}, wordings: {}, pagesAllowed: 1, growthAllowed: false },
+      decisions: { decisions: {}, wordings: {}, pagesAllowed: 1, pagesSource: "printer", growthAllowed: false },
     });
     const heading = page.getByRole("heading", { name: /(makes it|runs to) \d+ pages\./ });
     check(await visible(heading), "the page-fit card is on screen");
@@ -215,7 +218,7 @@ for (const width of WIDTHS) {
     await heading.waitFor({ timeout: 8000 }).catch(() => {});
     check(await visible(heading), "adding every draft to a full page shows the page-fit card");
     check(
-      await page.getByRole("button", { name: "Download resume" }).isDisabled(),
+      await page.getByRole("button", { name: DOWNLOAD }).isDisabled(),
       "Download waits for the page-fit answer",
     );
     check(await visible(page.getByText(/^Choose how it fits · 2 pages$/)), "the status says why");
@@ -227,7 +230,7 @@ for (const width of WIDTHS) {
     const { context, page } = await openResult(browser, width, {
       layout: longLayout(fixture.layout, JUST_OVER_ONE_PAGE),
       plan: planWithRemoval(JUST_OVER_ONE_PAGE),
-      decisions: { decisions: {}, wordings: {}, pagesAllowed: 1, growthAllowed: false, removedFor: {} },
+      decisions: { decisions: {}, wordings: {}, pagesAllowed: 1, pagesSource: "printer", growthAllowed: false, removedFor: {} },
     });
     const heading = page.getByRole("heading", { name: /(makes it|runs to) \d+ pages\./ });
     check(await visible(heading), "a resume just over its agreed page asks about length");
@@ -255,7 +258,7 @@ for (const width of WIDTHS) {
     await page.getByText(/checking pages…$/).first().waitFor({ timeout: 5000 }).catch(() => {});
     check(await visible(page.getByText(/checking pages…$/)), "the status says the pages are being checked");
     check(
-      await page.getByRole("button", { name: "Download resume" }).isDisabled(),
+      await page.getByRole("button", { name: DOWNLOAD }).isDisabled(),
       "Download waits while the pages are being checked",
     );
     await context.close();
