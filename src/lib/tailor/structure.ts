@@ -1,6 +1,7 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { type Usage, emptyUsage, models } from "./claude";
+import { HEADING_MAX } from "./outline";
 import type { Block, BlockKind, Layout } from "./types";
 
 /**
@@ -36,10 +37,6 @@ const Labels = z.object({
 });
 
 export type Label = { id: string; kind: BlockKind };
-
-/** Longest line that can still be a section heading. The parser's own cap is
- *  40; a little headroom for "Certifications and Professional Development". */
-const HEADING_MAX = 60;
 
 /**
  * Put checked labels onto a layout, or `null` if the labels don't check out.

@@ -183,3 +183,42 @@ export function toDocsvcOps(operations: PlannedOp[]): DocsvcOp[] {
       reason: op.reason,
     }));
 }
+
+/**
+ * A resume sorted into sections and entries, by block id.
+ *
+ * Every value is either a block id or a `Ref`: text copied out of one block.
+ * Nothing here is written by the model, so `checkOutline` can verify it against
+ * the layout.
+ */
+export type Ref = { block: string; text: string };
+export type SectionKind =
+  | "summary"
+  | "experience"
+  | "education"
+  | "projects"
+  | "skills"
+  | "certifications"
+  | "achievements"
+  | "other";
+export type Entry = {
+  org: Ref | null;
+  title: Ref | null;
+  dates: Ref | null;
+  place: Ref | null;
+  /** Block ids. */
+  bullets: string[];
+  /** Block ids of other detail lines under the entry. */
+  lines: string[];
+};
+export type SkillRow = { block: string; label: string | null; items: string };
+export type Section = {
+  /** Block id of the heading, or null for a resume without headings. */
+  heading: string | null;
+  kind: SectionKind;
+  entries: Entry[];
+  skills: SkillRow[];
+  /** Block ids. */
+  lines: string[];
+};
+export type Outline = { name: string | null; contact: string[]; sections: Section[] };
