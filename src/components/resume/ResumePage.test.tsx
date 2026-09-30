@@ -121,4 +121,9 @@ describe("renderResumeHtml", () => {
     expect(out).toContain(RESUME_CSS);
     expect(out).toContain("Priya Sharma");
   });
+
+  it("zeroes the browser's default body margin, so the page starts at the 40pt @page margin", async () => {
+    const out = (await renderResumeHtml(doc)).replace(/\s+/g, "");
+    expect(out).toContain("html,body{margin:0;padding:0}");
+  });
 });

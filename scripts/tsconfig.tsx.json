@@ -1,0 +1,5 @@
+{
+  "//": "For running React server code under tsx (scripts/make-print-fixture.ts): Next keeps jsx as preserve, which tsx would compile to classic React.createElement.",
+  "extends": "../tsconfig.json",
+  "compilerOptions": { "jsx": "react-jsx" }
+}
