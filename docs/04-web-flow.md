@@ -14,11 +14,12 @@ The 9 job requirements used consistently on every screen: Java, Spring Boot, AWS
 | 05 | Result · ready | `WebChanges.dc.html` | Same screen after decisions (Kafka added, Kubernetes skipped) |
 | 06 | Finish | `WebGaps.dc.html` | Resume ready, checkable facts, interview prep for added lines, next job |
 | 07 | Honest check | `WebHonestCheck.dc.html` | File parse check, recruiter keywords (8 of 9 in this version), tips, "What the ATS sees" plain text |
-| 08 | Sign in | `WebSignIn.dc.html` | Phone OTP at download, over the Result screen |
-| 08b | Choose a pass | `WebPass.dc.html` | Pass options + UPI (ID or QR), "Paid once. Does not renew." |
+| 08 | Sign in | `WebSignIn.dc.html` | Google or email magic link, over the Add-a-job screen, on the second tailoring only (1 Oct 2026; the canvas still shows the older phone-OTP-at-download version) |
+| 08b | Choose a pass | `WebPass.dc.html` | Shelved 1 Oct 2026 until the ledger settles pricing. Pass options + UPI (ID or QR), "Paid once. Does not renew." |
+| 08c | Weekly cap | — | "You've used your 10 free this week · next one opens Thursday 8 Oct", one button back to the result |
 | 09 | Tracker | `WebTracker.dc.html` | All tailored resumes by company/role/date, changes, applied status, pass balance |
 | 11 | Chrome extension | `Extension.dc.html` | Side panel opened by clicking the extension icon on a company career page; reads the JD, shows requirements, "Tailor resume for this job", "Save to tracker"; adds nothing to the page |
 
-Flow: Landing → Upload → Add a job → Tailoring → Review → (Sign in → Pass if needed) → Download → Finish → Add another job / Tracker.
+Flow: Landing → Upload → Add a job → (Sign in, second run only) → Tailoring → Review → Download → Finish → Add another job / Tracker. Downloads are never gated (1 Oct 2026).
 
 Chrome extension scope: v1 read-only (activeTab + scripting + sidePanel + contextMenus, no host permissions). v1.5 optional autofill on employer ATS portals only (Greenhouse, Lever, then Workday, Darwinbox, Keka), always fill-then-user-submits. Never on LinkedIn, Naukri, Indeed, foundit, Instahyre.

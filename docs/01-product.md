@@ -42,13 +42,13 @@ Earlier wording was "Never invents". It changed on 28 Sep 2026 when the Add it f
 
 | Pass | Price | What you get |
 | --- | --- | --- |
-| Free | ₹0 | 1 tailored resume a week, honest check ~~, your own design~~ (v1: one clean template, see decision log) |
+| Free | ₹0 | 10 tailored resumes a week (rolling 7 days, sign in after the first), honest check ~~, your own design~~ (v1: one clean template, see decision log) |
 | Sprint | ₹149 | 15 tailored resumes, 30 days |
 | Job-hunt | ₹399 | Unlimited tailored resumes (fair use), 90 days |
 
 - Paid once by UPI on the web (avoids app-store markup; LinkedIn charges ~82% more in its Android app than on web).
 - Nothing auto-renews. The receipt says "does not renew".
-- Launch free with caps; phone-OTP sign-in at download stops abuse.
+- Launch free with caps; Google / magic-link sign-in on the second tailoring stops abuse (1 Oct 2026; phone OTP returns with passes).
 - Cost per tailored resume on the Claude API is roughly ₹3–6 (see 05-architecture.md). At ₹6, the ₹149 / 15 pack is thin after 18% GST: either measure and bring cost down with a cheaper model where quality holds, or reduce the pack.
 
 ## Decision log
@@ -87,6 +87,7 @@ Earlier wording was "Never invents". It changed on 28 Sep 2026 when the Add it f
 | 29 Sep 2026 | Default template re-cut against the owner's ATS-safe LaTeX reference (a Jake's-resume variant), replacing the generated-template look: centered 25pt bold name over a centered ink contact line with pipe separators, 14pt bold caps headings with a solid ink rule (the faint gray hairline was itself a tell), italic job titles, a small gap between job entries, 40pt margins, tighter leading throughout. All numbers still flow through `shared/template.json` to both renderers, so preview/file pagination parity holds. Body stays ≥10pt (the reference's 9pt \small was not adopted); A4 kept over the reference's letterpaper. |
 | 29 Sep 2026 | Templates-as-data direction validated: the owner's reference .tex compiles through Tectonic in docsvc at ~0.5s warm, output identical to the reference (Roboto, small caps, real en-dashes), user text LaTeX-escaped, shell-escape off. Wired into `/render-template` behind `REZZ_LATEX_TEMPLATE=true` (exact string), with the drawn template as automatic fallback on any failure — the download can never break because of the flag. Known cost while on: the HTML preview paginates by the drawn template's metrics, so preview and file page counts can differ; the download returns the compiled (true) count. Preview-from-compiled-pages (image + clickable overlays) is the follow-up when multi-template becomes real. |
 | 30 Sep 2026 | The LaTeX template IS the template (owner's call: "match exactly... whatever latex i keep, the same should reflect"). `templates/rezz.tex` stores the owner's pasted reference verbatim — one licensed change, letterpaper→a4paper (India-first, re-confirmed) — guarded by a byte-level golden test; pdfTeX-only lines are neutralised at compile time by `latex_render.compat()`, never edited into the file, which is the seam future user-uploaded templates plug into. Compilation is now the default `/render-template` path (`REZZ_LATEX_TEMPLATE` survives only as an off switch, "false"), tectonic ships in the docsvc image (pinned, sha256-checked, bundle pre-warmed at build). `shared/template.json` was re-measured off the compiled PDF (36pt margins, 9pt \small items, per-pair gap table, Roboto webfont in the preview) and docsvc's `test_latex_parity.py` recompiles and re-measures on every run so the numbers cannot drift. The 29 Sep re-cut's "body stays ≥10pt" concession is superseded: exact match wins. The Result screen gains an "Exact PDF" switch — the compiled file's own pages (server-rasterised, ~0.5s per refresh, debounced per decision), which also closes the known preview-parity cost logged below. |
+| 1 Oct 2026 | **Gate moves from download to the tailoring button, and passes leave the flow.** Launch is free: the first tailoring per browser needs no sign-in, the second asks for Google or an email magic link (no passwords, no phone OTP), and a signed-in user gets 10 tailorings in any rolling 7 days. Downloads are never gated. A `tailorings` ledger in Postgres (Neon, Drizzle) records who, when, company, role and cost — never the resume or job text — and is how usage gets counted. Passes stay "open soon" until the ledger says what to charge. Spec: `docs/superpowers/specs/2026-10-01-free-tier-and-sign-in-design.md`. |
 
 ## Guardrails that stay regardless
 
