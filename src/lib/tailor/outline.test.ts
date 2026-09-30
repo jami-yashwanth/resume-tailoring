@@ -143,6 +143,36 @@ describe("checkOutline", () => {
     if (!result.ok) expect(result.reason.startsWith("text not in block")).toBe(true);
   });
 
+  it("accepts a Ref whose spacing differs from the block's and stores it collapsed", () => {
+    const outline = good();
+    outline.sections[2].entries[0].dates = { block: "9", text: "Jun  2022 – Present" };
+    outline.sections[3].skills[0] = { block: "11", label: "Languages ", items: "Python,  Go" };
+    const result = checkOutline(layout(), outline);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const byKind = (k: string) => result.outline.sections.find((s) => s.kind === k)!;
+    expect(byKind("experience").entries[0].dates?.text).toBe("Jun 2022 – Present");
+    expect(byKind("skills").skills[0]).toEqual({ block: "11", label: "Languages", items: "Python, Go" });
+  });
+
+  it("accepts a faithful copy of a block with a double space in it", () => {
+    const l = layout();
+    l.blocks[9] = block("9", "role", "Google  India\tJun 2022 – Present", "WORK HISTORY");
+    const outline = good();
+    outline.sections[2].entries[0].org = { block: "9", text: "Google  India" };
+    const result = checkOutline(l, outline);
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.outline.sections[2].entries[0].org?.text).toBe("Google India");
+  });
+
+  it("still rejects a Ref with different characters once spacing is collapsed", () => {
+    const outline = good();
+    outline.sections[2].entries[0].dates = { block: "9", text: "Jun  2022 - Present" };
+    const result = checkOutline(layout(), outline);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.reason.startsWith("text not in block")).toBe(true);
+  });
+
   it("rejects a missing block and names it", () => {
     const outline = good();
     outline.sections[1].entries[0].bullets = [];

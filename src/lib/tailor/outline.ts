@@ -49,7 +49,25 @@ const fail = (reason: string, missing: string[] = []): OutlineCheck => ({ ok: fa
 const FIELDS = ["org", "title", "dates", "place"] as const;
 
 /** Verify an outline against the layout, and return it sorted into document order. */
-export function checkOutline(layout: Layout, outline: Outline): OutlineCheck {
+export function checkOutline(layout: Layout, given: Outline): OutlineCheck {
+  // Values are compared, and kept, with whitespace collapsed: a faithful copy
+  // of a DOCX field with a double space in it is still a verbatim copy. Only
+  // spacing is normalised; every other character must match.
+  const ref = (r: Ref | null): Ref | null => (r ? { block: r.block, text: collapse(r.text) } : null);
+  const outline: Outline = {
+    ...given,
+    sections: given.sections.map((s) => ({
+      ...s,
+      skills: s.skills.map((row) => ({
+        block: row.block,
+        label: row.label === null ? null : collapse(row.label),
+        items: collapse(row.items),
+      })),
+      entries: s.entries.map((e) => ({
+        ...e, org: ref(e.org), title: ref(e.title), dates: ref(e.dates), place: ref(e.place),
+      })),
+    })),
+  };
   const index = new Map(layout.blocks.map((b, i) => [b.id, i]));
   const blockOf = new Map(layout.blocks.map((b) => [b.id, b]));
 
