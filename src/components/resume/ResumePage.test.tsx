@@ -74,6 +74,33 @@ describe("ResumePage", () => {
     expect(html(d, false)).not.toContain('role="button"');
   });
 
+  it("puts the control on the line's text, so a list item stays a list item", () => {
+    const d = structuredClone(doc);
+    d.sections[1].entries[0].items[0] = {
+      text: "Built the billing service", bullet: true, key: "k", state: "reworded", opId: "op1", blockId: "7",
+    };
+    const out = html(d);
+    const li = out.match(/<li[^>]*>/)![0];
+    expect(li).toContain('data-op="op1"');
+    expect(li).not.toMatch(/role=|tabindex=/);
+    expect(out).toMatch(/<span class="rz-text" role="button" tabindex="0" aria-label="Reworded: Built the billing service\./);
+  });
+
+  it("marks skills rows like items: a pending draft and a reworded row", () => {
+    const d = structuredClone(doc);
+    d.sections[2].skills = [
+      { label: "Languages", items: "Python, Go, Rust", key: "k1", state: "reworded", opId: "r1", blockId: "s1" },
+      { label: null, items: "Kafka", key: "k2", state: "pending", opId: "p1", blockId: "s1" },
+    ];
+    const out = html(d);
+    const rows = out.match(/<div class="rz-block rz-skill"[^>]*>/g) ?? [];
+    expect(rows[0]).toContain('data-state="reworded"');
+    expect(rows[0]).toContain('data-op="r1"');
+    expect(rows[1]).toContain('data-state="pending"');
+    expect(out).toContain('aria-label="Needs your OK: Kafka. Open this decision."');
+    expect(html(d, false)).not.toMatch(/data-(key|block|op|state)=|role="button"/);
+  });
+
   it("breaks pages only between blocks", () => {
     const out = html();
     const tags = out.match(/<(?:div|li)[^>]*class="[^"]*\brz-block\b/g) ?? [];

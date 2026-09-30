@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import type { TemplateDocument } from "@/lib/tailor/document";
 import { A4, contentHeightFor } from "@/lib/tailor/page";
-import { paginate } from "@/lib/tailor/paginate";
+import { mergeHeadingHeights, paginate } from "@/lib/tailor/paginate";
 import { ResumePage } from "./ResumePage";
 
 /**
@@ -67,7 +67,7 @@ ${FONT_CSS}
 .rz-preview [data-state="removed"] { opacity: 0.5 }
 .rz-preview [data-state="removed"] .rz-text { text-decoration: line-through }
 .rz-preview [data-op] { cursor: pointer; border-radius: 4px }
-.rz-preview [data-op]:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px }
+.rz-preview [data-op] [role="button"]:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px }
 @media (prefers-reduced-motion: reduce) { .rz-preview .rz-block { transition: none } }
 `;
 
@@ -132,15 +132,20 @@ export function ResumePreview({
     /* `getBoundingClientRect`, not `offsetHeight`, which rounds to whole
        pixels — over forty-odd blocks that adds up to a line. Margins are
        added by hand; blocks carry no bottom margin, so none collapse. */
-    const heights = [...host.querySelectorAll<HTMLElement>(".rz-block")].map((el) => {
+    const blocks = [...host.querySelectorAll<HTMLElement>(".rz-block")];
+    const heights = blocks.map((el) => {
       const box = getComputedStyle(el);
       return el.getBoundingClientRect().height + parseFloat(box.marginTop) + parseFloat(box.marginBottom);
     });
+    /* A heading is `break-after: avoid` in print: it pages with the block
+       after it, as one unit, so it never strands at a sheet's foot. */
+    const units = mergeHeadingHeights(heights, blocks.map((el) => el.classList.contains("rz-heading")));
+    const unitEnd = (u: number) => units.starts[u + 1] ?? blocks.length;
 
-    const next = paginate(heights, contentHeightFor(contentWidth)).map((indices): Sheet => {
-      const start = indices[0] ?? 0;
-      const end = indices.length ? indices[indices.length - 1] + 1 : start;
-      const used = indices.reduce((sum, i) => sum + heights[i], 0);
+    const next = paginate(units.heights, contentHeightFor(contentWidth)).map((indices): Sheet => {
+      const start = indices.length ? units.starts[indices[0]] : 0;
+      const end = indices.length ? unitEnd(indices[indices.length - 1]) : start;
+      const used = indices.reduce((sum, i) => sum + units.heights[i], 0);
       // A block taller than a page runs the sheet long rather than being cut off.
       return { range: [start, end], height: Math.max(PAGE_HEIGHT, used + 2 * MARGIN) };
     });

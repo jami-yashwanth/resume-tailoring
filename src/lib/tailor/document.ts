@@ -9,19 +9,20 @@ import { cleanText, type LineState, type RenderedLine } from "./view";
  * list of items is in document order, so a "Tech: ..." line after an entry's
  * bullets stays after them.
  */
-export type Item = {
-  text: string;
-  bullet: boolean;
-  /**
-   * Review marks, copied from the item's RenderedLine so the editor can anchor
-   * to it and show its state. Optional: docsvc ignores them and flat-block
-   * documents have none.
-   */
+/**
+ * Review marks, copied from a line's RenderedLine so the editor can anchor to
+ * it and show its state. Optional: docsvc ignores them and flat-block
+ * documents have none.
+ */
+export type Marks = {
   key?: string;
   state?: LineState;
   opId?: string;
   blockId?: string;
 };
+export type Item = { text: string; bullet: boolean } & Marks;
+/** "Languages: Python, Go" as label + items, with its line's marks. */
+export type SkillRow = { label: string | null; items: string } & Marks;
 export type TemplateEntry = {
   org: string | null;
   title: string | null;
@@ -35,7 +36,7 @@ export type TemplateSection = {
   /** Loose lines that come before the section's first entry or skill row. */
   lead: Item[];
   entries: TemplateEntry[];
-  skills: { label: string | null; items: string }[];
+  skills: SkillRow[];
   /** Loose lines after that, in order. */
   items: Item[];
 };
@@ -96,9 +97,8 @@ export function resolveDocument(
   const byPosition = (ids: string[]) => [...ids].sort((a, b) => at(a) - at(b));
   const resolved = (id: string) => byBlock.get(id) ?? [];
   const texts = (id: string) => resolved(id).map((l) => l.text);
-  const mark = (l: RenderedLine, bullet: boolean): Item => ({
-    text: l.text, bullet, key: l.key, state: l.state, opId: l.opId, blockId: l.blockId,
-  });
+  const marks = (l: RenderedLine): Marks => ({ key: l.key, state: l.state, opId: l.opId, blockId: l.blockId });
+  const mark = (l: RenderedLine, bullet: boolean): Item => ({ text: l.text, bullet, ...marks(l) });
   const items = (ids: string[]): Item[] =>
     byPosition(ids).flatMap((id) => resolved(id).map((l) => mark(l, l.kind === "bullet")));
   // Inserted lines are the `added` ones (and, in a preview, the `pending`
@@ -106,19 +106,21 @@ export function resolveDocument(
   const isInsert = (l: RenderedLine) => l.state === "added" || l.state === "pending";
   const own = (id: string) => resolved(id).find((l) => !isInsert(l))?.text ?? null;
   const insertedLines = (id: string) => resolved(id).filter(isInsert);
-  const inserted = (id: string) => insertedLines(id).map((l) => l.text);
   // An insert anchored to a header or heading has no slot of its own: it
   // leads what follows, as a plain line.
   const plain = (l: RenderedLine): Item => mark(l, false);
+  /* An insert after the name leads the document as a line of its own, in a
+     heading-less first section — not folded into the contact string, where a
+     draft could be neither marked nor opened. */
+  const afterName = outline.name === null ? [] : insertedLines(outline.name).map(plain);
+  const leading: TemplateSection[] = afterName.length
+    ? [{ heading: null, kind: "other", lead: afterName, entries: [], skills: [], items: [] }]
+    : [];
 
   return {
     name: outline.name === null ? null : own(outline.name),
-    // An insert after the name has no slot of its own, so it leads the contact.
-    contact: [
-      ...(outline.name === null ? [] : inserted(outline.name)),
-      ...outline.contact.flatMap(texts),
-    ],
-    sections: outline.sections.map((s) => {
+    contact: outline.contact.flatMap(texts),
+    sections: [...leading, ...outline.sections.map((s) => {
       const headerBlocks = (e: Entry) =>
         // A block split across fields (org + dates) is looked up once.
         [...new Set([e.org, e.title, e.dates, e.place].flatMap((r) => (r ? [r.block] : [])))];
@@ -142,16 +144,16 @@ export function resolveDocument(
           place: e.place?.text ?? null,
           items: [...headerBlocks(e).flatMap(insertedLines).map(plain), ...items([...e.bullets, ...e.lines])],
         })),
-        skills: s.skills.flatMap((row) => {
-          const [first, ...inserts] = texts(row.block);
+        skills: s.skills.flatMap((row): SkillRow[] => {
+          const [first, ...inserts] = resolved(row.block);
           return [
-            ...(first === undefined ? [] : [splitSkillRow(first, row.label)]),
-            ...inserts.map((items) => ({ label: null, items })),
+            ...(first === undefined ? [] : [{ ...splitSkillRow(first.text, row.label), ...marks(first) }]),
+            ...inserts.map((l) => ({ label: null, items: l.text, ...marks(l) })),
           ];
         }),
         items: items(rest),
       };
-    }),
+    })],
   };
 }
 
@@ -177,8 +179,13 @@ export function blocksToDocument(blocks: FlatBlock[]): TemplateDocument {
   let section: TemplateSection | null = null;
   let entry: TemplateEntry | null = null;
   for (const b of blocks) {
+    // A line inserted after the name is a line of its own, marked, like any other.
+    if (b.kind === "name" && (b.state === "added" || b.state === "pending")) {
+      section ??= newSection(null);
+      section.items.push({ text: b.text, bullet: false, ...marksOf(b) });
+    }
     // Nothing the user wrote is dropped: a stray second name is kept as a contact line.
-    if (b.kind === "name") {
+    else if (b.kind === "name") {
       if (doc.name === null) doc.name = b.text;
       else doc.contact.push(b.text);
     }

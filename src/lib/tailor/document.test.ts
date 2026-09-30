@@ -87,9 +87,27 @@ describe("resolveDocument", () => {
       line("s1", "Languages: Python, Go", "unchanged", "paragraph"),
       line("s1", "Kubernetes", "added", "paragraph"),
     ]);
-    expect(doc.sections[0].skills).toEqual([
+    expect(doc.sections[0].skills).toMatchObject([
       { label: "Languages", items: "Python, Go" },
-      { label: null, items: "Kubernetes" },
+      { label: null, items: "Kubernetes", state: "added" },
+    ]);
+  });
+
+  it("marks skills rows with their lines: a pending draft after a row, and a reworded row", () => {
+    const o = outline([
+      section({ kind: "skills", skills: [{ block: "s1", label: "Languages", items: "Python, Go" }] }),
+    ]);
+    const doc = resolveDocument(
+      o,
+      [
+        { ...line("s1", "Languages: Python, Go, Rust", "reworded", "paragraph"), opId: "r1" },
+        { ...line("s1", "Kafka", "pending", "paragraph"), opId: "p1" },
+      ],
+      { drafts: true },
+    );
+    expect(doc.sections[0].skills).toMatchObject([
+      { label: "Languages", items: "Python, Go, Rust", state: "reworded", opId: "r1", blockId: "s1" },
+      { label: null, items: "Kafka", state: "pending", opId: "p1", blockId: "s1" },
     ]);
   });
 
@@ -142,15 +160,36 @@ describe("inserts anchored to structure blocks", () => {
     expect(doc.sections[0].items).toEqual([]);
   });
 
-  it("puts an added line after the name into contact and keeps the name", () => {
-    const o = outline([], { name: "n", contact: ["c"] });
+  it("leads the document with an added line after the name, as a marked item, and keeps the name", () => {
+    const o = outline([section({ heading: "h" })], { name: "n", contact: ["c"] });
     const doc = resolveDocument(o, [
       line("n", "Priya Sharma", "unchanged", "name"),
-      line("n", "Open to relocation", "added", "name"),
+      { ...line("n", "Open to relocation", "added", "name"), opId: "op1" },
       line("c", "a@b.c", "unchanged", "contact"),
+      line("h", "Experience", "unchanged", "heading"),
     ]);
     expect(doc.name).toBe("Priya Sharma");
-    expect(doc.contact).toEqual(["Open to relocation", "a@b.c"]);
+    expect(doc.contact).toEqual(["a@b.c"]);
+    expect(doc.sections).toHaveLength(2);
+    expect(doc.sections[0]).toMatchObject({
+      heading: null, kind: "other",
+      lead: [{ text: "Open to relocation", bullet: false, state: "added", opId: "op1", blockId: "n" }],
+    });
+    expect(doc.sections[1].heading).toBe("Experience");
+  });
+
+  it("marks a pending draft after the name and keeps it out of the contact line", () => {
+    const o = outline([], { name: "n", contact: ["c"] });
+    const lines = [
+      line("n", "Priya Sharma", "unchanged", "name"),
+      { ...line("n", "Kafka draft.", "pending", "name"), opId: "p1" },
+      line("c", "a@b.c", "unchanged", "contact"),
+    ];
+    const preview = resolveDocument(o, lines, { drafts: true });
+    expect(preview.contact).toEqual(["a@b.c"]);
+    expect(preview.sections[0].lead).toMatchObject([{ text: "Kafka draft.", state: "pending", opId: "p1" }]);
+    // The file has no draft, and no empty leading section either.
+    expect(resolveDocument(o, lines).sections).toEqual([]);
   });
 });
 
@@ -307,6 +346,17 @@ describe("linesToDocument", () => {
       { text: "Better words.", bullet: true, state: "reworded", opId: "op1", blockId: "b1" },
       { text: "Added line.", bullet: true, state: "added", opId: "op4", blockId: "b3" },
     ]);
+  });
+
+  it("marks a draft after the name as a line of its own, not a contact string", () => {
+    const lines = [
+      line("n", "Priya Sharma", "unchanged", "name"),
+      { ...line("n", "Kafka draft.", "pending", "name"), opId: "p1" },
+      line("c", "a@b.c", "unchanged", "contact"),
+    ];
+    const doc = linesToDocument(lines, { drafts: true });
+    expect(doc.contact).toEqual(["a@b.c"]);
+    expect(doc.sections[0].items).toMatchObject([{ text: "Kafka draft.", bullet: false, state: "pending", opId: "p1" }]);
   });
 
   it("keeps drafts and removed lines for the preview when asked", () => {

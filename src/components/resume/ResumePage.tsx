@@ -1,4 +1,4 @@
-import type { Item, TemplateDocument, TemplateEntry, TemplateSection } from "@/lib/tailor/document";
+import type { Item, Marks, TemplateDocument, TemplateEntry, TemplateSection } from "@/lib/tailor/document";
 import { MARK_LABEL } from "@/lib/tailor/view";
 import { RESUME_CSS } from "./resumeCss";
 
@@ -30,24 +30,33 @@ const take = (w: Walk) => {
 };
 
 /**
- * With marks on, every item says where it came from and what happened to it,
+ * With marks on, every line says where it came from and what happened to it,
  * and a changed line is a control: it opens its decision card or the
  * explanation for that change, where Undo lives — so the preview is reachable
  * by keyboard, not only by mouse. The print render passes marks off.
+ *
+ * The data marks go on the block (the `<li>` or `<div>` a page breaks
+ * between); the control is the text inside it, so a list item keeps its
+ * list semantics rather than turning into a button.
  */
-const marksOf = (item: Item, on: boolean) => {
-  if (!on) return {};
-  const data = { "data-key": item.key, "data-block": item.blockId, "data-op": item.opId, "data-state": item.state };
-  if (!item.opId) return data;
-  const mark = item.state && item.state !== "unchanged" ? MARK_LABEL[item.state] : "Changed";
+const blockMarks = (line: Marks, on: boolean) =>
+  on ? { "data-key": line.key, "data-block": line.blockId, "data-op": line.opId, "data-state": line.state } : {};
+
+const controlOf = (line: Marks, said: string, on: boolean) => {
+  if (!on || !line.opId) return {};
+  const mark = line.state && line.state !== "unchanged" ? MARK_LABEL[line.state] : "Changed";
   // A draft opens its decision card, not an explanation.
-  const action = item.state === "pending" ? "Open this decision." : "Why this line changed.";
-  return { ...data, role: "button", tabIndex: 0, "aria-label": `${mark}: ${item.text}. ${action}` };
+  const action = line.state === "pending" ? "Open this decision." : "Why this line changed.";
+  return { role: "button", tabIndex: 0, "aria-label": `${mark}: ${said}. ${action}` };
 };
 
 /* The text sits in its own span so a mark can be drawn behind the words
    rather than across the whole block; it carries no style of its own. */
-const text = (item: Item) => <span className="rz-text">{item.text}</span>;
+const text = (item: Item, on: boolean) => (
+  <span className="rz-text" {...controlOf(item, item.text, on)}>
+    {item.text}
+  </span>
+);
 
 /** Runs of bullets share one <ul>; plain lines between them break the run. */
 function items(list: Item[], w: Walk, key: string): React.ReactNode[] {
@@ -56,8 +65,8 @@ function items(list: Item[], w: Walk, key: string): React.ReactNode[] {
     if (!list[i].bullet) {
       if (take(w)) {
         out.push(
-          <div key={`${key}-${i}`} className="rz-block rz-item" {...marksOf(list[i], w.marks)}>
-            {text(list[i])}
+          <div key={`${key}-${i}`} className="rz-block rz-item" {...blockMarks(list[i], w.marks)}>
+            {text(list[i], w.marks)}
           </div>,
         );
       }
@@ -69,8 +78,8 @@ function items(list: Item[], w: Walk, key: string): React.ReactNode[] {
     for (; i < list.length && list[i].bullet; i += 1) {
       if (!take(w)) continue;
       lis.push(
-        <li key={i} className="rz-block rz-item rz-bullet" {...marksOf(list[i], w.marks)}>
-          {text(list[i])}
+        <li key={i} className="rz-block rz-item rz-bullet" {...blockMarks(list[i], w.marks)}>
+          {text(list[i], w.marks)}
         </li>,
       );
     }
@@ -129,8 +138,10 @@ function section(s: TemplateSection, w: Walk, key: string): React.ReactNode[] {
   s.skills.forEach((row, i) => {
     if (!take(w)) return;
     out.push(
-      <div key={`${key}-s${i}`} className="rz-block rz-skill">
-        {row.label && <b>{row.label}:</b>} {row.items}
+      <div key={`${key}-s${i}`} className="rz-block rz-skill" {...blockMarks(row, w.marks)}>
+        <span className="rz-text" {...controlOf(row, row.label ? `${row.label}: ${row.items}` : row.items, w.marks)}>
+          {row.label && <b>{row.label}:</b>} {row.items}
+        </span>
       </div>,
     );
   });

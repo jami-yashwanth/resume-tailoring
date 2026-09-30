@@ -85,3 +85,32 @@ export function filePageCount(
   const inFile = heights.filter((_, index) => states[index] !== "pending" && states[index] !== "removed");
   return paginate(inFile, pageHeight).length;
 }
+
+/**
+ * Pageable units from measured blocks: each heading (and a run of them) joined
+ * to the block that follows it, as `.rz-heading { break-after: avoid }` makes
+ * the printer keep them together. `starts[u]` is the first block of unit `u`;
+ * a unit runs to the next unit's start. A heading with nothing after it stays
+ * a unit of its own.
+ */
+export function mergeHeadingHeights(
+  heights: number[],
+  isHeading: readonly boolean[],
+): { heights: number[]; starts: number[] } {
+  const merged: number[] = [];
+  const starts: number[] = [];
+  let carried = 0;
+  let from: number | null = null;
+  heights.forEach((height, index) => {
+    if (isHeading[index] && index < heights.length - 1) {
+      carried += height;
+      from ??= index;
+      return;
+    }
+    merged.push(carried + height);
+    starts.push(from ?? index);
+    carried = 0;
+    from = null;
+  });
+  return { heights: merged, starts };
+}
