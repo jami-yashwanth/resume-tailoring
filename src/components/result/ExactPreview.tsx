@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { downloadBlocks } from "@/lib/tailor/download";
+import { templateInput } from "@/lib/tailor/download";
 import { type ExactPreview as Preview, fetchExactPreview } from "@/lib/tailor/preview";
+import type { Outline } from "@/lib/tailor/types";
 import type { RenderedLine } from "@/lib/tailor/view";
 
 /**
@@ -19,7 +20,15 @@ import type { RenderedLine } from "@/lib/tailor/view";
  * Undecided drafts and removed lines are left out, exactly as the download
  * leaves them out — the caption above this view says so while any wait.
  */
-export function ExactPreview({ lines, who }: { lines: RenderedLine[]; who: string }) {
+export function ExactPreview({
+  lines,
+  outline,
+  who,
+}: {
+  lines: RenderedLine[];
+  outline: Outline | null;
+  who: string;
+}) {
   const [preview, setPreview] = useState<Preview | null>(null);
   const [error, setError] = useState<string | null>(null);
   /* True from "this content needs a compile" until its pages arrive — the
@@ -30,9 +39,11 @@ export function ExactPreview({ lines, who }: { lines: RenderedLine[]; who: strin
 
   /* What the file would hold right now. Serialised so the effect re-runs only
      when the content changes, not when `lines` is a new array of the same. */
-  const contentKey = useMemo(() => JSON.stringify(downloadBlocks(lines)), [lines]);
+  const contentKey = useMemo(() => JSON.stringify(templateInput(lines, outline)), [lines, outline]);
   const linesRef = useRef(lines);
   linesRef.current = lines;
+  const outlineRef = useRef(outline);
+  outlineRef.current = outline;
 
   useEffect(() => {
     const controller = new AbortController();
@@ -45,7 +56,7 @@ export function ExactPreview({ lines, who }: { lines: RenderedLine[]; who: strin
     const delay = setTimeout(
       async () => {
         try {
-          const next = await fetchExactPreview(linesRef.current, controller.signal);
+          const next = await fetchExactPreview(linesRef.current, outlineRef.current, controller.signal);
           if (cancelled) return;
           setPreview(next);
           setBusy(false);

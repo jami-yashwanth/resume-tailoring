@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { downloadBlocks, downloadName, safeName } from "./download";
+import { downloadBlocks, downloadName, safeName, templateInput } from "./download";
+import type { Outline } from "./types";
 import type { RenderedLine } from "./view";
 
 const line = (key: string, state: RenderedLine["state"], text: string): RenderedLine => ({
@@ -33,5 +34,27 @@ describe("file names", () => {
   it("names the file after the upload and the company", () => {
     expect(downloadName("priya_resume.docx", "Kosha Payments")).toBe("priya_resume — Kosha Payments.pdf");
     expect(downloadName(null, "Kosha")).toBe("resume — Kosha.pdf");
+  });
+});
+
+describe("templateInput", () => {
+  it("sends flat blocks when there is no outline", () => {
+    const lines = [line("a", "unchanged", "Kept."), line("b", "pending", "Not decided.")];
+    expect(templateInput(lines, null)).toEqual({ blocks: downloadBlocks(lines) });
+  });
+
+  it("sends a document when there is an outline", () => {
+    const outline: Outline = {
+      name: null,
+      contact: [],
+      sections: [{
+        heading: null, kind: "experience", skills: [], lines: [],
+        entries: [{ org: null, title: null, dates: null, place: null, bullets: ["a"], lines: [] }],
+      }],
+    };
+    const result = templateInput([line("a", "unchanged", "Kept.")], outline);
+    expect("document" in result).toBe(true);
+    if (!("document" in result)) return;
+    expect(result.document.sections[0].entries[0].bullets[0]).toBe("Kept.");
   });
 });

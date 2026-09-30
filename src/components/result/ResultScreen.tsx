@@ -27,7 +27,7 @@ import { SummaryPanel } from "./SummaryPanel";
 export function ResultScreen({
   layout,
   plan,
-  outline: _outline = null,
+  outline = null,
   company,
   role,
   resume = null,
@@ -36,8 +36,8 @@ export function ResultScreen({
 }: {
   layout: Layout;
   plan: TailorPlan;
-  /** Claude's reading of the structure. Unused until the outline-driven
-   *  preview lands; null when the parser's labels stand. */
+  /** Claude's reading of the structure. When set, the exact preview and the
+   *  download render the structured document; null keeps flat blocks. */
   outline?: Outline | null;
   company: string;
   role: string;
@@ -77,6 +77,12 @@ export function ResultScreen({
   const lines = useMemo(
     () => buildLines(layout, operations, state.decisions, state.compare, state.wordings),
     [layout, operations, state.decisions, state.compare, state.wordings],
+  );
+  /* The document path wants one line per change, not the sheet's grouped
+     lines — so it gets its own build. */
+  const documentLines = useMemo(
+    () => (outline ? buildLines(layout, operations, state.decisions, state.compare, state.wordings, false) : null),
+    [outline, layout, operations, state.decisions, state.compare, state.wordings],
   );
   const list = reviewList(plan, layout, state);
   const coverage = coverageOf(plan.requirements, plan.matches, operations);
@@ -130,8 +136,8 @@ export function ResultScreen({
     track("download_clicked");
     try {
       // Always the tailored version, whatever the compare toggle shows.
-      const final = buildLines(layout, operations, state.decisions, false, state.wordings);
-      const saved = await downloadResume(final, filename, company);
+      const final = buildLines(layout, operations, state.decisions, false, state.wordings, !outline);
+      const saved = await downloadResume(final, filename, company, outline);
       track("download_done", { pages: saved.pages ?? state.pages });
       session.setFinish({
         filename: saved.name,
@@ -234,7 +240,7 @@ export function ResultScreen({
                 {list.toDecide.length > 0 &&
                   ` ${list.toDecide.length === 1 ? "1 line waiting for your OK is" : `${list.toDecide.length} lines waiting for your OK are`} not in it.`}
               </p>
-              <ExactPreview lines={lines} who={layout.blocks[0]?.text ?? "Your"} />
+              <ExactPreview lines={documentLines ?? lines} outline={outline} who={layout.blocks[0]?.text ?? "Your"} />
             </>
           )}
           {/* The working sheet stays mounted while the PDF view shows: its

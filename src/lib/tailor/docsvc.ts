@@ -1,3 +1,4 @@
+import type { TemplateDocument } from "./document";
 import type { DocsvcOp, Layout } from "./types";
 
 /**
@@ -78,6 +79,9 @@ export const exportResume = (file: string, format: "docx" | "pdf") =>
 
 export type TemplateBlock = { kind: Layout["blocks"][number]["kind"]; text: string };
 
+/** Flat blocks (no outline) or the structured document (outline resolved). */
+export type TemplateInput = { blocks: TemplateBlock[] } | { document: TemplateDocument };
+
 /**
  * Render the tailored content into the one default Rezz template.
  *
@@ -87,8 +91,8 @@ export type TemplateBlock = { kind: Layout["blocks"][number]["kind"]; text: stri
  * `images: true` also returns one PNG per page — the Result screen's exact
  * preview, pictures of the same bytes the download gets.
  */
-export const renderTemplate = (blocks: TemplateBlock[], options: { images?: boolean } = {}) =>
+export const renderTemplate = (input: TemplateInput, options: { images?: boolean } = {}) =>
   post<{ file: string; pages: number; format: string; images?: string[] }>("/render-template", {
-    blocks,
+    ...input,
     ...(options.images ? { images: true } : {}),
   });

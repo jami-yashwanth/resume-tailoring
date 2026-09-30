@@ -1,3 +1,4 @@
+import type { TemplateDocument } from "@/lib/tailor/document";
 import { DocsvcError, type TemplateBlock, renderTemplate } from "@/lib/tailor/docsvc";
 
 /**
@@ -11,19 +12,19 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 export async function POST(request: Request) {
-  let body: { blocks?: TemplateBlock[] };
+  let body: { blocks?: TemplateBlock[]; document?: TemplateDocument };
   try {
     body = await request.json();
   } catch {
     return Response.json({ error: "Invalid JSON body." }, { status: 400 });
   }
 
-  if (!body.blocks?.length) {
+  if (!body.document && !body.blocks?.length) {
     return Response.json({ error: "Nothing to preview yet." }, { status: 400 });
   }
 
   try {
-    const rendered = await renderTemplate(body.blocks, { images: true });
+    const rendered = await renderTemplate(body.document ? { document: body.document } : { blocks: body.blocks! }, { images: true });
     return Response.json({ pages: rendered.pages, images: rendered.images ?? [] });
   } catch (error) {
     const message =
