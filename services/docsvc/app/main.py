@@ -20,8 +20,7 @@ from pydantic import BaseModel
 from . import printer, render
 from .docx_ops import parse_docx
 from .fitter import fit
-from .models import ApplyRequest, ApplyResponse, BlockKind, Document, Layout
-from .latex_render import render_latex, render_latex_document
+from .models import ApplyRequest, ApplyResponse, Document, Layout
 from .pdf_ops import parse_pdf
 from .template_render import document_to_blocks, render_template
 
@@ -85,6 +84,7 @@ def health() -> dict:
         "ok": True,
         "renderer": render.soffice_bin(),
         "page_counts": "real" if render.available() else "estimated",
+        "printer": "chromium" if printer.available() else "fallback",
     }
 
 
@@ -118,74 +118,6 @@ def parse(request: ParseRequest) -> Layout:
     return Layout(
         format="pdf" if is_pdf else "docx", pages=pages, fonts=fonts, blocks=blocks, warnings=warnings
     )
-
-
-class TemplateBlock(BaseModel):
-    kind: BlockKind
-    text: str
-
-
-class RenderTemplateRequest(BaseModel):
-    #: Flat (kind, text) pairs, or the structured document — `document` wins
-    #: when both are sent.
-    blocks: list[TemplateBlock] | None = None
-    document: Document | None = None
-    #: Also render each page as a PNG — the Result screen's exact preview,
-    #: pictures of the same bytes the download gets. Off for downloads.
-    images: bool = False
-
-
-#: 2x A4 (~144dpi): crisp at any preview width the Result screen renders,
-#: ~100-200KB per text page.
-_IMAGE_SCALE = 2
-
-
-@app.post("/render-template", dependencies=[Depends(require_token)])
-def render_template_endpoint(request: RenderTemplateRequest) -> dict:
-    """Render the tailored content into the one default Rezz template.
-
-    v1 override (28 Sep 2026, see CLAUDE.md): every download comes through
-    here instead of `/apply` + `/export`. The web app has already resolved
-    the plan and the user's Add it / Skip decisions into a final ordered
-    list of (kind, text) pairs — nothing here touches an original file.
-    """
-    if request.document is not None:
-        document = request.document.model_dump()
-        blocks = document_to_blocks(document)
-    elif request.blocks is not None:
-        document = None
-        blocks = [b.model_dump() for b in request.blocks]
-    else:
-        raise HTTPException(status_code=422, detail="send blocks or document")
-
-    # The LaTeX path IS the template (owner's call, 30 Sep 2026): the owner's
-    # reference .tex, stored verbatim, compiled with Tectonic — true
-    # typesetting, ~0.5s warm. On by default; REZZ_LATEX_TEMPLATE survives
-    # only as an off switch ("false", for a machine without tectonic). Any
-    # failure — tectonic missing, compile error, timeout — still falls back
-    # to the drawn template, so the download can never fail because of this.
-    data: bytes | None = None
-    pages = 0
-    if os.environ.get("REZZ_LATEX_TEMPLATE", "").strip().lower() != "false":
-        try:
-            data = render_latex_document(document) if document is not None else render_latex(blocks)
-            with pymupdf.open(stream=data, filetype="pdf") as compiled:
-                pages = compiled.page_count
-        except Exception:
-            data = None  # the drawn template below is the never-fails path
-
-    if data is None:
-        data, pages = render_template(blocks)
-
-    payload = {"file": base64.b64encode(data).decode(), "pages": pages, "format": "pdf"}
-    if request.images:
-        matrix = pymupdf.Matrix(_IMAGE_SCALE, _IMAGE_SCALE)
-        with pymupdf.open(stream=data, filetype="pdf") as doc:
-            payload["images"] = [
-                base64.b64encode(page.get_pixmap(matrix=matrix).tobytes("png")).decode()
-                for page in doc
-            ]
-    return payload
 
 
 class PrintRequest(BaseModel):

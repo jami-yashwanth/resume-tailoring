@@ -15,7 +15,7 @@ user's styles, bullet numbering, tab stops and bold spans, and found the thing
 that makes PDFs hard: real exported PDFs embed subset fonts with no Unicode map,
 so the file's own font cannot be reused for new text. That code is Python.
 
-LibreOffice and Tectonic are binaries that cannot run in a serverless function,
+LibreOffice and Chromium are binaries that cannot run in a serverless function,
 so a container exists regardless of language. Given that, it runs the code that
 already works.
 

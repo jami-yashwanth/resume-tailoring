@@ -77,8 +77,6 @@ export const applyOps = (file: string, ops: DocsvcOp[], maxPages: number | null)
 export const exportResume = (file: string, format: "docx" | "pdf") =>
   post<{ file: string; format: string }>("/export", { file, format });
 
-export type TemplateBlock = { kind: Layout["blocks"][number]["kind"]; text: string };
-
 export type PrintResult = {
   file: string | null;
   pages: number;

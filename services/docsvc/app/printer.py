@@ -93,6 +93,19 @@ async def print_html(html: str, timeout: float = 15.0) -> bytes:
         raise PrintError(f"unexpected print failure: {exc!r}") from exc
 
 
+def available() -> bool:
+    """Whether a Chromium build is installed — a cheap, non-launching check for /health."""
+    import os
+    from pathlib import Path
+
+    root = os.environ.get("PLAYWRIGHT_BROWSERS_PATH")
+    roots = [Path(root)] if root and root != "0" else [
+        Path.home() / ".cache" / "ms-playwright",
+        Path.home() / "Library" / "Caches" / "ms-playwright",
+    ]
+    return any(next(r.glob("chromium*"), None) is not None for r in roots if r.is_dir())
+
+
 async def shutdown() -> None:
     async with _lock:
         await _close()

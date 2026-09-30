@@ -39,7 +39,7 @@ def _page(blocks: str) -> str:
 HTML = _page(
     "<p class='rz-block'>Priya Sharma</p>"
     "<p class='rz-block'>&lt;script&gt;alert(1)&lt;/script&gt;</p>"
-    "<p class='rz-block'>100% &amp; \\LaTeX</p>"
+    "<p class='rz-block'>100% &amp; \\TeX</p>"
 )
 
 DOC = {
@@ -77,7 +77,7 @@ def test_print_keeps_special_characters_as_text(client):
     with _pdf(_post(client).json()) as pdf:
         text = pdf[0].get_text()
     assert "<script>alert(1)</script>" in text
-    assert "100% & \\LaTeX" in text
+    assert "100% & \\TeX" in text
 
 
 def test_blocks_never_split_across_pages(client):

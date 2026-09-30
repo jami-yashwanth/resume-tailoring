@@ -183,20 +183,11 @@
   --font-ui: var(--font-geist), system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-doc: Georgia, "Times New Roman", serif;
   --font-mark: var(--font-geist-mono), ui-monospace, Menlo, monospace;
-  /* The v1 default template's face, and neither of the two above. It is not
-     `--font-doc`, because there is no original file to take a font from; it is
-     not `--font-ui`, because the sheet is not Rezz talking — and setting the
-     document in the app's own face was blurring exactly the boundary the type
-     system exists to hold.
-
-     It is Roboto because the template IS the owner's LaTeX reference
-     (`[sfdefault]{roboto}`, compiled by docsvc with Tectonic since 30 Sep
-     2026), and the compiled download embeds Roboto — same face, same metrics,
-     so the preview breaks its lines where the downloaded file breaks them. A
-     preview that wraps differently from the file is a preview that lies.
-     Helvetica/Arial are the metric-nearest fallbacks while the webfont loads
-     (and what the drawn PyMuPDF fallback renders in). */
-  --font-sheet: var(--font-roboto), Roboto, Helvetica, Arial, "Liberation Sans", sans-serif;
+  /* The Rezz template's face: the serif the printed resume is set in
+     (`resumeCss.ts`), self-hosted below. Not `--font-doc`, because there is no
+     original file to take a font from; not `--font-ui`, because the sheet is
+     not Rezz talking. */
+  --font-resume: "Source Serif 4", "Iowan Old Style", Georgia, serif;
 }
 
 /* Static — these never vary by theme, so a plain @theme is right.
@@ -382,4 +373,20 @@
       animation-duration: 0.01ms !important;
     }
   }
+}
+
+/* Source Serif 4 — the Rezz template's face, self-hosted (public/fonts). */
+@font-face {
+  font-family: "Source Serif 4";
+  font-weight: 200 900;
+  font-style: normal;
+  font-display: swap;
+  src: url("/fonts/source-serif-4/SourceSerif4Variable-Roman.otf.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Source Serif 4";
+  font-weight: 200 900;
+  font-style: italic;
+  font-display: swap;
+  src: url("/fonts/source-serif-4/SourceSerif4Variable-Italic.otf.woff2") format("woff2");
 }

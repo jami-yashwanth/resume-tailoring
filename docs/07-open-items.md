@@ -26,8 +26,9 @@
 - Meta WhatsApp service-message pricing, if a WhatsApp channel is ever added.
 
 ## Engineering next steps
+- ~~Page-fit guard~~ Closed 1 Oct 2026: the page count is the printer's (Chromium, via docsvc `/print`), not an estimate. Download waits for that count and never saves a file longer than the length the user agreed to.
 - ~~Replace the starter `src/lib/prompt.ts` behaviour~~ Done: the edit-op pipeline with claim levels lives in `src/lib/tailor/` (planner.ts, rules.ts).
 - ~~Update the model default in `.env.example` / README~~ Done: defaults documented, per-stage overrides added. Still open: swap the rate-limited OAuth token for an API key so the planner can actually run on Sonnet, then delete the Haiku override from `.env`.
-- Production file pipeline (only if/when in-place editing returns): LibreOffice headless for DOCX page counts, server font library for PDFs, LaTeX via Tectonic, look-alike rebuild path.
+- Production file pipeline (only if/when in-place editing returns): LibreOffice headless for DOCX page counts, server font library for PDFs, look-alike rebuild path.
 - Landing page validation before building everything: price test (₹99 vs ₹149) and ~15 user interviews. Funnel events now exist (`src/lib/analytics.ts`) — set `NEXT_PUBLIC_PLAUSIBLE_DOMAIN` to start measuring.
 - Commercial layer, re-scoped 1 Oct 2026: sign-in (Google + magic link) and the tailorings ledger ship now, spec in `docs/superpowers/specs/2026-10-01-free-tier-and-sign-in-design.md`. Owner to create the Google OAuth client and Resend domain first (consent-screen verification takes days). UPI passes, phone OTP, payment-gateway KYC and SMS DLT wait until the ledger settles pricing.

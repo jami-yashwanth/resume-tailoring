@@ -53,11 +53,11 @@ describe("ResumePage", () => {
 
   it("renders user text literally", () => {
     const d = structuredClone(doc);
-    d.sections[0].lead = [{ text: "<script>alert(1)</script> & 100% \\LaTeX", bullet: true }];
+    d.sections[0].lead = [{ text: "<script>alert(1)</script> & 100% \\TeX", bullet: true }];
     const out = html(d);
     expect(out).toContain("&lt;script&gt;");
     expect(out).not.toContain("<script>");
-    expect(out).toContain("100% \\LaTeX");
+    expect(out).toContain("100% \\TeX");
   });
 
   it("marks every block with its key, block, op and state", () => {

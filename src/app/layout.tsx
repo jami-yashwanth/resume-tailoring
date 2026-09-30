@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Roboto } from "next/font/google";
+import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
 /* Sans is Rezz talking. The document's own serif is not loaded here on purpose:
@@ -15,18 +15,6 @@ const geist = Geist({
 const geistMono = Geist_Mono({
   subsets: ["latin"],
   variable: "--font-geist-mono",
-  display: "swap",
-});
-
-/* The default template's own face. The template is the owner's LaTeX
-   reference, which sets Roboto (`[sfdefault]{roboto}`), so the Result screen
-   previews in the same face the compiled download embeds — same metrics, same
-   wraps. Only the cuts the compiled file uses: regular, italic, bold. */
-const roboto = Roboto({
-  subsets: ["latin"],
-  weight: ["400", "700"],
-  style: ["normal", "italic"],
-  variable: "--font-roboto",
   display: "swap",
 });
 
@@ -72,7 +60,7 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${geist.variable} ${geistMono.variable} ${roboto.variable}`}
+      className={`${geist.variable} ${geistMono.variable}`}
     >
       <head>
         <script dangerouslySetInnerHTML={{ __html: applyTheme }} />

@@ -11,9 +11,7 @@ parse happens on extracted text, not on the picture — so the things that matte
 are whether the fields survive extraction with their separators intact and
 whether a section heading arrives with something under it.
 
-The sizes come from `shared/template.json` rather than being restated here.
-They used to be restated, which made this file a third hand-maintained copy of
-numbers already duplicated across the renderer and the web app.
+The sizes come from `template_render.TYPE` rather than being restated here.
 """
 import re
 

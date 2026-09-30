@@ -1,5 +1,8 @@
 import type { CSSProperties, ReactNode } from "react";
-import { PAGE, pct } from "@/lib/tailor/template-metrics";
+import { A4 } from "@/lib/tailor/page";
+
+/** A ratio as a CSS percentage, for the lengths that scale with the page. */
+const pct = (ratio: number) => `${+(ratio * 100).toFixed(4)}%`;
 
 /**
  * The user's document.
@@ -19,8 +22,7 @@ import { PAGE, pct } from "@/lib/tailor/template-metrics";
 const TIGHT_PAD = "px-10 pt-9 pb-11";
 
 /* `page` is the real template, so its margin and the page it holds open are
-   the renderer's — `template-metrics.ts` holds those numbers and says why they
-   live in one place.
+   the printed page's — `page.ts` holds those numbers.
 
    A percentage padding resolves against the page's own width, and `cqi` is 1%
    of that same width, so the margin stays 50pt-worth and the page stays A4 at
@@ -34,8 +36,8 @@ const TIGHT_PAD = "px-10 pt-9 pb-11";
    padding utilities would have been resolved by Tailwind's generated order
    rather than by ours. */
 const pageStyle: CSSProperties = {
-  padding: pct(PAGE.margin / PAGE.width),
-  minHeight: `${+((PAGE.height / PAGE.width) * 100).toFixed(4)}cqi`,
+  padding: pct(A4.margin / A4.width),
+  minHeight: `${+((A4.height / A4.width) * 100).toFixed(4)}cqi`,
   /* A column, only so that the blocks' margins stop collapsing. The renderer
      advances its cursor by every `space()` it makes, one after another, while
      CSS collapses two adjacent margins down to the larger of them — which ate
@@ -69,10 +71,9 @@ export function ResumeSheet({
   className?: string;
   /**
    * "doc" (default) is the user's own font, parsed out of their file.
-   * "template" is the v1 default template's Helvetica/Arial, which has no
-   * original file to keep a font from (see CLAUDE.md's dated override). It
-   * matches what `template_render.py` draws with, so the preview wraps where
-   * the downloaded file wraps — see `--font-sheet` in globals.css.
+   * "template" is the Rezz template's serif (Source Serif 4), which has no
+   * original file to keep a font from (see CLAUDE.md's dated override) — see
+   * `--font-resume` in globals.css.
    */
   font?: "doc" | "template";
 }) {
@@ -80,7 +81,7 @@ export function ResumeSheet({
     <article
       aria-label={label ?? (name ? `${name}'s resume, tailored` : "Your resume, tailored")}
       className={`sheet rounded-sheet bg-sheet text-sheet-ink shadow-sheet
-                  ${font === "template" ? "font-sheet" : "font-doc"} text-[13.5px] leading-[21px]
+                  ${font === "template" ? "font-resume" : "font-doc"} text-[13.5px] leading-[21px]
                   ${pad === "tight" ? TIGHT_PAD : ""} ${className}`}
       style={pad === "page" ? pageStyle : undefined}
     >
