@@ -3,12 +3,12 @@ import { type Usage, addUsage, emptyUsage, models } from "./claude";
 import { coverageOf } from "./coverage";
 import * as docsvc from "./docsvc";
 import { normaliseHeading } from "./headings";
+import { extractOutline } from "./extract";
 import { fallbackOffers } from "./offers";
 import { planEdits } from "./planner";
 import { extractRequirements } from "./requirements";
-import { structureLayout } from "./structure";
 import { type Violation, enforce, verifyMatches } from "./rules";
-import { type Layout, type PlannedOp, type TailorPlan, toDocsvcOps } from "./types";
+import { type Layout, type Outline, type PlannedOp, type TailorPlan, toDocsvcOps } from "./types";
 
 /**
  * The tailoring pipeline, end to end.
@@ -32,6 +32,11 @@ export type Progress = (stage: Stage, detail?: string) => void;
 export type TailorOutcome = {
   layout: Layout;
   plan: TailorPlan;
+  /** The resume's structure as Claude read it, verbatim-checked; null when the
+   *  parser's labels stand. */
+  outline: Outline | null;
+  /** Whose reading the layout carries, and how many tries it took. For the log. */
+  structure: { source: "claude" | "parser"; attempts: number };
   /** Changes the guardrails threw out. Kept for the claim log, not shown raw. */
   violations: Violation[];
   usage: Usage;
@@ -91,11 +96,11 @@ export async function tailor(
   onProgress("reading_resume");
   const parsed = await docsvc.parseResume(resumeBase64, filename);
 
-  // Claude re-reads the parser's line labels (see structure.ts) while it reads
+  // Claude reads the resume's structure (see extract.ts) while it reads
   // the job: neither depends on the other, so the structure pass costs no wait.
   onProgress("reading_job");
   const [structured, jd] = await Promise.all([
-    structureLayout(client, parsed),
+    extractOutline(client, parsed),
     extractRequirements(client, jobDescription),
   ]);
   const layout = structured.layout;
@@ -135,6 +140,8 @@ export async function tailor(
   onProgress("done");
   return {
     layout,
+    outline: structured.outline,
+    structure: { source: structured.source, attempts: structured.attempts },
     plan: {
       company: jd.company || "this job",
       role: jd.role || "the role",

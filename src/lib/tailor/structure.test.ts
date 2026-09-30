@@ -1,6 +1,5 @@
-import type Anthropic from "@anthropic-ai/sdk";
 import { describe, expect, it, vi } from "vitest";
-import { applyStructure, structureLayout } from "./structure";
+import { applyStructure } from "./structure";
 import type { Block, BlockKind, Layout } from "./types";
 
 const block = (id: string, kind: BlockKind, text: string, section: string | null = null): Block => ({
@@ -83,52 +82,5 @@ describe("applyStructure", () => {
   it("refuses to make a long sentence into a heading", () => {
     const labels = corrected().map((l) => (l.id === "8" ? l : l.id === "3" ? { ...l, kind: "heading" as const } : l));
     expect(applyStructure(layout(), labels)).toBeNull();
-  });
-});
-
-/** A client whose one call returns the given content, the way the SDK does. */
-function fakeClient(content: unknown[], stop_reason = "tool_use") {
-  const create = vi.fn().mockResolvedValue({
-    content,
-    stop_reason,
-    usage: { input_tokens: 1200, output_tokens: 300, cache_read_input_tokens: 0 },
-  });
-  return { client: { messages: { create } } as unknown as Anthropic, create };
-}
-
-describe("structureLayout", () => {
-  it("applies Claude's labels when they check out", async () => {
-    const { client, create } = fakeClient([
-      { type: "tool_use", id: "t1", name: "label_blocks", input: { blocks: corrected() } },
-    ]);
-    const result = await structureLayout(client, layout());
-    expect(result.source).toBe("claude");
-    expect(result.layout.blocks.find((b) => b.id === "5")!.kind).toBe("paragraph");
-    expect(result.usage.input).toBe(1200);
-    // Opus 5.5 rejects a forced tool choice with a 400.
-    expect(create.mock.calls[0][0].tool_choice).toEqual({ type: "auto" });
-  });
-
-  it("keeps the parser's labels when the answer does not check out", async () => {
-    const { client } = fakeClient([
-      { type: "tool_use", id: "t1", name: "label_blocks", input: { blocks: corrected().slice(2) } },
-    ]);
-    const result = await structureLayout(client, layout());
-    expect(result.source).toBe("parser");
-    expect(result.layout).toEqual(layout());
-  });
-
-  it("keeps the parser's labels when Claude declines or answers in prose", async () => {
-    const refused = await structureLayout(fakeClient([], "refusal").client, layout());
-    expect(refused.source).toBe("parser");
-    const prose = await structureLayout(fakeClient([{ type: "text", text: "Sure!" }], "end_turn").client, layout());
-    expect(prose.source).toBe("parser");
-  });
-
-  it("keeps the parser's labels when the call fails", async () => {
-    const create = vi.fn().mockRejectedValue(new Error("overloaded"));
-    const client = { messages: { create } } as unknown as Anthropic;
-    const result = await structureLayout(client, layout());
-    expect(result.source).toBe("parser");
   });
 });

@@ -1,6 +1,6 @@
 "use client";
 
-import type { Layout, TailorPlan } from "@/lib/tailor/types";
+import type { Layout, Outline, TailorPlan } from "@/lib/tailor/types";
 import type { Decisions, Wordings } from "@/lib/tailor/view";
 
 /**
@@ -25,7 +25,9 @@ const KEYS = {
   finish: "rezz.finish",
 } as const;
 
-export type StoredResult = { layout: Layout; plan: TailorPlan };
+/** `outline` is absent in results saved before the schema extraction landed
+ *  (30 Sep 2026), and null when Claude's outline failed its checks. */
+export type StoredResult = { layout: Layout; plan: TailorPlan; outline?: Outline | null };
 
 /**
  * What the user has decided on the Result screen so far.

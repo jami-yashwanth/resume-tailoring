@@ -9,7 +9,7 @@ import { downloadResume } from "@/lib/tailor/download";
 import { requirementRows } from "@/lib/tailor/requirement-rows";
 import { createReviewReducer, fromStored, toStored } from "@/lib/tailor/review";
 import { decisionAnnouncement, reviewList, undoAnnouncement, withDecisions } from "@/lib/tailor/review-list";
-import type { Layout, TailorPlan } from "@/lib/tailor/types";
+import type { Layout, Outline, TailorPlan } from "@/lib/tailor/types";
 import { buildLines } from "@/lib/tailor/view";
 import { DefaultTemplateSheet } from "./DefaultTemplateSheet";
 import { ExactPreview } from "./ExactPreview";
@@ -27,6 +27,7 @@ import { SummaryPanel } from "./SummaryPanel";
 export function ResultScreen({
   layout,
   plan,
+  outline: _outline = null,
   company,
   role,
   resume = null,
@@ -35,6 +36,9 @@ export function ResultScreen({
 }: {
   layout: Layout;
   plan: TailorPlan;
+  /** Claude's reading of the structure. Unused until the outline-driven
+   *  preview lands; null when the parser's labels stand. */
+  outline?: Outline | null;
   company: string;
   role: string;
   /** The user's file, held in the browser. Absent when showing the sample. */

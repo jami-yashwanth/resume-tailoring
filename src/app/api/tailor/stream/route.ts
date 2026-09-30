@@ -54,12 +54,13 @@ export async function POST(request: Request) {
         const result = await tailor(resume, jobDescription, filename, (stage, detail) =>
           send("progress", { stage, detail }),
         );
-        send("done", { layout: result.layout, plan: result.plan });
+        send("done", { layout: result.layout, plan: result.plan, outline: result.outline });
         // The cost-per-resume metric the architecture doc asks for, measured
         // where it happens. Server log only — never sent to the client.
         const cost = estimateCost(result.usage, result.models.planner);
         console.log(
           `[tailor] planner=${result.models.planner} verifier=${result.models.verifier} ` +
+            `structure=${result.structure.source}/${result.structure.attempts} ` +
             `tokens in=${result.usage.input} cached=${result.usage.cacheRead} ` +
             `out=${result.usage.output} ≈ ₹${cost.toFixed(2)}`,
         );
