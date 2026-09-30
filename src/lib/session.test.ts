@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { session } from "./session";
+import { session, type StoredResult } from "./session";
 
 /**
  * The one storage behaviour with a product consequence: a resume too big for
@@ -61,5 +61,17 @@ describe("session.setResume", () => {
       },
     });
     expect(session.setResume("aGVsbG8=", "resume.pdf")).toBe(false);
+  });
+});
+
+describe("session.getResult", () => {
+  it("reads a result saved before outlines existed", () => {
+    stubStorage(new Map(), null);
+    const layout = { blocks: [] } as unknown as StoredResult["layout"];
+    const plan = { company: "Acme" } as unknown as StoredResult["plan"];
+    expect(session.setResult({ layout, plan } as StoredResult)).toBe(true);
+    const back = session.getResult()!;
+    expect(back.outline).toBeUndefined();
+    expect(back.layout).toEqual(layout);
   });
 });

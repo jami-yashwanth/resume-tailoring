@@ -1,4 +1,5 @@
-import { downloadBlocks } from "./download";
+import { templateInput } from "./download";
+import type { Outline } from "./types";
 import type { RenderedLine } from "./view";
 
 /**
@@ -31,12 +32,13 @@ export function parseExactPreview(body: unknown): ExactPreview {
 /** Compile the current document and hand back its pages as images. */
 export async function fetchExactPreview(
   lines: RenderedLine[],
+  outline: Outline | null,
   signal?: AbortSignal,
 ): Promise<ExactPreview> {
   const response = await fetch("/api/preview", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ blocks: downloadBlocks(lines) }),
+    body: JSON.stringify(templateInput(lines, outline)),
     signal,
   });
 

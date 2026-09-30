@@ -1,4 +1,6 @@
-import type { BlockKind } from "./types";
+import { resolveDocument } from "./document";
+import type { TemplateInput } from "./docsvc";
+import type { BlockKind, Outline } from "./types";
 import type { RenderedLine } from "./view";
 
 /**
@@ -12,6 +14,15 @@ export function downloadBlocks(lines: RenderedLine[]): { kind: BlockKind; text: 
   return lines
     .filter((line) => line.state !== "removed" && line.state !== "pending")
     .map((line) => ({ kind: line.kind, text: line.text }));
+}
+
+/**
+ * What goes to docsvc: the structured document when the outline is known,
+ * otherwise the flat blocks exactly as before (older sessions, the sample).
+ * `lines` must be the ungrouped ones for the document path.
+ */
+export function templateInput(lines: RenderedLine[], outline: Outline | null): TemplateInput {
+  return outline ? { document: resolveDocument(outline, lines) } : { blocks: downloadBlocks(lines) };
 }
 
 /** Nothing from a job posting goes into a filename unfiltered. */
@@ -28,11 +39,12 @@ export async function downloadResume(
   lines: RenderedLine[],
   filename: string | null,
   company: string,
+  outline: Outline | null = null,
 ): Promise<{ name: string; pages: number | null }> {
   const response = await fetch("/api/download", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ blocks: downloadBlocks(lines) }),
+    body: JSON.stringify(templateInput(lines, outline)),
   });
 
   // Read the status before the body: a gateway's HTML 502 used to surface to

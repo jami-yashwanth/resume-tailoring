@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ResumeSheet } from "@/components/rezz/ResumeSheet";
 import { session } from "@/lib/session";
-import type { Layout, TailorPlan } from "@/lib/tailor/types";
+import type { Layout, Outline, TailorPlan } from "@/lib/tailor/types";
 import { ResultScreen } from "./ResultScreen";
 
 /**
@@ -27,6 +27,7 @@ export function ResultLoader({
   const [state, setState] = useState<{
     layout: Layout;
     plan: TailorPlan;
+    outline: Outline | null;
     resume: string | null;
     filename: string | null;
     sample: boolean;
@@ -37,6 +38,7 @@ export function ResultLoader({
     if (stored) {
       setState({
         ...stored,
+        outline: stored.outline ?? null,
         resume: session.getResume(),
         filename: session.getFilename(),
         sample: false,
@@ -44,7 +46,7 @@ export function ResultLoader({
       return;
     }
     if (fallback) {
-      setState({ ...fallback, resume: null, filename: null, sample: true });
+      setState({ ...fallback, outline: null, resume: null, filename: null, sample: true });
       return;
     }
     router.replace(session.getResume() ? "/job" : "/upload");
@@ -56,6 +58,7 @@ export function ResultLoader({
     <ResultScreen
       layout={state.layout}
       plan={state.plan}
+      outline={state.outline}
       resume={state.resume}
       filename={state.filename}
       sample={state.sample}

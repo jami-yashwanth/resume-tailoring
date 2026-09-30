@@ -204,13 +204,170 @@ def blocks_to_latex(blocks: list[dict]) -> str:
     return "\n".join(out)
 
 
-def render_latex(blocks: list[dict], timeout: float = 60.0) -> bytes:
-    """The compiled PDF, or subprocess.CalledProcessError on a failed compile.
+def _contact_fields(text: str) -> list[str]:
+    return [escape(f) for f in re.split(r"\s*[·|\t]\s*", text) if f.strip()]
+
+
+def _items(items) -> list[dict]:
+    """The non-empty items, stripped, bullet marks taken off bullet text."""
+    out = []
+    for item in items or []:
+        text = (item.get("text") or "").strip()
+        if not text:
+            continue
+        bullet = bool(item.get("bullet"))
+        out.append({"text": _BULLET_PREFIX.sub("", text) if bullet else text, "bullet": bullet})
+    return out
+
+
+def _section_items(items) -> list[str]:
+    """Loose section lines in order: consecutive bullets share one list (as
+    the flat path's bullets under a heading do), a plain line is a paragraph
+    of body text, blank-line separated, with any open list closed first."""
+    out: list[str] = []
+    in_list = False
+    for item in _items(items):
+        if item["bullet"]:
+            if not in_list:
+                out.append(r"\resumeSubHeadingList")
+                in_list = True
+            out.append(rf"\resumeItem{{\textbullet\ {escape(item['text'])}}}")
+        else:
+            if in_list:
+                out.append(r"\resumeSubHeadingListEnd")
+                in_list = False
+            out.append(escape(item["text"]) + "\n")
+    if in_list:
+        out.append(r"\resumeSubHeadingListEnd")
+    return out
+
+
+def _entry_to_latex(entry: dict) -> list[str]:
+    """One entry as macro calls, or nothing when it has no content at all."""
+    org, title = entry.get("org"), entry.get("title")
+    dates, place = entry.get("dates"), entry.get("place")
+    items = _items(entry.get("items"))
+    out: list[str] = []
+
+    if title or place:
+        out.append(
+            rf"\resumeSubheading{{{escape(org or '')}}}{{{escape(dates or '')}}}"
+            rf"{{{escape(title or '')}}}{{{escape(place or '')}}}"
+        )
+    elif org or dates:
+        # Same inline tabular as blocks_to_latex's one-line role.
+        out.append(
+            "\\vspace{-1pt}\\item\n"
+            "  \\begin{tabular*}{0.97\\textwidth}[t]{l@{\\extracolsep{\\fill}}r}\n"
+            rf"    \textbf{{{escape(org or '')}}} & {escape(dates or '')} \\" + "\n"
+            "  \\end{tabular*}\\vspace{-5pt}"
+        )
+    elif items:
+        out.append(r"\item")  # content with no header still needs its own item
+
+    if items:
+        # In the file's order: a "Tech: ..." line after the bullets stays there.
+        out.append(r"\resumeSubHeadingList")
+        for item in items:
+            text = escape(item["text"])
+            out.append(rf"\resumeItem{{\textbullet\ {text}}}" if item["bullet"] else rf"\resumeItem{{{text}}}")
+        out.append(r"\resumeSubHeadingListEnd")
+    return out
+
+
+def document_to_latex(doc: dict) -> str:
+    """The structured document as the template's macro calls.
+
+    No state machine: the structure is already known, so each section emits
+    its heading, the lines before its first entry, its entries, skill rows,
+    and the loose lines after, in turn.
+    """
+    out: list[str] = []
+    name = (doc.get("name") or "").strip()
+    # Every contact string's fields on one line, as the reference sets it.
+    contact = [f for c in doc.get("contact") or [] for f in _contact_fields(c)]
+    if name or contact:
+        out.append(r"\begin{center}")
+        if name:
+            out.append(rf"  \textbf{{\Huge {escape(name)}}} \\")
+        if contact:
+            out.append(rf"  \small {' $|$ '.join(contact)}")
+        out.append(r"\end{center}")
+
+    for section in doc.get("sections") or []:
+        if section.get("heading"):
+            out.append(rf"\section{{{escape(section['heading'])}}}")
+
+        out.extend(_section_items(section.get("lead")))
+
+        entries = [e for e in (_entry_to_latex(e) for e in section.get("entries") or []) if e]
+        if entries:
+            out.append(r"\resumeSubHeadingList")
+            for e in entries:
+                out.extend(e)
+            out.append(r"\resumeSubHeadingListEnd")
+
+        rows = [r for r in section.get("skills") or [] if (r.get("items") or "").strip()]
+        if rows:
+            out.append(r"\resumeSubHeadingList")
+            for row in rows:
+                items = escape(row["items"].strip())
+                if row.get("label"):
+                    out.append(rf"\item \small{{\textbf{{{escape(row['label'])}}}{{: {items}}}}}")
+                else:
+                    out.append(rf"\item \small{{{items}}}")
+            out.append(r"\resumeSubHeadingListEnd")
+
+        out.extend(_section_items(section.get("items")))
+    return "\n".join(out).rstrip("\n")
+
+
+def document_to_blocks(doc: dict) -> list[dict]:
+    """The document flattened to the (kind, text) shape the drawn fallback
+    renderer and the parity tests consume."""
+    blocks: list[dict] = []
+
+    def add(kind: str, text: str):
+        blocks.append({"kind": kind, "text": text})
+
+    def add_items(items):
+        for item in _items(items):
+            if item["bullet"]:
+                add("bullet", "• " + item["text"])
+            else:
+                add("paragraph", item["text"])
+
+    if doc.get("name"):
+        add("name", doc["name"])
+    for c in doc.get("contact") or []:
+        add("contact", c)
+    for section in doc.get("sections") or []:
+        if section.get("heading"):
+            add("heading", section["heading"])
+        add_items(section.get("lead"))
+        for e in section.get("entries") or []:
+            role = " · ".join(x for x in (e.get("org"), e.get("place")) if x)
+            if e.get("dates"):
+                role = f"{role}\t{e['dates']}" if role else e["dates"]
+            if role:
+                add("role", role)
+            if e.get("title"):
+                add("job_title", e["title"])
+            add_items(e.get("items"))
+        for row in section.get("skills") or []:
+            add("paragraph", f"{row['label']}: {row['items']}" if row.get("label") else row["items"])
+        add_items(section.get("items"))
+    return blocks
+
+
+def render_latex_source(body: str, timeout: float = 60.0) -> bytes:
+    """The compiled PDF for a LaTeX body set into the template, or
+    subprocess.CalledProcessError on a failed compile.
 
     Tectonic caches its support files under the user cache dir after the
     first (network-fetching) run; warm compiles are local-only.
     """
-    source = compat(TEMPLATE.read_text()).replace("%%CONTENT%%", blocks_to_latex(blocks))
+    source = compat(TEMPLATE.read_text()).replace("%%CONTENT%%", body)
     with tempfile.TemporaryDirectory() as tmp:
         tex = Path(tmp) / "resume.tex"
         tex.write_text(source)
@@ -221,3 +378,11 @@ def render_latex(blocks: list[dict], timeout: float = 60.0) -> bytes:
             timeout=timeout,
         )
         return (Path(tmp) / "resume.pdf").read_bytes()
+
+
+def render_latex(blocks: list[dict], timeout: float = 60.0) -> bytes:
+    return render_latex_source(blocks_to_latex(blocks), timeout)
+
+
+def render_latex_document(doc: dict, timeout: float = 60.0) -> bytes:
+    return render_latex_source(document_to_latex(doc), timeout)

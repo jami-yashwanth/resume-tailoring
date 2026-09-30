@@ -123,3 +123,45 @@ class ApplyResponse(BaseModel):
     applied: list[AppliedOp]
     rounds: int
     warnings: list[str] = []
+
+
+class SkillRowModel(BaseModel):
+    label: str | None = None
+    items: str
+
+
+class ItemModel(BaseModel):
+    """One line in document order; `bullet` is whether the file marked it so."""
+
+    text: str
+    bullet: bool = False
+
+
+class EntryModel(BaseModel):
+    org: str | None = None
+    title: str | None = None
+    dates: str | None = None
+    place: str | None = None
+    items: list[ItemModel] = Field(default_factory=list)
+
+
+class SectionModel(BaseModel):
+    heading: str | None = None
+    kind: Literal[
+        "summary", "experience", "education", "projects",
+        "skills", "certifications", "achievements", "other",
+    ]
+    #: Loose lines before the first entry or skill row; `items` are the rest.
+    lead: list[ItemModel] = Field(default_factory=list)
+    entries: list[EntryModel] = Field(default_factory=list)
+    skills: list[SkillRowModel] = Field(default_factory=list)
+    items: list[ItemModel] = Field(default_factory=list)
+
+
+class Document(BaseModel):
+    """The tailored resume as structure, not a flat block list. Mirrors the web
+    app's `TemplateDocument` — same field names, nothing renamed."""
+
+    name: str | None = None
+    contact: list[str] = Field(default_factory=list)
+    sections: list[SectionModel] = Field(default_factory=list)
