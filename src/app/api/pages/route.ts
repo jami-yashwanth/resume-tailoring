@@ -1,5 +1,5 @@
-import type { TemplateDocument } from "@/lib/tailor/document";
-import { DocsvcError, printResume } from "@/lib/tailor/docsvc";
+import { printResume } from "@/lib/tailor/docsvc";
+import { printFailure, readDocument } from "@/lib/tailor/print-route";
 import { renderResumeHtml } from "@/lib/tailor/resume-html";
 
 /**
@@ -11,29 +11,14 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 export async function POST(request: Request) {
-  let body: { document?: TemplateDocument };
-  try {
-    body = await request.json();
-  } catch {
-    return Response.json({ error: "Invalid JSON body." }, { status: 400 });
-  }
-
-  const document = body.document;
-  if (!document || (!document.name && document.contact.length === 0 && document.sections.length === 0)) {
-    return Response.json({ error: "Nothing to count yet." }, { status: 400 });
-  }
+  const document = await readDocument(request, "Nothing to count yet.");
+  if (document instanceof Response) return document;
 
   try {
     const html = await renderResumeHtml(document);
     const printed = await printResume({ html, document, countOnly: true });
     return Response.json({ pages: printed.pages, renderer: printed.renderer });
   } catch (error) {
-    const message =
-      error instanceof DocsvcError
-        ? error.message
-        : error instanceof Error
-          ? error.message
-          : "Could not count pages.";
-    return Response.json({ error: message }, { status: 502 });
+    return printFailure(error, "Could not count pages.");
   }
 }

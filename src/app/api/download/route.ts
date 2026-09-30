@@ -1,5 +1,5 @@
-import type { TemplateDocument } from "@/lib/tailor/document";
-import { DocsvcError, printResume } from "@/lib/tailor/docsvc";
+import { printResume } from "@/lib/tailor/docsvc";
+import { printFailure, readDocument } from "@/lib/tailor/print-route";
 import { renderResumeHtml } from "@/lib/tailor/resume-html";
 
 /**
@@ -14,17 +14,8 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 export async function POST(request: Request) {
-  let body: { document?: TemplateDocument };
-  try {
-    body = await request.json();
-  } catch {
-    return Response.json({ error: "Invalid JSON body." }, { status: 400 });
-  }
-
-  const document = body.document;
-  if (!document || (!document.name && document.contact.length === 0 && document.sections.length === 0)) {
-    return Response.json({ error: "Nothing to download yet." }, { status: 400 });
-  }
+  const document = await readDocument(request, "Nothing to download yet.");
+  if (document instanceof Response) return document;
 
   try {
     const html = await renderResumeHtml(document);
@@ -34,12 +25,6 @@ export async function POST(request: Request) {
     }
     return Response.json({ file: printed.file, pages: printed.pages, renderer: printed.renderer });
   } catch (error) {
-    const message =
-      error instanceof DocsvcError
-        ? error.message
-        : error instanceof Error
-          ? error.message
-          : "Could not write your file.";
-    return Response.json({ error: message }, { status: 502 });
+    return printFailure(error, "Could not write your file.");
   }
 }

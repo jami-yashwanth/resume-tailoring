@@ -25,7 +25,14 @@ export type ApplyResult = {
   warnings: string[];
 };
 
-export class DocsvcError extends Error {}
+export class DocsvcError extends Error {
+  /** The service's HTTP status, when it answered at all. */
+  status: number | null;
+  constructor(message: string, options?: ErrorOptions & { status?: number }) {
+    super(message, options);
+    this.status = options?.status ?? null;
+  }
+}
 
 // DOCSVC_URL wins when set — that is how the deployed service is reached.
 // Otherwise the port comes from BACKEND_PORT, defaulting to the same 8001 that
@@ -56,7 +63,9 @@ async function post<T>(path: string, body: unknown): Promise<T> {
 
   if (!response.ok) {
     const detail = await response.text().catch(() => "");
-    throw new DocsvcError(`${path} failed (${response.status}): ${detail.slice(0, 300)}`);
+    throw new DocsvcError(`${path} failed (${response.status}): ${detail.slice(0, 300)}`, {
+      status: response.status,
+    });
   }
   return (await response.json()) as T;
 }
