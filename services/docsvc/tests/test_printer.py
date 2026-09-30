@@ -82,7 +82,7 @@ def test_print_keeps_special_characters_as_text(client):
 
 def test_blocks_never_split_across_pages(client):
     blocks = "".join(
-        "<div class='rz-block'>" + "".join(f"<div>B{n}:{k}</div>" for k in range(4)) + "</div>"
+        "<div class='rz-block'>" + "".join(f"<div>B{n}:{k}</div>" for k in range(5)) + "</div>"
         for n in range(80)
     )
     body = client.post("/print", json={"html": _page(blocks), "document": DOC}).json()
@@ -90,7 +90,7 @@ def test_blocks_never_split_across_pages(client):
         assert pdf.page_count > 1
         for page in pdf:
             first = page.get_text().strip().splitlines()[0]
-            assert re.match(r"^B\d+:", first), first
+            assert re.fullmatch(r"B\d+:0", first), first
 
 
 def test_rejects_html_over_4mb(client):
@@ -99,12 +99,25 @@ def test_rejects_html_over_4mb(client):
     assert response.json()["detail"] == "html over 4 MB"
 
 
-def test_print_falls_back_to_drawn_renderer(client, monkeypatch):
+def test_print_timeout_raises_and_drops_the_browser(monkeypatch):
+    import asyncio
+
+    async def hang(html):
+        await asyncio.sleep(5)
+
+    monkeypatch.setattr(printer, "_print", hang)
+    with pytest.raises(printer.PrintError):
+        asyncio.run(printer.print_html("<p>x</p>", timeout=0.1))
+    assert printer._browser is None
+
+
+def test_print_falls_back_to_drawn_renderer(monkeypatch):
     async def boom(html, timeout=15.0):
         raise printer.PrintError("no chromium")
 
     monkeypatch.setattr(printer, "print_html", boom)
-    body = _post(client).json()
+    with TestClient(main.app) as client:
+        body = _post(client).json()
     assert body["renderer"] == "fallback"
     assert body["pages"] >= 1
     with _pdf(body) as pdf:

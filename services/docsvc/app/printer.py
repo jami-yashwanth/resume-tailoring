@@ -27,7 +27,13 @@ async def _get_browser(fresh: bool = False) -> Browser:
             await _close()
         if _browser is None:
             _playwright = await async_playwright().start()
-            _browser = await _playwright.chromium.launch()
+            try:
+                _browser = await _playwright.chromium.launch()
+            except BaseException:
+                # Chromium missing or unlaunchable: stop the driver we just
+                # started, or every request leaks a node process.
+                await _close()
+                raise
         return _browser
 
 
@@ -57,9 +63,17 @@ async def _print(html: str) -> bytes:
         page = await context.new_page()
         await page.route("**/*", lambda route: route.abort())
         await page.set_content(html, wait_until="load")
+        # Fonts arrive as data URIs; print before they decode and the page
+        # would set in the fallback serif.
+        await page.evaluate("document.fonts.ready")
         return await page.pdf(format="A4", prefer_css_page_size=True, print_background=True)
     finally:
-        await context.close()
+        # Bounded: a wedged browser can hang close(), which would defeat the
+        # print timeout.
+        try:
+            await asyncio.wait_for(context.close(), 2)
+        except Exception:
+            pass
 
 
 async def print_html(html: str, timeout: float = 15.0) -> bytes:
@@ -68,9 +82,15 @@ async def print_html(html: str, timeout: float = 15.0) -> bytes:
     except PrintError:
         raise
     except asyncio.TimeoutError as exc:
+        # A browser that timed out is presumed wedged; the next call gets a
+        # fresh one instead of waiting out another timeout.
+        async with _lock:
+            await _close()
         raise PrintError(f"chromium timed out after {timeout:g}s") from exc
     except (PlaywrightError, OSError) as exc:
         raise PrintError(f"chromium failed: {exc}") from exc
+    except Exception as exc:  # a bug here must fall back, never 500
+        raise PrintError(f"unexpected print failure: {exc!r}") from exc
 
 
 async def shutdown() -> None:
