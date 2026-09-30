@@ -238,6 +238,29 @@ for (const width of WIDTHS) {
     await context.close();
   }
 
+  // ── Download waits for the printer's count ───────────────────────────────
+  {
+    const context = await browser.newContext({ viewport: { width, height: 900 } });
+    await context.addInitScript((result) => {
+      sessionStorage.setItem("rezz.result", result);
+      sessionStorage.setItem("rezz.resume", "UEsDBBQAAAAI");
+    }, JSON.stringify({ layout: fixture.layout, plan: fixture.plan }));
+    const page = await context.newPage();
+    // Hold the count back, so the screen sits in its "checking" state.
+    await page.route("**/api/pages", async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 4000));
+      await route.continue().catch(() => {});
+    });
+    await page.goto(`${BASE}/result`);
+    await page.getByText(/checking pages…$/).first().waitFor({ timeout: 5000 }).catch(() => {});
+    check(await visible(page.getByText(/checking pages…$/)), "the status says the pages are being checked");
+    check(
+      await page.getByRole("button", { name: "Download resume" }).isDisabled(),
+      "Download waits while the pages are being checked",
+    );
+    await context.close();
+  }
+
   // ── No false alarm: a long resume nobody has touched asks nothing ────────
   {
     const { context, page } = await openResult(browser, width, { layout: longLayout(fixture.layout) });

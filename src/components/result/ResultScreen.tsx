@@ -110,7 +110,12 @@ export function ResultScreen({
     if (printed.pages !== null) dispatch({ type: "measuredPages", pages: printed.pages });
   }, [printed.pages]);
 
-  const list = reviewList(plan, layout, state);
+  const list = reviewList(plan, layout, state, { countFailed: printed.failed });
+  /* Download waits for the printer's count of the file on screen: until then
+     the length is unknown or stale, and a file could grow a page nobody agreed
+     to. If the printer gave up, Download comes back — `allowPages` below still
+     refuses to save a file longer than agreed. */
+  const countKnown = printed.failed || (!printed.checking && state.pages !== null);
   const coverage = coverageOf(plan.requirements, plan.matches, operations);
   const rows = requirementRows(plan.requirements, plan.matches, operations);
   const highlightBlocks = rows.find((r) => r.requirement.id === state.selectedRequirement)?.pointsTo ?? null;
@@ -161,7 +166,14 @@ export function ResultScreen({
     track("download_clicked");
     try {
       // Always the tailored version, whatever the compare toggle shows.
-      const saved = await downloadResume(fileDocument, filename, company);
+      const allowPages = state.growthAllowed ? null : state.pagesAllowed;
+      const saved = await downloadResume(fileDocument, filename, company, allowPages);
+      if (!saved.saved && saved.pages !== null) {
+        // Longer than agreed: nothing saved. The page-fit card asks how it fits.
+        dispatch({ type: "measuredPages", pages: saved.pages });
+        setDownloadError(`Your resume came to ${saved.pages} pages. Choose how it fits, then download again.`);
+        return;
+      }
       // Neither count known is the rare case both the printer and the fallback went quiet about length.
       const pages = saved.pages ?? state.pages ?? layout.pages;
       track("download_done", { pages });
@@ -230,9 +242,9 @@ export function ResultScreen({
         onToggleCompare={() => dispatch({ type: "toggleCompare" })}
         ready={list.ready}
         onDownload={download}
-        // Not while the page-fit question is open: the file would be a length
-        // nobody agreed to. The status says why.
-        canDownload={Boolean(resume) && !list.pageFit && !downloadNote}
+        // Not while the page-fit question is open or the count is still
+        // coming: the file would be a length nobody agreed to. The status says why.
+        canDownload={Boolean(resume) && countKnown && !list.pageFit && !downloadNote}
         downloading={downloading}
       />
 
@@ -268,6 +280,7 @@ export function ResultScreen({
                      min-[900px]:overflow-y-auto max-[900px]:order-2"
           list={list}
           state={state}
+          countFailed={printed.failed}
           coverage={coverage}
           notice={notice}
           onDecide={decide}

@@ -11,12 +11,20 @@ export function downloadName(filename: string | null, company: string): string {
   return `${safeName(filename ?? "resume").replace(/\.(docx|pdf)$/i, "")} — ${safeName(company)}.pdf`;
 }
 
-/** Render the resume, save it, and say what was saved. Throws a message a person can read. */
+/**
+ * Render the resume, save it, and say what was saved. Throws a message a person can read.
+ *
+ * `allowPages` is the length the user agreed to. A printed file longer than
+ * that is not saved (`saved: false`) — the backstop for a page count that was
+ * stale, still coming, or unavailable when Download was pressed: the page
+ * count never grows without asking.
+ */
 export async function downloadResume(
   resume: TemplateDocument,
   filename: string | null,
   company: string,
-): Promise<{ name: string; pages: number | null; note: string | null }> {
+  allowPages: number | null = null,
+): Promise<{ name: string; pages: number | null; note: string | null; saved: boolean }> {
   const response = await fetch("/api/download", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -38,9 +46,13 @@ export async function downloadResume(
   const body = await response.json();
   if (typeof body.file !== "string") throw new Error("Could not write your file.");
 
+  const name = downloadName(filename, company);
+  const pages = typeof body.pages === "number" ? body.pages : null;
+  const note = body.renderer === "fallback" ? FALLBACK_NOTE : null;
+  if (allowPages !== null && pages !== null && pages > allowPages) return { name, pages, note, saved: false };
+
   const bytes = Uint8Array.from(atob(body.file), (c) => c.charCodeAt(0));
   const url = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
-  const name = downloadName(filename, company);
   const link = document.createElement("a");
   link.href = url;
   link.download = name;
@@ -51,9 +63,5 @@ export async function downloadResume(
   link.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 
-  return {
-    name,
-    pages: typeof body.pages === "number" ? body.pages : null,
-    note: body.renderer === "fallback" ? FALLBACK_NOTE : null,
-  };
+  return { name, pages, note, saved: true };
 }

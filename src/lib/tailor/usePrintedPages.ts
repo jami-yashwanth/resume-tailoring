@@ -12,13 +12,17 @@ import { fetchPageCount } from "./pages";
  * document on screen may land.
  */
 
-export type PrintedPages = { pages: number | null; checking: boolean };
+/** `failed`: the printer did not answer for this document, even on a retry. */
+export type PrintedPages = { pages: number | null; checking: boolean; failed: boolean };
+
+/** How long after a failed count the one retry goes out. */
+export const RETRY_MS = 3000;
 
 type Count = (document: TemplateDocument, signal: AbortSignal) => Promise<number>;
 
 /** The scheduler under the hook, kept free of React so it can be tested without a DOM. */
 export function createPageCounter(count: Count, delayMs: number) {
-  let state: PrintedPages = { pages: null, checking: false };
+  let state: PrintedPages = { pages: null, checking: false, failed: false };
   const listeners = new Set<(state: PrintedPages) => void>();
   let timer: ReturnType<typeof setTimeout> | undefined;
   let controller: AbortController | null = null;
@@ -38,20 +42,24 @@ export function createPageCounter(count: Count, delayMs: number) {
       clearTimeout(timer);
       controller?.abort();
       controller = null;
-      set({ ...state, checking: true });
-      timer = setTimeout(() => {
+      set({ ...state, checking: true, failed: false });
+      const attempt = (retry: boolean) => {
         const own = new AbortController();
         controller = own;
         count(document, own.signal).then(
           (pages) => {
-            if (request === latest && !disposed) set({ pages, checking: false });
+            if (request === latest && !disposed) set({ pages, checking: false, failed: false });
           },
           () => {
+            if (request !== latest || disposed) return;
+            // One more try, for the same document, before giving up on it.
+            if (!retry) timer = setTimeout(() => attempt(true), RETRY_MS);
             // The last count stands: a failed check is not a new length.
-            if (request === latest && !disposed) set({ ...state, checking: false });
+            else set({ ...state, checking: false, failed: true });
           },
         );
-      }, delayMs);
+      };
+      timer = setTimeout(() => attempt(false), delayMs);
     },
     subscribe(listener: (state: PrintedPages) => void) {
       listeners.add(listener);
@@ -69,7 +77,7 @@ export function createPageCounter(count: Count, delayMs: number) {
 export type PageCounter = ReturnType<typeof createPageCounter>;
 
 export function usePrintedPages(document: TemplateDocument, delayMs = 800): PrintedPages {
-  const [state, setState] = useState<PrintedPages>({ pages: null, checking: false });
+  const [state, setState] = useState<PrintedPages>({ pages: null, checking: false, failed: false });
   const counter = useRef<PageCounter | null>(null);
 
   useEffect(() => {

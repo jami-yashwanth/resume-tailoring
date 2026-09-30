@@ -40,7 +40,7 @@ describe("createPageCounter", () => {
     counter.update(doc("b"));
     await vi.advanceTimersByTimeAsync(799);
     expect(fetchMock).not.toHaveBeenCalled();
-    expect(seen.at(-1)).toEqual({ pages: null, checking: true });
+    expect(seen.at(-1)).toEqual({ pages: null, checking: true, failed: false });
 
     await vi.advanceTimersByTimeAsync(1);
     expect(fetchMock).toHaveBeenCalledTimes(1);
@@ -48,7 +48,7 @@ describe("createPageCounter", () => {
 
     calls[0].respond(2);
     await vi.advanceTimersByTimeAsync(0);
-    expect(seen.at(-1)).toEqual({ pages: 2, checking: false });
+    expect(seen.at(-1)).toEqual({ pages: 2, checking: false, failed: false });
     counter.dispose();
   });
 
@@ -72,7 +72,7 @@ describe("createPageCounter", () => {
     await vi.advanceTimersByTimeAsync(0);
     calls[0].respond(1);
     await vi.advanceTimersByTimeAsync(0);
-    expect(seen.at(-1)).toEqual({ pages: 3, checking: false });
+    expect(seen.at(-1)).toEqual({ pages: 3, checking: false, failed: false });
     counter.dispose();
   });
 
@@ -89,11 +89,60 @@ describe("createPageCounter", () => {
     await vi.advanceTimersByTimeAsync(0);
 
     counter.update(doc("b"));
-    expect(seen.at(-1)).toEqual({ pages: 2, checking: true });
+    expect(seen.at(-1)).toEqual({ pages: 2, checking: true, failed: false });
     await vi.advanceTimersByTimeAsync(800);
     calls[1].fail();
+    await vi.advanceTimersByTimeAsync(3000);
+    calls[2].fail();
     await vi.advanceTimersByTimeAsync(0);
-    expect(seen.at(-1)).toEqual({ pages: 2, checking: false });
+    expect(seen.at(-1)).toEqual({ pages: 2, checking: false, failed: true });
+    counter.dispose();
+  });
+
+  it("retries once after a failure and then reports failed", async () => {
+    const { calls, fetchMock } = heldFetch();
+    vi.stubGlobal("fetch", fetchMock);
+    const counter = createPageCounter(fetchPageCount, 800);
+    const seen: PrintedPages[] = [];
+    counter.subscribe((s) => seen.push(s));
+
+    counter.update(doc("a"));
+    await vi.advanceTimersByTimeAsync(800);
+    calls[0].fail();
+    await vi.advanceTimersByTimeAsync(2999);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(seen.at(-1)).toEqual({ pages: null, checking: true, failed: false });
+    await vi.advanceTimersByTimeAsync(1);
+    expect(calls.map((c) => c.name)).toEqual(["a", "a"]);
+    calls[1].fail();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(seen.at(-1)).toEqual({ pages: null, checking: false, failed: true });
+    // Only once: no third attempt for the same document.
+    await vi.advanceTimersByTimeAsync(10000);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+
+    // A failure followed by a success is a count, not a failure.
+    counter.update(doc("b"));
+    await vi.advanceTimersByTimeAsync(800);
+    calls[2].fail();
+    await vi.advanceTimersByTimeAsync(3000);
+    calls[3].respond(2);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(seen.at(-1)).toEqual({ pages: 2, checking: false, failed: false });
+    counter.dispose();
+  });
+
+  it("drops a pending retry when the document changes", async () => {
+    const { calls, fetchMock } = heldFetch();
+    vi.stubGlobal("fetch", fetchMock);
+    const counter = createPageCounter(fetchPageCount, 800);
+    counter.update(doc("a"));
+    await vi.advanceTimersByTimeAsync(800);
+    calls[0].fail();
+    await vi.advanceTimersByTimeAsync(1000);
+    counter.update(doc("b"));
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(calls.map((c) => c.name)).toEqual(["a", "b"]);
     counter.dispose();
   });
 

@@ -77,7 +77,13 @@ export function withDecisions(operations: PlannedOp[], decisions: Decisions): Pl
   return operations.map((op) => ({ ...op, approved: decisions[op.id] }));
 }
 
-export function reviewList(plan: TailorPlan, layout: Layout, state: ReviewState): ReviewList {
+export function reviewList(
+  plan: TailorPlan,
+  layout: Layout,
+  state: ReviewState,
+  /** The printer did not answer for the current document, even on a retry. */
+  { countFailed = false }: { countFailed?: boolean } = {},
+): ReviewList {
   const operations = withDecisions(plan.operations, state.decisions);
   const blockIndex = new Map(layout.blocks.map((b, i) => [b.id, i]));
   const blockOf = (id: string) => layout.blocks.find((b) => b.id === id);
@@ -150,7 +156,11 @@ export function reviewList(plan: TailorPlan, layout: Layout, state: ReviewState)
   }
 
   // The printer has not answered yet: say so rather than guess a length.
-  const pagesText = state.pages === null ? "checking pages…" : `${state.pages} page${state.pages === 1 ? "" : "s"}`;
+  const pagesText = countFailed
+    ? "page count unavailable"
+    : state.pages === null
+      ? "checking pages…"
+      : `${state.pages} page${state.pages === 1 ? "" : "s"}`;
   const status = toDecide.length
     ? `${toDecide.length} to decide · ${pagesText}`
     : pageFit

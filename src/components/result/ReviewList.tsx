@@ -21,6 +21,7 @@ const groupHeading = "m-0 text-[13px] font-semibold leading-[18px] text-ink-mute
 export function ReviewList({
   list,
   state,
+  countFailed = false,
   coverage,
   notice,
   className = "",
@@ -33,6 +34,8 @@ export function ReviewList({
 }: {
   list: ReviewListData;
   state: ReviewState;
+  /** The printer could not count the pages for the current document. */
+  countFailed?: boolean;
   coverage: Coverage;
   /** Sample / missing file / download error, shown above everything else. */
   notice?: ReactNode;
@@ -45,8 +48,11 @@ export function ReviewList({
   onChoosePageFit: (optionId: string) => void;
 }) {
   const whyFor = (opId: string) => state.whyOpen && state.currentOpId === opId;
-  const pages =
-    state.pages === null ? "checking pages…" : `${state.pages} page${state.pages === 1 ? "" : "s"}`;
+  const pages = countFailed
+    ? "page count unavailable"
+    : state.pages === null
+      ? "checking pages…"
+      : `${state.pages} page${state.pages === 1 ? "" : "s"}`;
   const pageFitLength = list.pageFit ? `${list.pageFit.pages}-${list.pageFit.allowed}` : null;
   const pageFitKey = list.pageFit
     ? `${pageFitLength}-${list.pageFit.options.map((o) => o.id).join(",")}`

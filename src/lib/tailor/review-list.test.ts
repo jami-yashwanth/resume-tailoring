@@ -54,6 +54,10 @@ describe("reviewList", () => {
     // Before the printer has answered, the status says so and asks nothing about length.
     const unchecked = reviewList(plan, layout, state({ pages: null }));
     expect(unchecked).toMatchObject({ status: "2 to decide · checking pages…", pageFit: null });
+    // The printer gave up: say so, rather than go on checking.
+    expect(reviewList(plan, layout, state({ pages: null }), { countFailed: true }).status).toBe(
+      "2 to decide · page count unavailable",
+    );
   });
 
   it("opens the card the user chose", () => {

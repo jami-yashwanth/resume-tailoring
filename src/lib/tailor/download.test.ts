@@ -7,18 +7,32 @@ const doc: TemplateDocument = { name: "Priya", contact: [], sections: [] };
 describe("downloadResume", () => {
   afterEach(() => vi.unstubAllGlobals());
 
-  const run = async (renderer: "chromium" | "fallback") => {
-    const fetchMock = vi.fn(async () => Response.json({ file: btoa("%PDF"), pages: 1, renderer }));
+  const run = async (renderer: "chromium" | "fallback", pages = 1, allowPages: number | null = null) => {
+    const fetchMock = vi.fn(async () => Response.json({ file: btoa("%PDF"), pages, renderer }));
     vi.stubGlobal("fetch", fetchMock);
-    vi.stubGlobal("URL", { createObjectURL: vi.fn(() => "blob:x"), revokeObjectURL: vi.fn() });
+    const createObjectURL = vi.fn(() => "blob:x");
+    vi.stubGlobal("URL", { createObjectURL, revokeObjectURL: vi.fn() });
     const link = { click: vi.fn(), remove: vi.fn(), href: "", download: "" };
     vi.stubGlobal("document", {
       createElement: vi.fn(() => link),
       body: { appendChild: vi.fn() },
     });
-    const result = await downloadResume(doc, "priya.docx", "Kosha");
-    return { result, fetchMock };
+    const result = await downloadResume(doc, "priya.docx", "Kosha", allowPages);
+    return { result, fetchMock, createObjectURL };
   };
+
+  it("does not save a file longer than the agreed length", async () => {
+    const { result, createObjectURL } = await run("chromium", 2, 1);
+    expect(result).toMatchObject({ saved: false, pages: 2 });
+    expect(createObjectURL).not.toHaveBeenCalled();
+  });
+
+  it("saves a file within the agreed length, or with no length agreed", async () => {
+    const within = await run("chromium", 1, 1);
+    expect(within.result.saved).toBe(true);
+    expect(within.createObjectURL).toHaveBeenCalledTimes(1);
+    expect((await run("chromium", 3, null)).result.saved).toBe(true);
+  });
 
   it("reports the fallback layout in the download message", async () => {
     const { result, fetchMock } = await run("fallback");
