@@ -81,8 +81,15 @@ export function reviewList(
   plan: TailorPlan,
   layout: Layout,
   state: ReviewState,
-  /** The printer did not answer for the current document, even on a retry. */
-  { countFailed = false }: { countFailed?: boolean } = {},
+  {
+    countFailed = false,
+    checking = false,
+  }: {
+    /** The printer did not answer for the current document, even on a retry. */
+    countFailed?: boolean;
+    /** A count for the current document is in flight. */
+    checking?: boolean;
+  } = {},
 ): ReviewList {
   const operations = withDecisions(plan.operations, state.decisions);
   const blockIndex = new Map(layout.blocks.map((b, i) => [b.id, i]));
@@ -155,12 +162,13 @@ export function reviewList(
     };
   }
 
-  // The printer has not answered yet: say so rather than guess a length.
+  /* The printer has not answered for the document on screen yet: say so
+     rather than show the last document's length — Download waits for it. */
   const pagesText = countFailed
     ? "page count unavailable"
-    : state.pages === null
+    : checking || state.pages === null
       ? "checking pages…"
-      : `${state.pages} page${state.pages === 1 ? "" : "s"}`;
+      : `${state.pages} page${state.pages === 1 ? "" : "s"}${state.pagesFallback ? " (fallback layout)" : ""}`;
   const status = toDecide.length
     ? `${toDecide.length} to decide · ${pagesText}`
     : pageFit

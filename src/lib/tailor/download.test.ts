@@ -23,7 +23,9 @@ describe("downloadResume", () => {
 
   it("does not save a file longer than the agreed length", async () => {
     const { result, createObjectURL } = await run("chromium", 2, 1);
-    expect(result).toMatchObject({ saved: false, pages: 2 });
+    expect(result).toMatchObject({ saved: false, pages: 2, fallback: false });
+    // A refused fallback print says so, so its count is not taken as the allowance.
+    expect((await run("fallback", 2, 1)).result).toMatchObject({ saved: false, pages: 2, fallback: true });
     expect(createObjectURL).not.toHaveBeenCalled();
   });
 

@@ -106,11 +106,14 @@ export function ResultScreen({
   }, [outline, layout, operations, state.decisions, state.wordings]);
 
   const printed = usePrintedPages(fileDocument);
+  /* Keyed on the flag as well as the number: a printer count of the same
+     length after a fallback one must still clear "(fallback layout)" and
+     become the allowance. */
   useEffect(() => {
-    if (printed.pages !== null) dispatch({ type: "measuredPages", pages: printed.pages });
-  }, [printed.pages]);
+    if (printed.pages !== null) dispatch({ type: "measuredPages", pages: printed.pages, fallback: printed.fallback });
+  }, [printed.pages, printed.fallback]);
 
-  const list = reviewList(plan, layout, state, { countFailed: printed.failed });
+  const list = reviewList(plan, layout, state, { countFailed: printed.failed, checking: printed.checking });
   /* Download waits for the printer's count of the file on screen: until then
      the length is unknown or stale, and a file could grow a page nobody agreed
      to. If the printer gave up, Download comes back — `allowPages` below still
@@ -143,6 +146,8 @@ export function ResultScreen({
 
   function choosePageFit(optionId: string) {
     dispatch({ type: "choosePageFit", optionId, causedBy: list.pageFit?.causedBy ?? null });
+    // "Your resume came to N pages…" is answered now; it would only mislead.
+    setDownloadError(null);
     announce(
       optionId.startsWith("remove:")
         ? "Line removed to fit."
@@ -170,7 +175,7 @@ export function ResultScreen({
       const saved = await downloadResume(fileDocument, filename, company, allowPages);
       if (!saved.saved && saved.pages !== null) {
         // Longer than agreed: nothing saved. The page-fit card asks how it fits.
-        dispatch({ type: "measuredPages", pages: saved.pages });
+        dispatch({ type: "measuredPages", pages: saved.pages, fallback: saved.fallback });
         setDownloadError(`Your resume came to ${saved.pages} pages. Choose how it fits, then download again.`);
         return;
       }
@@ -245,6 +250,7 @@ export function ResultScreen({
         // Not while the page-fit question is open or the count is still
         // coming: the file would be a length nobody agreed to. The status says why.
         canDownload={Boolean(resume) && countKnown && !list.pageFit && !downloadNote}
+        checking={printed.checking}
         downloading={downloading}
       />
 

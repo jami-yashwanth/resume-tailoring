@@ -19,6 +19,7 @@ export function ResultHeader({
   ready,
   onDownload,
   canDownload,
+  checking,
   downloading,
 }: {
   role: string;
@@ -29,6 +30,8 @@ export function ResultHeader({
   ready: boolean;
   onDownload: () => void;
   canDownload: boolean;
+  /** The printer is counting the document on screen; Download waits for it. */
+  checking: boolean;
   downloading: boolean;
 }) {
   return (
@@ -51,7 +54,7 @@ export function ResultHeader({
       <div className="ml-auto flex items-center gap-4">
         <Switch on={compare} onToggle={onToggleCompare} label="Compare with original" />
         <Button variant={ready ? "primary" : "secondary"} onClick={onDownload} disabled={!canDownload || downloading}>
-          {downloading ? "Writing your file…" : "Download resume"}
+          {downloading ? "Writing your file…" : checking ? "Checking pages…" : "Download resume"}
         </Button>
       </div>
     </header>

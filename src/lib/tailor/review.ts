@@ -30,6 +30,8 @@ export type ReviewState = {
   compare: boolean;
   /** Pages the printer last counted for the file; null until it has answered. */
   pages: number | null;
+  /** `pages` came from the drawn fallback layout: shown, never agreed to. */
+  pagesFallback: boolean;
 };
 
 export type ReviewAction =
@@ -41,13 +43,17 @@ export type ReviewAction =
   | { type: "selectRequirement"; requirementId: string; opId: string | null }
   | { type: "choosePageFit"; optionId: string; causedBy: string | null }
   | { type: "toggleCompare" }
-  | { type: "measuredPages"; pages: number };
+  /** `fallback`: counted by the drawn fallback layout, not Chromium. */
+  | { type: "measuredPages"; pages: number; fallback?: boolean };
 
 /** What survives a refresh. `removedFor` is optional so older sessions load. */
 export type Persisted = {
   decisions: Decisions;
   wordings: Wordings;
   pagesAllowed: number | null;
+  /** Who counted `pagesAllowed`. Only a Chromium count of the template is kept
+   *  across a refresh; anything else (an older layout's) is re-counted. */
+  pagesSource?: "printer";
   growthAllowed: boolean;
   removedFor?: Record<string, string[]>;
 };
@@ -58,10 +64,14 @@ export function fromStored(stored: Persisted | null): ReviewState {
      shorter length, and would re-ask about a page already agreed to. The next
      measurement takes the current length instead. */
   const oldGrowth = Boolean(stored?.growthAllowed) && stored?.removedFor === undefined;
+  /* An allowance the printer did not count was measured on a layout the file
+     no longer has (the LaTeX template, the measured replica): drop it, and
+     the first printed count becomes the allowance again. */
+  const printed = stored?.pagesSource === "printer";
   return {
     decisions: stored?.decisions ?? {},
     wordings: stored?.wordings ?? {},
-    pagesAllowed: oldGrowth ? null : (stored?.pagesAllowed ?? null),
+    pagesAllowed: oldGrowth || !printed ? null : (stored?.pagesAllowed ?? null),
     growthAllowed: stored?.growthAllowed ?? false,
     removedFor: stored?.removedFor ?? {},
     lastAdded: null,
@@ -70,6 +80,7 @@ export function fromStored(stored: Persisted | null): ReviewState {
     selectedRequirement: null,
     compare: false,
     pages: null,
+    pagesFallback: false,
   };
 }
 
@@ -78,6 +89,7 @@ export function toStored(state: ReviewState): Persisted {
     decisions: state.decisions,
     wordings: state.wordings,
     pagesAllowed: state.pagesAllowed,
+    ...(state.pagesAllowed === null ? {} : { pagesSource: "printer" as const }),
     growthAllowed: state.growthAllowed,
     removedFor: state.removedFor,
   };
@@ -122,8 +134,18 @@ export function createReviewReducer(operations: PlannedOp[]) {
         return choosePageFit(state, action.optionId, action.causedBy);
       case "toggleCompare":
         return { ...state, compare: !state.compare, whyOpen: false };
-      case "measuredPages":
-        return { ...state, pages: action.pages, pagesAllowed: state.pagesAllowed ?? action.pages };
+      case "measuredPages": {
+        /* A fallback count is shown but never becomes the allowance: the
+           drawn layout sets differently from the template, so agreeing to
+           its length would be agreeing to the wrong file's. */
+        const fallback = Boolean(action.fallback);
+        return {
+          ...state,
+          pages: action.pages,
+          pagesFallback: fallback,
+          pagesAllowed: fallback ? state.pagesAllowed : (state.pagesAllowed ?? action.pages),
+        };
+      }
     }
   };
 }

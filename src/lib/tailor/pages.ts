@@ -1,11 +1,15 @@
 import type { TemplateDocument } from "./document";
 
+/** Which printer produced a count: Chromium, or the drawn fallback layout. */
+export type PageCount = { pages: number; renderer: "chromium" | "fallback" };
+
 /**
  * The page count the download will have. `/api/pages` prints through the
  * identical docsvc path as `/api/download`, so the number always matches the
- * file — only the response differs (a count instead of the bytes).
+ * file — only the response differs (a count instead of the bytes). When
+ * Chromium could not run, the count is the drawn fallback's, and says so.
  */
-export async function fetchPageCount(document: TemplateDocument, signal?: AbortSignal): Promise<number> {
+export async function fetchPageCount(document: TemplateDocument, signal?: AbortSignal): Promise<PageCount> {
   const response = await fetch("/api/pages", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -25,5 +29,5 @@ export async function fetchPageCount(document: TemplateDocument, signal?: AbortS
 
   const body = await response.json().catch(() => null);
   if (typeof body?.pages !== "number") throw new Error("Could not count pages.");
-  return body.pages;
+  return { pages: body.pages, renderer: body.renderer === "fallback" ? "fallback" : "chromium" };
 }

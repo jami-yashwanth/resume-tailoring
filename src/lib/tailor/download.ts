@@ -24,7 +24,7 @@ export async function downloadResume(
   filename: string | null,
   company: string,
   allowPages: number | null = null,
-): Promise<{ name: string; pages: number | null; note: string | null; saved: boolean }> {
+): Promise<{ name: string; pages: number | null; fallback: boolean; note: string | null; saved: boolean }> {
   const response = await fetch("/api/download", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -48,8 +48,9 @@ export async function downloadResume(
 
   const name = downloadName(filename, company);
   const pages = typeof body.pages === "number" ? body.pages : null;
-  const note = body.renderer === "fallback" ? FALLBACK_NOTE : null;
-  if (allowPages !== null && pages !== null && pages > allowPages) return { name, pages, note, saved: false };
+  const fallback = body.renderer === "fallback";
+  const note = fallback ? FALLBACK_NOTE : null;
+  if (allowPages !== null && pages !== null && pages > allowPages) return { name, pages, fallback, note, saved: false };
 
   const bytes = Uint8Array.from(atob(body.file), (c) => c.charCodeAt(0));
   const url = URL.createObjectURL(new Blob([bytes], { type: "application/pdf" }));
@@ -63,5 +64,5 @@ export async function downloadResume(
   link.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 
-  return { name, pages, note, saved: true };
+  return { name, pages, fallback, note, saved: true };
 }

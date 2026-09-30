@@ -115,6 +115,14 @@ describe("measuredPages", () => {
     expect(next.pagesAllowed).toBe(1);
   });
 
+  it("shows a fallback-layout count but never adopts it as the allowance", () => {
+    let state = reduce(start(), { type: "measuredPages", pages: 3, fallback: true });
+    expect(state).toMatchObject({ pages: 3, pagesFallback: true, pagesAllowed: null });
+    // The printer's own count, when it comes, is the one agreed to.
+    state = reduce(state, { type: "measuredPages", pages: 2 });
+    expect(state).toMatchObject({ pages: 2, pagesFallback: false, pagesAllowed: 2 });
+  });
+
   it("takes the first measurement as the allowance and never lowers or raises it after", () => {
     let state = reduce(start(), { type: "measuredPages", pages: 2 });
     expect(state).toMatchObject({ pages: 2, pagesAllowed: 2 });
@@ -153,8 +161,24 @@ describe("open, why, select, compare, wording", () => {
 
 describe("storage", () => {
   it("loads a session saved before removedFor existed", () => {
-    const state = fromStored({ decisions: { ins1: true }, wordings: { ins1: 1 }, pagesAllowed: 1, growthAllowed: false });
+    const state = fromStored({
+      decisions: { ins1: true }, wordings: { ins1: 1 }, pagesAllowed: 1, pagesSource: "printer", growthAllowed: false,
+    });
     expect(state).toMatchObject({ decisions: { ins1: true }, wordings: { ins1: 1 }, pagesAllowed: 1, growthAllowed: false, removedFor: {} });
+  });
+
+  it("drops an allowance that was not counted by the printer", () => {
+    // Sessions from before the Chromium printer measured a different layout;
+    // that length is not the file's, so the next printed count replaces it.
+    const old = fromStored({ decisions: { ins1: true }, wordings: {}, pagesAllowed: 1, growthAllowed: false, removedFor: {} });
+    expect(old.pagesAllowed).toBeNull();
+    expect(old.decisions).toEqual({ ins1: true });
+  });
+
+  it("stores the allowance with its source, and only when there is one", () => {
+    expect(toStored(start({ pagesAllowed: 2 }))).toMatchObject({ pagesAllowed: 2, pagesSource: "printer" });
+    expect(toStored(start()).pagesSource).toBeUndefined();
+    expect(fromStored(toStored(start({ pagesAllowed: 2 }))).pagesAllowed).toBe(2);
   });
 
   it("re-reads the length of an old session that had already allowed growth", () => {
@@ -162,7 +186,9 @@ describe("storage", () => {
     // pagesAllowed, so the stored allowance is the old, shorter length.
     const old = fromStored({ decisions: { ins1: true }, wordings: {}, pagesAllowed: 1, growthAllowed: true });
     expect(old).toMatchObject({ pagesAllowed: null, growthAllowed: true });
-    const current = fromStored({ decisions: {}, wordings: {}, pagesAllowed: 2, growthAllowed: true, removedFor: {} });
+    const current = fromStored({
+      decisions: {}, wordings: {}, pagesAllowed: 2, pagesSource: "printer", growthAllowed: true, removedFor: {},
+    });
     expect(current.pagesAllowed).toBe(2);
   });
 
@@ -171,7 +197,7 @@ describe("storage", () => {
   });
 
   it("stores only what should survive a refresh", () => {
-    const stored = toStored(start({ decisions: { ins1: true }, currentOpId: "ins2", compare: true }));
-    expect(Object.keys(stored).sort()).toEqual(["decisions", "growthAllowed", "pagesAllowed", "removedFor", "wordings"]);
+    const stored = toStored(start({ decisions: { ins1: true }, currentOpId: "ins2", compare: true, pagesAllowed: 1 }));
+    expect(Object.keys(stored).sort()).toEqual(["decisions", "growthAllowed", "pagesAllowed", "pagesSource", "removedFor", "wordings"]);
   });
 });

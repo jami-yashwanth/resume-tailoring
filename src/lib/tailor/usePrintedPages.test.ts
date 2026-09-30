@@ -7,13 +7,13 @@ const doc = (name: string): TemplateDocument => ({ name, contact: [], sections: 
 
 /** A fetch whose responses the test releases by hand, in any order. */
 function heldFetch() {
-  const calls: { name: string; respond: (pages: number) => void; fail: () => void }[] = [];
+  const calls: { name: string; respond: (pages: number, renderer?: string) => void; fail: () => void }[] = [];
   const fetchMock = vi.fn((_url: string, init: RequestInit) => {
     const name = JSON.parse(init.body as string).document.name as string;
     return new Promise<Response>((resolve) => {
       calls.push({
         name,
-        respond: (pages) => resolve(Response.json({ pages, renderer: "chromium" })),
+        respond: (pages, renderer = "chromium") => resolve(Response.json({ pages, renderer })),
         fail: () => resolve(Response.json({ error: "Printer is down." }, { status: 502 })),
       });
     });
@@ -40,7 +40,7 @@ describe("createPageCounter", () => {
     counter.update(doc("b"));
     await vi.advanceTimersByTimeAsync(799);
     expect(fetchMock).not.toHaveBeenCalled();
-    expect(seen.at(-1)).toEqual({ pages: null, checking: true, failed: false });
+    expect(seen.at(-1)).toEqual({ pages: null, fallback: false, checking: true, failed: false });
 
     await vi.advanceTimersByTimeAsync(1);
     expect(fetchMock).toHaveBeenCalledTimes(1);
@@ -48,7 +48,7 @@ describe("createPageCounter", () => {
 
     calls[0].respond(2);
     await vi.advanceTimersByTimeAsync(0);
-    expect(seen.at(-1)).toEqual({ pages: 2, checking: false, failed: false });
+    expect(seen.at(-1)).toEqual({ pages: 2, fallback: false, checking: false, failed: false });
     counter.dispose();
   });
 
@@ -72,7 +72,7 @@ describe("createPageCounter", () => {
     await vi.advanceTimersByTimeAsync(0);
     calls[0].respond(1);
     await vi.advanceTimersByTimeAsync(0);
-    expect(seen.at(-1)).toEqual({ pages: 3, checking: false, failed: false });
+    expect(seen.at(-1)).toEqual({ pages: 3, fallback: false, checking: false, failed: false });
     counter.dispose();
   });
 
@@ -89,13 +89,13 @@ describe("createPageCounter", () => {
     await vi.advanceTimersByTimeAsync(0);
 
     counter.update(doc("b"));
-    expect(seen.at(-1)).toEqual({ pages: 2, checking: true, failed: false });
+    expect(seen.at(-1)).toEqual({ pages: 2, fallback: false, checking: true, failed: false });
     await vi.advanceTimersByTimeAsync(800);
     calls[1].fail();
     await vi.advanceTimersByTimeAsync(3000);
     calls[2].fail();
     await vi.advanceTimersByTimeAsync(0);
-    expect(seen.at(-1)).toEqual({ pages: 2, checking: false, failed: true });
+    expect(seen.at(-1)).toEqual({ pages: 2, fallback: false, checking: false, failed: true });
     counter.dispose();
   });
 
@@ -111,12 +111,12 @@ describe("createPageCounter", () => {
     calls[0].fail();
     await vi.advanceTimersByTimeAsync(2999);
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(seen.at(-1)).toEqual({ pages: null, checking: true, failed: false });
+    expect(seen.at(-1)).toEqual({ pages: null, fallback: false, checking: true, failed: false });
     await vi.advanceTimersByTimeAsync(1);
     expect(calls.map((c) => c.name)).toEqual(["a", "a"]);
     calls[1].fail();
     await vi.advanceTimersByTimeAsync(0);
-    expect(seen.at(-1)).toEqual({ pages: null, checking: false, failed: true });
+    expect(seen.at(-1)).toEqual({ pages: null, fallback: false, checking: false, failed: true });
     // Only once: no third attempt for the same document.
     await vi.advanceTimersByTimeAsync(10000);
     expect(fetchMock).toHaveBeenCalledTimes(2);
@@ -128,7 +128,28 @@ describe("createPageCounter", () => {
     await vi.advanceTimersByTimeAsync(3000);
     calls[3].respond(2);
     await vi.advanceTimersByTimeAsync(0);
-    expect(seen.at(-1)).toEqual({ pages: 2, checking: false, failed: false });
+    expect(seen.at(-1)).toEqual({ pages: 2, fallback: false, checking: false, failed: false });
+    counter.dispose();
+  });
+
+  it("flags a count from the fallback layout, and clears the flag on the next printer count", async () => {
+    const { calls, fetchMock } = heldFetch();
+    vi.stubGlobal("fetch", fetchMock);
+    const counter = createPageCounter(fetchPageCount, 800);
+    const seen: PrintedPages[] = [];
+    counter.subscribe((s) => seen.push(s));
+
+    counter.update(doc("a"));
+    await vi.advanceTimersByTimeAsync(800);
+    calls[0].respond(3, "fallback");
+    await vi.advanceTimersByTimeAsync(0);
+    expect(seen.at(-1)).toEqual({ pages: 3, fallback: true, checking: false, failed: false });
+
+    counter.update(doc("b"));
+    await vi.advanceTimersByTimeAsync(800);
+    calls[1].respond(2);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(seen.at(-1)).toEqual({ pages: 2, fallback: false, checking: false, failed: false });
     counter.dispose();
   });
 

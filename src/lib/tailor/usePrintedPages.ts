@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { TemplateDocument } from "./document";
-import { fetchPageCount } from "./pages";
+import { fetchPageCount, type PageCount } from "./pages";
 
 /**
  * The page count the download will have, asked of the printer.
@@ -12,17 +12,22 @@ import { fetchPageCount } from "./pages";
  * document on screen may land.
  */
 
-/** `failed`: the printer did not answer for this document, even on a retry. */
-export type PrintedPages = { pages: number | null; checking: boolean; failed: boolean };
+/**
+ * `fallback`: `pages` is the drawn fallback layout's count, not Chromium's.
+ * `failed`: the printer did not answer for this document, even on a retry.
+ */
+export type PrintedPages = { pages: number | null; fallback: boolean; checking: boolean; failed: boolean };
+
+const EMPTY: PrintedPages = { pages: null, fallback: false, checking: false, failed: false };
 
 /** How long after a failed count the one retry goes out. */
 export const RETRY_MS = 3000;
 
-type Count = (document: TemplateDocument, signal: AbortSignal) => Promise<number>;
+type Count = (document: TemplateDocument, signal: AbortSignal) => Promise<PageCount>;
 
 /** The scheduler under the hook, kept free of React so it can be tested without a DOM. */
 export function createPageCounter(count: Count, delayMs: number) {
-  let state: PrintedPages = { pages: null, checking: false, failed: false };
+  let state: PrintedPages = EMPTY;
   const listeners = new Set<(state: PrintedPages) => void>();
   let timer: ReturnType<typeof setTimeout> | undefined;
   let controller: AbortController | null = null;
@@ -47,8 +52,10 @@ export function createPageCounter(count: Count, delayMs: number) {
         const own = new AbortController();
         controller = own;
         count(document, own.signal).then(
-          (pages) => {
-            if (request === latest && !disposed) set({ pages, checking: false, failed: false });
+          ({ pages, renderer }) => {
+            if (request === latest && !disposed) {
+              set({ pages, fallback: renderer === "fallback", checking: false, failed: false });
+            }
           },
           () => {
             if (request !== latest || disposed) return;
@@ -77,7 +84,7 @@ export function createPageCounter(count: Count, delayMs: number) {
 export type PageCounter = ReturnType<typeof createPageCounter>;
 
 export function usePrintedPages(document: TemplateDocument, delayMs = 800): PrintedPages {
-  const [state, setState] = useState<PrintedPages>({ pages: null, checking: false, failed: false });
+  const [state, setState] = useState<PrintedPages>(EMPTY);
   const counter = useRef<PageCounter | null>(null);
 
   useEffect(() => {

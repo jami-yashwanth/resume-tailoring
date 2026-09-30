@@ -41,6 +41,9 @@ export type StoredDecisions = {
   wordings: Wordings;
   /** The page count the user has agreed the document may reach. */
   pagesAllowed: number | null;
+  /** "printer": `pagesAllowed` is a Chromium count. Absent in sessions from
+   *  before the printer; their allowance is dropped on load. */
+  pagesSource?: "printer";
   /** They chose "keep everything" over losing a line, so stop asking. */
   growthAllowed: boolean;
   /** Lines removed to make room for an insert, keyed by that insert. Absent in

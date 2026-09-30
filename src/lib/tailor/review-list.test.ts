@@ -152,6 +152,19 @@ describe("reviewList", () => {
     expect(reviewList(later, layout, s).removed).toEqual([]);
   });
 
+  it("says it is checking pages whenever a count is in flight, not only before the first", () => {
+    const list = reviewList(plan, layout, state({ decisions: { ins1: true, ins2: false }, pages: 1 }), { checking: true });
+    expect(list.status).toBe("All decided · checking pages…");
+    expect(reviewList(plan, layout, state({ decisions: { ins1: true, ins2: false }, pages: 1 })).status).toBe(
+      "All decided · 1 page",
+    );
+  });
+
+  it("says when the count is the fallback layout's", () => {
+    const list = reviewList(plan, layout, state({ decisions: { ins1: true, ins2: false }, pages: 2, pagesAllowed: 2, pagesFallback: true }));
+    expect(list.status).toBe("All decided · 2 pages (fallback layout)");
+  });
+
   it("never asks about length while comparing", () => {
     expect(reviewList(plan, layout, state({ pages: 2, pagesAllowed: 1, compare: true })).pageFit).toBeNull();
   });
