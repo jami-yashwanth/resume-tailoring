@@ -19,8 +19,8 @@ from pydantic import BaseModel
 from . import render
 from .docx_ops import parse_docx
 from .fitter import fit
-from .models import ApplyRequest, ApplyResponse, BlockKind, Layout
-from .latex_render import render_latex
+from .models import ApplyRequest, ApplyResponse, BlockKind, Document, Layout
+from .latex_render import document_to_blocks, render_latex, render_latex_document
 from .pdf_ops import parse_pdf
 from .template_render import render_template
 
@@ -124,7 +124,10 @@ class TemplateBlock(BaseModel):
 
 
 class RenderTemplateRequest(BaseModel):
-    blocks: list[TemplateBlock]
+    #: Flat (kind, text) pairs, or the structured document — `document` wins
+    #: when both are sent.
+    blocks: list[TemplateBlock] | None = None
+    document: Document | None = None
     #: Also render each page as a PNG — the Result screen's exact preview,
     #: pictures of the same bytes the download gets. Off for downloads.
     images: bool = False
@@ -144,7 +147,14 @@ def render_template_endpoint(request: RenderTemplateRequest) -> dict:
     the plan and the user's Add it / Skip decisions into a final ordered
     list of (kind, text) pairs — nothing here touches an original file.
     """
-    blocks = [b.model_dump() for b in request.blocks]
+    if request.document is not None:
+        document = request.document.model_dump()
+        blocks = document_to_blocks(document)
+    elif request.blocks is not None:
+        document = None
+        blocks = [b.model_dump() for b in request.blocks]
+    else:
+        raise HTTPException(status_code=422, detail="send blocks or document")
 
     # The LaTeX path IS the template (owner's call, 30 Sep 2026): the owner's
     # reference .tex, stored verbatim, compiled with Tectonic — true
@@ -156,7 +166,7 @@ def render_template_endpoint(request: RenderTemplateRequest) -> dict:
     pages = 0
     if os.environ.get("REZZ_LATEX_TEMPLATE", "").strip().lower() != "false":
         try:
-            data = render_latex(blocks)
+            data = render_latex_document(document) if document is not None else render_latex(blocks)
             with pymupdf.open(stream=data, filetype="pdf") as compiled:
                 pages = compiled.page_count
         except Exception:

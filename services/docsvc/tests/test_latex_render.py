@@ -3,6 +3,7 @@
 Compile tests skip on machines without tectonic — the escaping and injection
 logic tests run everywhere.
 """
+import re
 import shutil
 from pathlib import Path
 
@@ -254,3 +255,156 @@ def test_render_template_endpoint_compiles_latex_by_default(monkeypatch):
 
     monkeypatch.setenv("REZZ_LATEX_TEMPLATE", " FALSE ")
     assert "Helvetica" in fonts_of(client.post("/render-template", json=body))
+
+
+DOC = {
+    "name": "Priya Sharma",
+    "contact": ["priya@example.com · Bengaluru", "+91 98765 43210"],
+    "sections": [
+        {
+            "heading": "Summary",
+            "kind": "summary",
+            "entries": [],
+            "skills": [],
+            "lines": ["Backend engineer."],
+        },
+        {
+            "heading": "Experience",
+            "kind": "experience",
+            "entries": [
+                {
+                    "org": "Google",
+                    "title": "Software Engineer",
+                    "dates": "Jun 2022 – Present",
+                    "place": "Bengaluru",
+                    "bullets": ["• Shipped X.", "Cut latency 20%."],
+                    "lines": ["Payments team."],
+                }
+            ],
+            "skills": [],
+            "lines": [],
+        },
+        {
+            "heading": "Education",
+            "kind": "education",
+            "entries": [
+                {
+                    "org": "IIT Madras",
+                    "title": "B.Tech",
+                    "dates": "2018 – 2022",
+                    "place": None,
+                    "bullets": [],
+                    "lines": ["CGPA: 8.38"],
+                }
+            ],
+            "skills": [],
+            "lines": [],
+        },
+        {
+            "heading": "Projects",
+            "kind": "projects",
+            "entries": [
+                {"org": "Rezz", "title": None, "dates": "2026", "place": None, "bullets": [], "lines": []}
+            ],
+            "skills": [],
+            "lines": [],
+        },
+        {
+            "heading": "Skills",
+            "kind": "skills",
+            "entries": [],
+            "skills": [
+                {"label": "Languages", "items": "Python, Go"},
+                {"label": None, "items": "Kubernetes"},
+            ],
+            "lines": [],
+        },
+        {"heading": None, "kind": "other", "entries": [], "skills": [], "lines": ["Open to work."]},
+    ],
+}
+
+
+def test_document_becomes_the_template_macros():
+    from app.latex_render import document_to_latex
+
+    tex = document_to_latex(DOC)
+    assert r"\resumeSubheading{Google}{Jun 2022 – Present}{Software Engineer}{Bengaluru}" in tex
+    assert r"\resumeItem{\textbullet\ Shipped X.}" in tex
+    assert r"\resumeItem{CGPA: 8.38}" in tex
+    assert r"\item \small{\textbf{Languages}{: Python, Go}}" in tex
+    assert r"\item \small{Kubernetes}" in tex
+    assert len(re.findall(r"\\resumeSubHeadingList\b(?!End)", tex)) == tex.count(r"\resumeSubHeadingListEnd")
+    assert tex.index(r"\resumeItem{Payments team.}") < tex.index(r"\textbullet\ Shipped X.")
+
+
+def test_entry_with_only_org_and_dates_inlines_the_references_tabular():
+    from app.latex_render import document_to_latex
+
+    tex = document_to_latex(DOC)
+    assert r"\textbf{Rezz} & 2026 \\" in tex
+    assert r"\resumeSubheading{Rezz}" not in tex
+
+
+def test_section_without_heading_sets_no_section_title():
+    from app.latex_render import document_to_latex
+
+    tex = document_to_latex(DOC)
+    assert tex.count(r"\section{") == sum(1 for s in DOC["sections"] if s["heading"])
+    assert "Open to work." in tex
+
+
+def test_empty_entry_renders_nothing():
+    from app.latex_render import document_to_latex
+
+    empty = {"org": None, "title": None, "dates": None, "place": None, "bullets": [], "lines": []}
+    doc = {
+        "name": None,
+        "contact": [],
+        "sections": [
+            {"heading": "X", "kind": "other", "entries": [empty], "skills": [], "lines": []}
+        ],
+    }
+    assert document_to_latex(doc) == r"\section{X}"
+
+
+def test_document_to_blocks_matches_the_flat_shape():
+    from app.latex_render import document_to_blocks
+
+    blocks = document_to_blocks(DOC)
+    assert [b["kind"] for b in blocks[:4]] == ["name", "contact", "contact", "heading"]
+    by_kind = [(b["kind"], b["text"]) for b in blocks]
+    assert ("heading", "Experience") in by_kind
+    i = by_kind.index(("role", "Google · Bengaluru\tJun 2022 – Present"))
+    assert blocks[i + 1] == {"kind": "job_title", "text": "Software Engineer"}
+    assert blocks[i + 2] == {"kind": "paragraph", "text": "Payments team."}
+    assert blocks[i + 3] == {"kind": "bullet", "text": "• Shipped X."}
+    assert ("paragraph", "Languages: Python, Go") in by_kind
+    assert ("paragraph", "Kubernetes") in by_kind
+    assert ("role", "Rezz\t2026") in by_kind
+
+
+def test_render_template_endpoint_accepts_a_document():
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+
+    client = TestClient(app)
+    response = client.post("/render-template", json={"document": DOC, "images": True})
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["pages"] >= 1
+    assert len(payload["images"]) == payload["pages"]
+    assert client.post("/render-template", json={}).status_code == 422
+
+
+@needs_tectonic
+def test_document_compiles_to_a_readable_pdf():
+    import pymupdf
+
+    from app.latex_render import render_latex_document
+
+    pdf = render_latex_document(DOC, timeout=180.0)
+    with pymupdf.open(stream=pdf, filetype="pdf") as doc:
+        text = doc[0].get_text()
+    assert "Software Engineer" in text
+    assert "Python, Go" in text
