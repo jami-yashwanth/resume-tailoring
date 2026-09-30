@@ -59,6 +59,9 @@ export function checkOutline(layout: Layout, outline: Outline): OutlineCheck {
   const whole = new Set<string>();
   const pieces = new Map<string, string[]>();
   const pieceBlocks = new Set<string>();
+  // Who the pieces of a block belong to: one entry or one skill row. Splitting a
+  // line across owners would print one employer's dates under another.
+  const owners = new Map<string, object>();
   let problem: OutlineCheck | null = null;
   const reject = (result: OutlineCheck) => {
     problem ??= result;
@@ -75,22 +78,22 @@ export function checkOutline(layout: Layout, outline: Outline): OutlineCheck {
     if (!allowBullet && blockOf.get(id)!.kind === "bullet") return reject(fail(`bullet ${id} used as a field`));
     whole.add(id);
   };
-  const placePiece = (id: string, texts: string[]) => {
+  const placePiece = (id: string, texts: string[], owner: object) => {
     if (!known(id)) return;
     const b = blockOf.get(id)!;
-    if (whole.has(id)) return reject(fail(`block ${id} used twice`));
+    if (whole.has(id) || (owners.has(id) && owners.get(id) !== owner))
+      return reject(fail(`block ${id} used twice`));
     if (b.kind === "bullet") return reject(fail(`bullet ${id} used as a field`));
     const flat = collapse(b.text);
     for (const text of texts) {
       if (!text || !flat.includes(text)) return reject(fail(`text not in block ${id}: ${text}`));
     }
     pieceBlocks.add(id);
+    owners.set(id, owner);
     pieces.set(id, [...(pieces.get(id) ?? []), ...texts]);
   };
   const placeSkill = (row: SkillRow) => {
-    if (!known(row.block)) return;
-    if (pieceBlocks.has(row.block) || whole.has(row.block)) return reject(fail(`block ${row.block} used twice`));
-    placePiece(row.block, row.label === null ? [row.items] : [row.label, row.items]);
+    placePiece(row.block, row.label === null ? [row.items] : [row.label, row.items], row);
   };
 
   if (outline.name !== null) placeWhole(outline.name, false);
@@ -106,7 +109,7 @@ export function checkOutline(layout: Layout, outline: Outline): OutlineCheck {
     for (const e of s.entries) {
       for (const field of FIELDS) {
         const ref = e[field];
-        if (ref) placePiece(ref.block, [ref.text]);
+        if (ref) placePiece(ref.block, [ref.text], e);
       }
       for (const id of e.bullets) placeWhole(id, true);
       for (const id of e.lines) placeWhole(id, true);

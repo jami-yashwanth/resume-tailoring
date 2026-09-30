@@ -157,6 +157,34 @@ describe("checkOutline", () => {
     expect(result).toMatchObject({ ok: false, reason: "block 0 used twice" });
   });
 
+  it("rejects a Ref block that is also placed whole", () => {
+    const outline = good();
+    outline.sections[0].entries[0].lines = ["5", "3"];
+    expect(checkOutline(layout(), outline)).toMatchObject({ ok: false, reason: "block 3 used twice" });
+  });
+
+  it("rejects a block in two skill rows", () => {
+    const outline = good();
+    outline.sections[3].skills.push({ block: "11", label: null, items: "Go" });
+    expect(checkOutline(layout(), outline)).toMatchObject({ ok: false, reason: "block 11 used twice" });
+  });
+
+  it("rejects one block split across two entries", () => {
+    const outline = good();
+    outline.sections[2].entries = [
+      entry({ org: { block: "9", text: "Google" } }),
+      entry({ dates: { block: "9", text: "Jun 2022 – Present" } }),
+    ];
+    expect(checkOutline(layout(), outline)).toMatchObject({ ok: false, reason: "block 9 used twice" });
+  });
+
+  it("rejects a skill row followed by a field on the same block", () => {
+    const outline = good();
+    outline.sections[3].entries = [entry({ org: { block: "11", text: "Languages" } })];
+    outline.sections[3].skills = [{ block: "11", label: null, items: "Python, Go" }];
+    expect(checkOutline(layout(), outline)).toMatchObject({ ok: false, reason: "block 11 used twice" });
+  });
+
   it("rejects a parser bullet used as a header field", () => {
     const outline = good();
     outline.sections[1].entries[0].bullets = [];
