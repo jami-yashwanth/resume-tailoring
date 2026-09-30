@@ -54,9 +54,15 @@ client that skips the check gets the same answer.
 
 `gates.ts` is rewritten: `checkTailor(entitlement, env)` returns
 `run | sign_in | capped`. `checkDownload` and the comment saying tailoring is
-always anonymous are removed. The `REZZ_ENFORCE_GATES` switch stays with the same
-semantics: only the exact string "false" opens the gate, and with it off nothing
-in the request path touches the database.
+always anonymous are removed.
+
+Two switches, two jobs. **Recording** happens whenever `DATABASE_URL` is set: a
+completed tailoring writes its ledger row, gate or no gate, so counting starts
+the day the database exists (rollout step 2). **Refusing** happens only while
+`REZZ_ENFORCE_GATES` is on; it keeps its semantics — only the exact string
+"false" opens the gate. With the gate off no entitlement is read and nobody is
+refused. With no `DATABASE_URL` nothing touches a database at all, which is the
+local-dev case.
 
 ## Identity
 
@@ -157,7 +163,7 @@ intent clicks.
   job again", not an error.
 - Magic link opened in a different browser → signed in there, same empty-job
   landing.
-- `REZZ_ENFORCE_GATES=false` → no sheet, no cap, no database call.
+- `REZZ_ENFORCE_GATES=false` → no sheet, no cap, no entitlement read; runs are still recorded when `DATABASE_URL` is set.
 - Database unreachable with gates on → the tailoring route refuses with a plain
   "Try again in a minute"; it never opens the gate on error.
 
@@ -177,8 +183,8 @@ intent clicks.
 - Ledger count at the rolling-window boundary, and the "opens Thursday 8 Oct"
   copy across month and year ends.
 - Route level: anonymous second call without a session returns the `sign_in`
-  error, not a stream; enforce off never touches the database (mocked adapter
-  asserts zero calls).
+  error, not a stream; enforce off never reads the ledger (fake ledger asserts
+  zero `usage` calls) and still records the run when a ledger exists.
 - Sign-in sheet and cap card screenshotted at 390 and desktop widths, per the
   UI bar, before being called done.
 
@@ -196,7 +202,9 @@ intent clicks.
 ## Environment
 
 Added: `DATABASE_URL`, `AUTH_SECRET`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`,
-`AUTH_RESEND_KEY`, `AUTH_EMAIL_FROM`. Unchanged: `REZZ_ENFORCE_GATES`.
+`AUTH_RESEND_KEY`, `AUTH_EMAIL_FROM`, `AUTH_TRUST_HOST=true` (Auth.js behind a
+proxy), `NEXT_PUBLIC_CONTACT_EMAIL` (shown on the privacy page as the delete-my-data
+address; the site has none today). Unchanged: `REZZ_ENFORCE_GATES`.
 
 ## Out of scope
 
