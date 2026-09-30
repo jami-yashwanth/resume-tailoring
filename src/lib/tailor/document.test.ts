@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveDocument, splitSkillRow } from "./document";
+import { blocksToDocument, resolveDocument, splitSkillRow } from "./document";
 import type { Outline, Section } from "./types";
 import type { RenderedLine } from "./view";
 
@@ -46,7 +46,7 @@ describe("resolveDocument", () => {
     expect(doc.name).toBe("Priya Sharma");
     expect(doc.contact).toEqual(["priya@example.com"]);
     expect(doc.sections[0].heading).toBe("EXPERIENCE");
-    expect(doc.sections[0].entries[0]).toEqual({
+    expect(doc.sections[0].entries[0]).toMatchObject({
       org: "Inncircles", title: "Engineer", dates: "2023 - 2026", place: "Hyderabad",
       items: [{ text: "Designed APIs.", bullet: true }],
     });
@@ -96,7 +96,7 @@ describe("resolveDocument", () => {
   it("keeps structure the user placed even when everything in it resolved to nothing", () => {
     const o = outline([section({ entries: [entry({ bullets: ["b1"], lines: ["l1"] })] })], { contact: ["c1", "c2"] });
     const doc = resolveDocument(o, [line("b1", "x", "removed"), line("c1", "a@b.c"), line("c1", "+91 1", "added")]);
-    expect(doc.sections[0].entries).toEqual([
+    expect(doc.sections[0].entries).toMatchObject([
       { org: null, title: null, dates: null, place: null, items: [] },
     ]);
     expect(doc.contact).toEqual(["a@b.c", "+91 1"]);
@@ -111,7 +111,7 @@ describe("inserts anchored to structure blocks", () => {
       line("o", "Remote-first team.", "added", "role"),
       line("l1", "Detail."),
     ]);
-    expect(doc.sections[0].entries[0].items).toEqual([
+    expect(doc.sections[0].entries[0].items).toMatchObject([
       { text: "Remote-first team.", bullet: false },
       { text: "Detail.", bullet: true },
     ]);
@@ -124,7 +124,7 @@ describe("inserts anchored to structure blocks", () => {
       line("o", "Inncircles\tJun 2023", "unchanged", "role"),
       line("o", "Added once.", "added", "role"),
     ]);
-    expect(doc.sections[0].entries[0].items).toEqual([{ text: "Added once.", bullet: false }]);
+    expect(doc.sections[0].entries[0].items).toMatchObject([{ text: "Added once.", bullet: false }]);
   });
 
   it("routes an added line on a heading to the front of the section's lines", () => {
@@ -135,7 +135,7 @@ describe("inserts anchored to structure blocks", () => {
       line("l1", "Body."),
     ]);
     expect(doc.sections[0].heading).toBe("Experience");
-    expect(doc.sections[0].lead).toEqual([
+    expect(doc.sections[0].lead).toMatchObject([
       { text: "Intro.", bullet: false },
       { text: "Body.", bullet: true },
     ]);
@@ -163,7 +163,7 @@ describe("document order", () => {
       line("b2", "Built B."),
       line("t", "Tech: Go, Postgres", "unchanged", "paragraph"),
     ]);
-    expect(doc.sections[0].entries[0].items).toEqual([
+    expect(doc.sections[0].entries[0].items).toMatchObject([
       { text: "Built A.", bullet: true },
       { text: "Built B.", bullet: true },
       { text: "Tech: Go, Postgres", bullet: false },
@@ -192,11 +192,11 @@ describe("document order", () => {
       line("b1", "Did."),
       line("tail", "• Loose bullet.", "unchanged", "bullet"),
     ]);
-    expect(doc.sections[0].lead).toEqual([
+    expect(doc.sections[0].lead).toMatchObject([
       { text: "Heading insert.", bullet: false },
       { text: "Intro.", bullet: false },
     ]);
-    expect(doc.sections[0].items).toEqual([{ text: "• Loose bullet.", bullet: true }]);
+    expect(doc.sections[0].items).toMatchObject([{ text: "• Loose bullet.", bullet: true }]);
   });
 
   it("a loose line after a skills row goes to items; one before it to lead", () => {
@@ -215,7 +215,7 @@ describe("document order", () => {
   it("a section with only bullets keeps their marks", () => {
     const o = outline([section({ kind: "achievements", lines: ["a1", "a2"] })]);
     const doc = resolveDocument(o, [line("a1", "Won X."), line("a2", "Won Y.")]);
-    expect([...doc.sections[0].lead, ...doc.sections[0].items]).toEqual([
+    expect([...doc.sections[0].lead, ...doc.sections[0].items]).toMatchObject([
       { text: "Won X.", bullet: true },
       { text: "Won Y.", bullet: true },
     ]);
@@ -228,5 +228,45 @@ describe("splitSkillRow", () => {
     expect(splitSkillRow("Languages : Python", "Languages")).toEqual({ label: "Languages", items: "Python" });
     expect(splitSkillRow("Python, Go, Rust", "Languages")).toEqual({ label: null, items: "Python, Go, Rust" });
     expect(splitSkillRow("Python, Go", null)).toEqual({ label: null, items: "Python, Go" });
+  });
+});
+
+describe("blocksToDocument", () => {
+  it("builds a one-section document", () => {
+    const doc = blocksToDocument([
+      { kind: "name", text: "Priya Sharma" },
+      { kind: "contact", text: "a@b.com | Hyderabad" },
+      { kind: "heading", text: "Experience" },
+      { kind: "role", text: "Google\tJun 2022" },
+      { kind: "job_title", text: "Engineer" },
+      { kind: "bullet", text: "•  Built things" },
+    ]);
+    expect(doc.name).toBe("Priya Sharma");
+    expect(doc.contact).toEqual(["a@b.com | Hyderabad"]);
+    expect(doc.sections).toHaveLength(1);
+    expect(doc.sections[0].heading).toBe("Experience");
+    expect(doc.sections[0].entries).toEqual([
+      { org: "Google", dates: "Jun 2022", title: "Engineer", place: null,
+        items: [{ text: "Built things", bullet: true }] },
+    ]);
+  });
+
+  it("puts blocks before any heading in a heading-less section", () => {
+    const doc = blocksToDocument([{ kind: "paragraph", text: "Hello" }]);
+    expect(doc.sections[0].heading).toBeNull();
+    expect(doc.sections[0].items).toEqual([{ text: "Hello", bullet: false }]);
+  });
+});
+
+describe("resolveDocument marks", () => {
+  it("carries marks onto items", () => {
+    const l = { ...line("b1", "Better words", "reworded"), opId: "op1" };
+    const doc = resolveDocument(
+      outline([section({ heading: "h", entries: [entry({ org: ref("o", "Acme"), bullets: ["b1"] })] })]),
+      [line("h", "Experience", "unchanged", "heading"), l],
+    );
+    expect(doc.sections[0].entries[0].items[0]).toMatchObject({
+      text: "Better words", bullet: true, state: "reworded", opId: "op1", blockId: "b1", key: l.key,
+    });
   });
 });

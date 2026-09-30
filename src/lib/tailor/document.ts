@@ -1,5 +1,5 @@
-import type { Entry, Outline, SectionKind } from "./types";
-import type { RenderedLine } from "./view";
+import type { BlockKind, Entry, Outline, SectionKind } from "./types";
+import { cleanText, type LineState, type RenderedLine } from "./view";
 
 /**
  * The resume as the template renders it: the outline's structure filled with
@@ -9,7 +9,19 @@ import type { RenderedLine } from "./view";
  * list of items is in document order, so a "Tech: ..." line after an entry's
  * bullets stays after them.
  */
-export type Item = { text: string; bullet: boolean };
+export type Item = {
+  text: string;
+  bullet: boolean;
+  /**
+   * Review marks, copied from the item's RenderedLine so the editor can anchor
+   * to it and show its state. Optional: docsvc ignores them and flat-block
+   * documents have none.
+   */
+  key?: string;
+  state?: LineState;
+  opId?: string;
+  blockId?: string;
+};
 export type TemplateEntry = {
   org: string | null;
   title: string | null;
@@ -69,15 +81,18 @@ export function resolveDocument(outline: Outline, lines: RenderedLine[]): Templa
   const byPosition = (ids: string[]) => [...ids].sort((a, b) => at(a) - at(b));
   const resolved = (id: string) => byBlock.get(id) ?? [];
   const texts = (id: string) => resolved(id).map((l) => l.text);
+  const mark = (l: RenderedLine, bullet: boolean): Item => ({
+    text: l.text, bullet, key: l.key, state: l.state, opId: l.opId, blockId: l.blockId,
+  });
   const items = (ids: string[]): Item[] =>
-    byPosition(ids).flatMap((id) => resolved(id).map((l) => ({ text: l.text, bullet: l.kind === "bullet" })));
+    byPosition(ids).flatMap((id) => resolved(id).map((l) => mark(l, l.kind === "bullet")));
   // Inserted lines are the `added` ones; the rest is the block's own line.
   const own = (id: string) => resolved(id).find((l) => l.state !== "added")?.text ?? null;
-  const inserted = (id: string) =>
-    resolved(id).filter((l) => l.state === "added").map((l) => l.text);
+  const insertedLines = (id: string) => resolved(id).filter((l) => l.state === "added");
+  const inserted = (id: string) => insertedLines(id).map((l) => l.text);
   // An insert anchored to a header or heading has no slot of its own: it
   // leads what follows, as a plain line.
-  const plain = (text: string): Item => ({ text, bullet: false });
+  const plain = (l: RenderedLine): Item => mark(l, false);
 
   return {
     name: outline.name === null ? null : own(outline.name),
@@ -100,7 +115,7 @@ export function resolveDocument(outline: Outline, lines: RenderedLine[]): Templa
       return {
         heading: s.heading === null ? null : own(s.heading),
         kind: s.kind,
-        lead: [...(s.heading === null ? [] : inserted(s.heading).map(plain)), ...items(lead)],
+        lead: [...(s.heading === null ? [] : insertedLines(s.heading).map(plain)), ...items(lead)],
         // Header fields come from the ref, never from a reworded line: titles and
         // dates are not rewritten by rule. Empty entries are kept, not dropped.
         entries: s.entries.map((e) => ({
@@ -108,7 +123,7 @@ export function resolveDocument(outline: Outline, lines: RenderedLine[]): Templa
           title: e.title?.text ?? null,
           dates: e.dates?.text ?? null,
           place: e.place?.text ?? null,
-          items: [...headerBlocks(e).flatMap(inserted).map(plain), ...items([...e.bullets, ...e.lines])],
+          items: [...headerBlocks(e).flatMap(insertedLines).map(plain), ...items([...e.bullets, ...e.lines])],
         })),
         skills: s.skills.flatMap((row) => {
           const [first, ...inserts] = texts(row.block);
@@ -121,4 +136,45 @@ export function resolveDocument(outline: Outline, lines: RenderedLine[]): Templa
       };
     }),
   };
+}
+
+/**
+ * A result with no outline has only flat blocks; give them the structure the
+ * template needs. A role's text carries the employer and dates around a tab,
+ * a following job_title is its title, and bullets and paragraphs attach to the
+ * current entry (or, before any role, to the section). Nothing is reworded.
+ */
+export function blocksToDocument(blocks: { kind: BlockKind; text: string }[]): TemplateDocument {
+  const doc: TemplateDocument = { name: null, contact: [], sections: [] };
+  const newSection = (heading: string | null): TemplateSection => {
+    const s: TemplateSection = { heading, kind: "other", lead: [], entries: [], skills: [], items: [] };
+    doc.sections.push(s);
+    return s;
+  };
+  let section: TemplateSection | null = null;
+  let entry: TemplateEntry | null = null;
+  for (const b of blocks) {
+    if (b.kind === "name") doc.name ??= b.text;
+    else if (b.kind === "contact") doc.contact.push(cleanText("contact", b.text));
+    else if (b.kind === "heading") {
+      section = newSection(b.text);
+      entry = null;
+    } else if (b.kind === "role") {
+      section ??= newSection(null);
+      const tab = b.text.indexOf("\t");
+      entry = {
+        org: (tab < 0 ? b.text : b.text.slice(0, tab)).trim() || null,
+        dates: tab < 0 ? null : b.text.slice(tab + 1).trim() || null,
+        title: null, place: null, items: [],
+      };
+      section.entries.push(entry);
+    } else if (b.kind === "job_title") {
+      if (entry && entry.title === null) entry.title = b.text;
+    } else {
+      section ??= newSection(null);
+      const item: Item = { text: cleanText(b.kind, b.text), bullet: b.kind === "bullet" };
+      (entry ? entry.items : section.items).push(item);
+    }
+  }
+  return doc;
 }
