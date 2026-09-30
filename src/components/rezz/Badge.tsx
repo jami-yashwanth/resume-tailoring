@@ -21,7 +21,7 @@ const TONES = {
   changed: "rounded-full bg-highlighter text-on-highlighter",
   /* Drawn in ink with a hard offset instead of tinted — it carries no state, so
      it borrows no state colour. */
-  drawn: "rounded-md border-2 border-ink bg-paper-raised text-ink shadow-[4px_4px_0_0_var(--ink)]",
+  drawn: "rounded-md border-2 border-edge bg-paper-raised text-ink shadow-[4px_4px_0_0_var(--offset)]",
 } as const;
 
 export function Badge({

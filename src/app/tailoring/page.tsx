@@ -53,9 +53,9 @@ const count = (detail: string | undefined, pattern: RegExp) => {
 
 const clock = (seconds: number) => `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
 
-const page = "min-h-screen bg-paper-raised";
-const column = "mx-auto max-w-[640px] px-16 pb-24 pt-16 max-[1100px]:px-8 max-[680px]:px-4";
-const wide = "mx-auto max-w-[1120px] px-16 pb-24 pt-16 max-[1100px]:px-8 max-[680px]:px-4";
+const page = "min-h-screen bg-paper-raised dark:bg-paper";
+const column = "mx-auto max-w-[640px] px-16 pt-[clamp(24px,6dvh,64px)] pb-[clamp(24px,6dvh,96px)] max-[1100px]:px-8 max-[680px]:px-4";
+const wide = "mx-auto max-w-[1120px] px-16 pt-[clamp(24px,6dvh,64px)] pb-[clamp(24px,6dvh,96px)] max-[1100px]:px-8 max-[680px]:px-4";
 
 export default function TailoringPage() {
   const router = useRouter();
@@ -242,14 +242,18 @@ export default function TailoringPage() {
         className={`${wide} transition-opacity duration-150 ease-out ${leaving ? "opacity-0" : "opacity-100"}`}
       >
         <h1 className={title}>Tailoring your resume.</h1>
-        <p className={`mt-6 ${lead}`}>
+        <p className={`mt-6 short:mt-4 ${lead}`}>
           About fifteen seconds. We keep your layout and mark every change.
         </p>
 
-        <div className="mt-10 grid grid-cols-[minmax(0,560px)_minmax(0,1fr)] items-start gap-12 max-[1100px]:grid-cols-1">
+        <div className="mt-10 short:mt-7 grid grid-cols-[minmax(0,560px)_minmax(0,1fr)] items-start gap-12 max-[1100px]:grid-cols-1">
           {/* The document being worked on. Hidden on narrow screens, where the
-              margin marks have no margin to hang in; the stages say it all. */}
-          <div className="max-[680px]:hidden">
+              margin marks have no margin to hang in; the stages say it all.
+              The sheet is a fixed drawing (~500px tall), so on short windows it
+              is zoomed rather than cropped: at 100% on a 768px laptop it alone
+              pushed the page past the fold. It is aria-hidden decoration, and
+              the stages beside it keep their real size. */}
+          <div className="max-[680px]:hidden short:[zoom:0.85] [@media(max-height:700px)]:[zoom:0.72]">
             <TailoringSheet
               current={current}
               requirements={count(details.reading_job, /(\d+) requirements?/)}
@@ -262,7 +266,7 @@ export default function TailoringPage() {
               that tick over in sequence are something you read, not four
               things you act on, and drawing each one would make the wait
               louder than the work. */}
-          <div className={`${box} ${offsetPage} rounded-md bg-paper-raised p-8 max-[680px]:p-6`}>
+          <div className={`${box} ${offsetPage} rounded-md bg-paper-raised p-8 short:px-8 short:py-5 max-[680px]:p-6`}>
             <ol aria-live="polite" className="m-0 list-none p-0">
               {STEPS.map((step, index) => {
                 const done = current > index;
@@ -271,7 +275,7 @@ export default function TailoringPage() {
                 return (
                   <li
                     key={step.stage}
-                    className="grid grid-cols-[20px_minmax(0,1fr)] items-center gap-3 border-b border-line py-3.5 last:border-b-0"
+                    className="grid grid-cols-[20px_minmax(0,1fr)] items-center gap-3 border-b border-line py-3.5 short:py-2.5 last:border-b-0"
                   >
                     <Indicator state={done ? "done" : active ? "active" : "pending"} />
                     <span

@@ -29,17 +29,20 @@
  *    appears as the primary button's offset, behind changed text, and on the
  *    blocks that state the promise. Every other offset is ink.
  *
- * All four offsets are token-valued, so dark theme inverts them for free.
+ * All offsets are token-valued (`--edge`, `--offset`, `--action-offset`,
+ * `--accent-offset` in globals.css). In light theme they are ink and
+ * highlighter; dark theme gives them their own quieter values instead of
+ * inverting ink, which turned every drawn object into a white slab.
  */
 
 /** The 2px ink outline every drawn object carries. */
-export const box = "border-2 border-ink";
+export const box = "border-2 border-edge";
 
 /** 4px ink — anything you act on. */
-export const offset = "shadow-[4px_4px_0_0_var(--ink)]";
+export const offset = "shadow-[4px_4px_0_0_var(--offset)]";
 
 /** 8px ink — page-scale objects: the drop zone, a panel, the resume on the hero. */
-export const offsetPage = "shadow-[8px_8px_0_0_var(--ink)]";
+export const offsetPage = "shadow-[8px_8px_0_0_var(--offset)]";
 
 /**
  * 4px highlighter — the primary button. The one action on a view carries the
@@ -48,7 +51,7 @@ export const offsetPage = "shadow-[8px_8px_0_0_var(--ink)]";
  * describes: it was written down here long before the component did it, and the
  * buttons shipped flat until 29 Sep 2026.
  */
-export const offsetAction = "shadow-[4px_4px_0_0_var(--highlighter)]";
+export const offsetAction = "shadow-[4px_4px_0_0_var(--action-offset)]";
 
 /* ---------------------------------------------------------------------------
    Press.
@@ -80,12 +83,12 @@ const pressMotion =
 
 /** Press into a 4px ink offset. */
 export const press =
-  `${pressMotion} hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_0_var(--ink)] ` +
+  `${pressMotion} hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_0_var(--offset)] ` +
   "active:translate-x-[4px] active:translate-y-[4px] active:shadow-none";
 
 /** Press into a 4px highlighter offset — the primary button. */
 export const pressAction =
-  `${pressMotion} hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_0_var(--highlighter)] ` +
+  `${pressMotion} hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_0_var(--action-offset)] ` +
   "active:translate-x-[4px] active:translate-y-[4px] active:shadow-none";
 
 /**
@@ -101,10 +104,10 @@ export const pressAction =
  * generated — the hero quietly falls back to the soft lift. Caught exactly that
  * way. The full literal must live here, in a file Tailwind scans.
  */
-export const offsetPageOverride = "shadow-[8px_8px_0_0_var(--ink)]!";
+export const offsetPageOverride = "shadow-[8px_8px_0_0_var(--offset)]!";
 
 /** 8px highlighter — reserved for the blocks that state the promise. */
-export const offsetAccent = "shadow-[8px_8px_0_0_var(--highlighter)]";
+export const offsetAccent = "shadow-[8px_8px_0_0_var(--accent-offset)]";
 
 /**
  * 4px in the corrector's red — the one thing on a screen that needs the user.

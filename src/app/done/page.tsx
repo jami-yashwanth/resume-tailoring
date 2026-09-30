@@ -19,8 +19,8 @@ import type { PrepItem } from "@/lib/tailor/prep";
  * Nothing here is a prediction about whether they will get the job.
  */
 
-const page = "min-h-screen bg-paper-raised";
-const column = "mx-auto max-w-[760px] px-16 pb-24 pt-16 max-[1100px]:px-8 max-[680px]:px-4";
+const page = "min-h-screen bg-paper-raised dark:bg-paper";
+const column = "mx-auto px-16 pt-[clamp(24px,6dvh,64px)] pb-[clamp(24px,6dvh,96px)] max-[1100px]:px-8 max-[680px]:px-4";
 
 export default function DonePage() {
   const router = useRouter();
@@ -70,39 +70,52 @@ export default function DonePage() {
     <div className={page}>
       <FlowHeader step="Done" />
 
-      <main className={column}>
-        <h1 className={title}>Your resume is ready for {finish.company}.</h1>
-        {/* v1 override (28 Sep 2026, see CLAUDE.md): the download is one clean
-            Rezz template, not the file they uploaded. This line used to promise
-            "same file, same design, same fonts", which stopped being true the
-            day the override landed. */}
-        <p className={`mt-6 max-w-[54ch] ${lead}`}>
-          Downloaded as <b className="font-semibold text-ink">{finish.filename}</b>. One clean
-          Rezz template, your own words, and only the changes you approved.
-        </p>
+      {/* Two columns on wide windows: what you got and what to do next on the
+          left, the interview prep on the right. Stacked, this screen ran
+          ~500px past the fold at 100% zoom on a 1440×900 laptop, with the one
+          button at the very bottom. DOM order stays intro → prep → button, so
+          a screen reader still reaches the button last. */}
+      <main
+        className={`${column} ${
+          finish.added.length > 0
+            ? "max-w-[1120px] min-[1101px]:grid min-[1101px]:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] min-[1101px]:grid-rows-[auto_1fr] min-[1101px]:gap-x-16"
+            : "max-w-[760px]"
+        }`}
+      >
+        <div className="min-[1101px]:col-start-1 min-[1101px]:row-start-1">
+          <h1 className={title}>Your resume is ready for {finish.company}.</h1>
+          {/* v1 override (28 Sep 2026, see CLAUDE.md): the download is one clean
+              Rezz template, not the file they uploaded. This line used to promise
+              "same file, same design, same fonts", which stopped being true the
+              day the override landed. */}
+          <p className={`mt-6 short:mt-4 max-w-[54ch] ${lead}`}>
+            Downloaded as <b className="font-semibold text-ink">{finish.filename}</b>. One clean
+            Rezz template, your own words, and only the changes you approved.
+          </p>
 
-        {/* Counts, not a score. Each one is something the user can open the
-            file and check for themselves. The block is drawn; the facts inside
-            stay hairlines, because they are read rather than acted on. The
-            highlighter offset is allowed here: this block is the promise kept. */}
-        <div className={`mt-10 ${box} ${offsetAccent} rounded-md bg-paper-raised p-8 max-[680px]:p-6`}>
-          <ul className="m-0 list-none p-0">
-            {facts.map((fact) => (
-              <li
-                key={fact}
-                className="grid grid-cols-[20px_minmax(0,1fr)] gap-3 border-b border-line py-3.5 last:border-b-0"
-              >
-                <span aria-hidden className="font-mark text-[13px] leading-6 text-verified">
-                  ✓
-                </span>
-                <span className="text-[15px] leading-6">{fact}</span>
-              </li>
-            ))}
-          </ul>
+          {/* Counts, not a score. Each one is something the user can open the
+              file and check for themselves. The block is drawn; the facts inside
+              stay hairlines, because they are read rather than acted on. The
+              highlighter offset is allowed here: this block is the promise kept. */}
+          <div className={`mt-10 short:mt-7 ${box} ${offsetAccent} rounded-md bg-paper-raised p-8 short:px-8 short:py-4 max-[680px]:p-6`}>
+            <ul className="m-0 list-none p-0">
+              {facts.map((fact) => (
+                <li
+                  key={fact}
+                  className="grid grid-cols-[20px_minmax(0,1fr)] gap-3 border-b border-line py-3.5 short:py-2.5 last:border-b-0"
+                >
+                  <span aria-hidden className="font-mark text-[13px] leading-6 text-verified">
+                    ✓
+                  </span>
+                  <span className="text-[15px] leading-6">{fact}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
 
         {finish.added.length > 0 && (
-          <section className="mt-16">
+          <section className="mt-16 min-[1101px]:col-start-2 min-[1101px]:row-span-2 min-[1101px]:row-start-1 min-[1101px]:mt-0">
             <h2 className={h3}>Be ready for what you added.</h2>
             <p className="mt-3 max-w-[58ch] text-[15px] leading-6 text-ink-muted">
               You added {finish.added.length} line{finish.added.length === 1 ? "" : "s"} that
@@ -153,7 +166,7 @@ export default function DonePage() {
           </section>
         )}
 
-        <div className="mt-16 flex items-center gap-5 border-t-2 border-ink pt-10 max-[680px]:flex-col max-[680px]:items-stretch">
+        <div className="mt-16 flex items-center gap-5 self-start border-t-2 border-edge pt-10 max-[680px]:flex-col max-[680px]:items-stretch min-[1101px]:col-start-1 min-[1101px]:row-start-2 min-[1101px]:mt-10 min-[1101px]:pt-8 short:min-[1101px]:mt-7 short:min-[1101px]:pt-6">
           <Button
             size="lg"
             onClick={() => {

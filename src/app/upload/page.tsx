@@ -33,8 +33,8 @@ const MAX_BYTES = 3 * 1024 * 1024;
 /* The app screens sit on the same flat white the landing page does. The grey
    ground exists to sink the resume canvas on the Result screen; there is no
    resume here, so there is nothing to sink. */
-const page = "min-h-screen bg-paper-raised";
-const column = "mx-auto max-w-[720px] px-16 pb-24 pt-16 max-[1100px]:px-8 max-[680px]:px-4";
+const page = "min-h-screen bg-paper-raised dark:bg-paper";
+const column = "mx-auto max-w-[720px] px-16 pt-[clamp(24px,6dvh,64px)] pb-[clamp(24px,6dvh,96px)] max-[1100px]:px-8 max-[680px]:px-4";
 
 type Check = { pages: number; fonts: string[]; warnings: string[]; name: string | null };
 

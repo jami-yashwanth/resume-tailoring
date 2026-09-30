@@ -75,7 +75,7 @@ export function ExactPreview({ lines, who }: { lines: RenderedLine[]; who: strin
         <button
           type="button"
           onClick={() => setAttempt((n) => n + 1)}
-          className="mt-2 inline-flex min-h-11 cursor-pointer items-center rounded-md border border-line-strong
+          className="mt-2 inline-flex min-h-11 cursor-pointer items-center rounded-sheet border border-line-strong
                      bg-paper-raised px-3 font-ui text-sm font-medium text-ink transition-colors duration-150
                      hover:bg-paper-sunken"
         >

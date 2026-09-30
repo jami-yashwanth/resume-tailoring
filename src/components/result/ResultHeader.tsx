@@ -37,7 +37,7 @@ export function ResultHeader({
   downloading: boolean;
 }) {
   return (
-    <header className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b-2 border-ink bg-paper-raised px-8 py-3 max-[900px]:px-4">
+    <header className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b-2 border-edge bg-paper-raised dark:bg-paper px-8 py-3 max-[900px]:px-4">
       <Link
         href="/"
         aria-label="Rezz home"
@@ -77,7 +77,7 @@ function Switch({ on, onToggle, label }: { on: boolean; onToggle: () => void; la
       type="button"
       aria-pressed={on}
       onClick={onToggle}
-      className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-md border-0 bg-transparent px-2
+      className="inline-flex min-h-11 cursor-pointer items-center gap-2 rounded-sheet border-0 bg-transparent px-2
                  font-ui text-sm font-medium leading-5 text-ink transition-colors duration-150 hover:bg-paper-sunken"
     >
       <span

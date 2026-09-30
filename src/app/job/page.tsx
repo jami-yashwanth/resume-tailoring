@@ -18,8 +18,12 @@ import { session } from "@/lib/session";
  */
 const MINIMUM = 50;
 
-const page = "min-h-screen bg-paper-raised";
-const column = "mx-auto max-w-[720px] px-16 pb-24 pt-16 max-[1100px]:px-8 max-[680px]:px-4";
+/* A flex column, so the textarea takes whatever height the window has left
+   rather than a fixed 16 rows. At 100% zoom on a 768px laptop the fixed rows
+   pushed "Tailor my resume" below the fold, on the one screen that is nothing
+   but a field and a button. */
+const page = "flex min-h-dvh flex-col bg-paper-raised dark:bg-paper";
+const column = "mx-auto flex w-full flex-1 flex-col max-w-[720px] px-16 pt-[clamp(24px,6dvh,64px)] pb-[clamp(24px,6dvh,96px)] max-[1100px]:px-8 max-[680px]:px-4";
 
 export default function JobPage() {
   const router = useRouter();
@@ -108,7 +112,7 @@ export default function JobPage() {
           onChange={(e) => setText(e.target.value)}
           rows={16}
           placeholder="Paste the whole job posting — requirements, responsibilities, everything."
-          className={`mt-6 w-full resize-y rounded-md ${box} ${offset} bg-paper-raised p-4
+          className={`mt-6 min-h-40 max-h-[520px] w-full flex-1 basis-0 resize-y rounded-md ${box} ${offset} bg-paper-raised p-4
                       font-ui text-[15px] leading-6 text-ink placeholder:text-ink-muted`}
         />
 

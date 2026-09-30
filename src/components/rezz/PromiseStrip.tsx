@@ -73,7 +73,7 @@ export function PromiseStrip({ items = REZZ_PROMISES }: { items?: Promise_[] }) 
   return (
     <section
       aria-labelledby="promise-strip-heading"
-      className="mt-20 border-y-4 border-ink max-[1100px]:mt-12"
+      className="mt-20 border-y-4 border-edge max-[1100px]:mt-12"
     >
       {/* The block used to open straight onto four claims with nothing saying
           what they were. An eyebrow is the brand book's one sanctioned use of
@@ -81,7 +81,7 @@ export function PromiseStrip({ items = REZZ_PROMISES }: { items?: Promise_[] }) 
           these are — commitments you can hold us to, not a tagline. */}
       <h2
         id="promise-strip-heading"
-        className="m-0 border-b-2 border-ink py-4 font-mark text-[11px] font-medium uppercase
+        className="m-0 border-b-2 border-edge py-4 font-mark text-[11px] font-medium uppercase
                    leading-4 tracking-[0.08em] text-ink-muted"
       >
         What we promise
@@ -104,7 +104,7 @@ export function PromiseStrip({ items = REZZ_PROMISES }: { items?: Promise_[] }) 
                rather than as a card that happens to have no border. */
             className={`py-7 lg:row-span-2 lg:grid lg:grid-rows-subgrid lg:px-7
                         ${i === 0 ? "lg:pl-0" : ""}
-                        ${i === items.length - 1 ? "lg:pr-0" : "border-b-2 border-line lg:border-b-0 lg:border-r-2 lg:border-r-ink"}`}
+                        ${i === items.length - 1 ? "lg:pr-0" : "border-b-2 border-line lg:border-b-0 lg:border-r-2 lg:border-r-edge"}`}
           >
             <div className="text-lg font-semibold leading-[29px]">{p.claim}</div>
             <p className="m-0 mt-3 text-sm font-normal leading-[22px] text-ink-muted">{p.detail}</p>

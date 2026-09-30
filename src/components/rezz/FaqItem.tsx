@@ -18,7 +18,7 @@ export function FaqItem({
   return (
     <details
       open={defaultOpen}
-      className="group border-b-2 border-ink py-3 first-of-type:border-t-2 first-of-type:border-t-ink"
+      className="group border-b-2 border-edge py-3 first-of-type:border-t-2 first-of-type:border-t-edge"
     >
       {/* The marker is a bordered square rather than a bare glyph, so it reads as
           a control on a page where every other control is drawn the same way.
@@ -43,7 +43,7 @@ export function FaqItem({
         <span className="group-hover:underline group-hover:underline-offset-4">{question}</span>
         <span
           aria-hidden
-          className="flex h-7 w-7 flex-none items-center justify-center border-2 border-ink
+          className="flex h-7 w-7 flex-none items-center justify-center border-2 border-edge
                      transition-colors duration-150 group-open:bg-ink group-open:text-paper"
         >
           <Plus className="h-4 w-4 group-open:hidden" strokeWidth={2} />
