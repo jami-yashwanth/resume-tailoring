@@ -154,7 +154,11 @@ export function blocksToDocument(blocks: { kind: BlockKind; text: string }[]): T
   let section: TemplateSection | null = null;
   let entry: TemplateEntry | null = null;
   for (const b of blocks) {
-    if (b.kind === "name") doc.name ??= b.text;
+    // Nothing the user wrote is dropped: a stray second name is kept as a contact line.
+    if (b.kind === "name") {
+      if (doc.name === null) doc.name = b.text;
+      else doc.contact.push(b.text);
+    }
     else if (b.kind === "contact") doc.contact.push(cleanText("contact", b.text));
     else if (b.kind === "heading") {
       section = newSection(b.text);
@@ -170,6 +174,11 @@ export function blocksToDocument(blocks: { kind: BlockKind; text: string }[]): T
       section.entries.push(entry);
     } else if (b.kind === "job_title") {
       if (entry && entry.title === null) entry.title = b.text;
+      else {
+        // No entry to title, or it already has one: keep the text as a plain line.
+        section ??= newSection(null);
+        (entry ? entry.items : section.items).push({ text: b.text, bullet: false });
+      }
     } else {
       section ??= newSection(null);
       const item: Item = { text: cleanText(b.kind, b.text), bullet: b.kind === "bullet" };

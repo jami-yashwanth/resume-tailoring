@@ -251,6 +251,20 @@ describe("blocksToDocument", () => {
     ]);
   });
 
+  it("never drops a block", () => {
+    const blocks = [
+      { kind: "name" as const, text: "Priya" },
+      { kind: "name" as const, text: "Second Name" },
+      { kind: "job_title" as const, text: "Orphan Title" },
+      { kind: "heading" as const, text: "Experience" },
+      { kind: "role" as const, text: "Acme\t2020" },
+      { kind: "job_title" as const, text: "Engineer" },
+      { kind: "job_title" as const, text: "Extra Title" },
+    ];
+    const json = JSON.stringify(blocksToDocument(blocks));
+    for (const b of blocks) expect(json).toContain(b.text);
+  });
+
   it("puts blocks before any heading in a heading-less section", () => {
     const doc = blocksToDocument([{ kind: "paragraph", text: "Hello" }]);
     expect(doc.sections[0].heading).toBeNull();

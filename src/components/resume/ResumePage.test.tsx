@@ -78,6 +78,12 @@ describe("ResumePage", () => {
     expect(RESUME_CSS.replace(/\s+/g, "")).toContain(".rz-block{break-inside:avoid");
   });
 
+  it("keeps print geometry in one place", () => {
+    const css = RESUME_CSS.replace(/\s+/g, "");
+    expect(css).toContain("@mediaprint{.rz-page{width:auto;padding:0;box-shadow:none}}");
+    expect(css).toMatch(/\.rz-heading\{break-after:avoid/);
+  });
+
   it("omits empty sections and entries", () => {
     const d: TemplateDocument = {
       name: null, contact: [],

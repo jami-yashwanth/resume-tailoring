@@ -32,7 +32,7 @@ export const RESUME_CSS = `
 .rz-block { break-inside: avoid; page-break-inside: avoid }
 .rz-name { font-size: var(--rz-name); font-weight: 700; text-transform: uppercase; letter-spacing: var(--rz-name-tracking); text-align: center; line-height: 1.2 }
 .rz-contact { font-size: var(--rz-contact); text-align: center }
-.rz-heading { margin-top: var(--rz-heading-space); font-size: var(--rz-heading); font-weight: 700; text-transform: uppercase; letter-spacing: var(--rz-heading-tracking); border-bottom: var(--rz-heading-rule) solid var(--rz-ink) }
+.rz-heading { break-after: avoid; page-break-after: avoid; margin-top: var(--rz-heading-space); font-size: var(--rz-heading); font-weight: 700; text-transform: uppercase; letter-spacing: var(--rz-heading-tracking); border-bottom: var(--rz-heading-rule) solid var(--rz-ink) }
 .rz-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12pt }
 .rz-org { font-weight: 700 }
 .rz-place { font-weight: 400 }
@@ -42,5 +42,6 @@ export const RESUME_CSS = `
 .rz-item { margin: 0 }
 .rz-bullet { position: relative; padding-left: var(--rz-indent) }
 .rz-bullet::before { content: "\\2022"; position: absolute; left: 0 }
+@media print { .rz-page { width: auto; padding: 0; box-shadow: none } }
 .rz-skill b { font-weight: 700 }
 `;
