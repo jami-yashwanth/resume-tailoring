@@ -341,3 +341,24 @@ describe("groupRoles", () => {
     expect(out[4].text).toBe("Inncircles\tJan 2023 - Jun 2023");
   });
 });
+
+describe("buildLines grouping", () => {
+  it("buildLines with group=false leaves role lines unfolded", () => {
+    const role = (id: string, text: string): Layout["blocks"][number] => ({
+      id, kind: "role", text, section: null, style: null, lines: 1, has_bold: true, runs: [], size: 10.5, space_before: 0,
+    });
+    const roles: Layout = {
+      ...layout,
+      blocks: [
+        role("r0", "Inncircles\tJun 2023 - Jun 2026"),
+        role("r1", "Senior Software Engineer"),
+        role("r2", "Hyderabad, Telangana"),
+      ],
+    };
+    const raw = buildLines(roles, [], {}, false, {}, false);
+    expect(raw.map((l) => l.kind)).toEqual(["role", "role", "role"]);
+    expect(raw.map((l) => l.text)).toEqual(roles.blocks.map((b) => b.text));
+    expect(buildLines(roles, [], {}, true, {}, false).map((l) => l.kind)).toEqual(["role", "role", "role"]);
+    expect(buildLines(roles, [], {}, false).map((l) => l.kind)).toContain("job_title");
+  });
+});

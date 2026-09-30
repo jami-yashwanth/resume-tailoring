@@ -137,6 +137,9 @@ export function buildLines(
   decisions: Decisions,
   compareWithOriginal = false,
   wordings: Wordings = {},
+  /** False keeps role lines as parsed; the template document resolves its own
+   *  fields from the outline and must not see them folded. */
+  group = true,
 ): RenderedLine[] {
   const base = (block: Layout["blocks"][number]): RenderedLine => ({
     key: `line-${block.id}`,
@@ -158,7 +161,10 @@ export function buildLines(
   // Still grouped, though — under the v1 template override both sides render
   // into the same template, and a diff that moved the layout as well as the
   // words would report the template as a change the user made.
-  if (compareWithOriginal) return groupRoles(layout.blocks.map(base));
+  if (compareWithOriginal) {
+    const all = layout.blocks.map(base);
+    return group ? groupRoles(all) : all;
+  }
 
   const lines: RenderedLine[] = [];
 
@@ -218,7 +224,7 @@ export function buildLines(
 
   // Last, so the fold sees the decided document: a role line the user reworded
   // keeps its own key and its mark rather than being folded away.
-  return groupRoles(lines);
+  return group ? groupRoles(lines) : lines;
 }
 
 /* ---------------------------------------------------------------------------
