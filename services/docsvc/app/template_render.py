@@ -110,8 +110,8 @@ RULE_WIDTH = _SPEC["rule"]["width"]
 #: Roboto's hhea metrics — the box model places a line's baseline
 #: f(S, L) = L/2 + S*(asc - (asc+desc)/2) below its box top (the browser's
 #: line-box arithmetic). The fallback draws
-#: Helvetica but keeps Roboto's baseline placement so its boxes and page
-#: breaks are the compiled file's.
+#: Helvetica but keeps Roboto's baseline placement, so its boxes and page
+#: breaks follow the old measured layout's rather than drifting line by line.
 _ASC, _DESC = 1900 / 2048, 500 / 2048
 
 
@@ -142,9 +142,8 @@ SANS_ITALIC = "heit"
 
 BULLET_CHARS = "•◦▪‣·-*"
 
-#: How far a bullet's text sits past the drawn dot. The compiled file carries
-#: "• " as literal small text; this is that string's width, near
-#: enough, in the fallback's own face.
+#: How far a bullet's text sits past the drawn dot: the width of "• " in the
+#: fallback's own face, near enough.
 MARKER_WIDTH = 6.0
 
 # PyMuPDF's base-14 fonts (no embedded font file) only cover a narrow glyph
@@ -230,9 +229,9 @@ class _Writer:
         )
 
     def centered(self, text: str, size: float, leading: float, fontname: str, color=INK) -> None:
-        """One line centered on the page's midline — the reference template's
-        header block. Centering happens per drawn line, so a wrapped contact
-        line centers each of its lines centered."""
+        """One line centered on the page's midline — the template's header
+        block. Centering happens per drawn line, so each line of a wrapped
+        contact line is centered on its own."""
         font = pymupdf.Font(fontname)
         x = MARGIN + max(0.0, (CONTENT_WIDTH - font.text_length(_sanitize(text), fontsize=size)) / 2)
         self.text(x, text, size, leading, fontname, color)
@@ -347,7 +346,7 @@ def render_template(blocks: list[dict]) -> tuple[bytes, int]:
             w.line(leading)
 
         elif kind == "contact":
-            # The reference separates contact fields with pipes; parsed
+            # The template separates contact fields with pipes; parsed
             # resumes usually arrive with middots, which base-14 fonts cannot
             # draw anyway (`_sanitize` would degrade them to hyphens).
             contact = re.sub(r"\s*[·|]\s*", " | ", text.replace("\t", " | "))
@@ -362,8 +361,8 @@ def render_template(blocks: list[dict]) -> tuple[bytes, int]:
             w._ensure(g + leading + gap("heading", "bullet") + TYPE["bullet"]["leading"])
             w.space(g)
             w.text(MARGIN, text.upper(), size, leading, SANS_BOLD)
-            # The rule sits at the heading box's bottom edge, where the
-            # reference's \titlerule lands.
+            # The rule sits at the heading box's bottom edge, as the
+            # template's heading border does.
             w.line(leading)
             w.rule()
 

@@ -29,6 +29,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 WORKDIR /srv
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
+# A fixed path, not ~/.cache under HOME=/tmp: the browser must be where the
+# runtime (and /health's printer.available()) looks for it.
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 RUN playwright install --with-deps chromium
 
 COPY app ./app

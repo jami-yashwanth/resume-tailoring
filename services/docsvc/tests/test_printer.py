@@ -138,7 +138,15 @@ def test_real_print_html_sits_inside_the_40pt_margins(chromium):
     shifting the text in, so wraps and page breaks match the preview."""
     import asyncio
 
-    data = asyncio.run(printer.print_html(REAL_HTML))
+    async def print_once():
+        # Shut the browser down on the loop that launched it: a browser left
+        # bound to a closed loop hangs the next app shutdown.
+        try:
+            return await printer.print_html(REAL_HTML)
+        finally:
+            await printer.shutdown()
+
+    data = asyncio.run(print_once())
     with pymupdf.open(stream=data, filetype="pdf") as pdf:
         spans = [
             (span["bbox"], span["text"])
@@ -152,3 +160,78 @@ def test_real_print_html_sits_inside_the_40pt_margins(chromium):
     dates = [bbox[2] for bbox, text in spans if "2023" in text or "Present" in text]
     assert abs(left - LEFT) <= 1, left
     assert dates and abs(max(dates) - RIGHT) <= 1, dates
+
+
+def test_timeout_close_is_bounded_when_the_browser_is_wedged(monkeypatch):
+    """A wedged browser can hang close() too; the timeout path must still
+    return promptly and drop the browser."""
+    import asyncio
+    import time
+
+    async def hang(*_args, **_kwargs):
+        await asyncio.sleep(60)
+
+    monkeypatch.setattr(printer, "_print", hang)
+    monkeypatch.setattr(printer, "_close", hang)
+    monkeypatch.setattr(printer, "CLOSE_TIMEOUT", 0.2)
+    started = time.monotonic()
+    with pytest.raises(printer.PrintError):
+        asyncio.run(printer.print_html("<p>x</p>", timeout=0.1))
+    assert time.monotonic() - started < 2
+
+
+def test_chromium_launches_without_dev_shm(monkeypatch):
+    """Containers give /dev/shm 64 MB; Chromium must not depend on it."""
+    import asyncio
+
+    seen = {}
+
+    class FakeChromium:
+        async def launch(self, **kwargs):
+            seen.update(kwargs)
+            raise RuntimeError("stop here")
+
+    class FakePlaywright:
+        chromium = FakeChromium()
+
+        async def stop(self):
+            pass
+
+    class Starter:
+        async def start(self):
+            return FakePlaywright()
+
+    monkeypatch.setattr(printer, "async_playwright", lambda: Starter())
+    monkeypatch.setattr(printer, "_browser", None)
+    monkeypatch.setattr(printer, "_playwright", None)
+    with pytest.raises(RuntimeError):
+        asyncio.run(printer._get_browser())
+    assert "--disable-dev-shm-usage" in seen.get("args", [])
+
+
+def test_dockerfile_installs_chromium_where_the_runtime_looks():
+    dockerfile = (Path(__file__).parents[1] / "Dockerfile").read_text()
+    env = dockerfile.find("PLAYWRIGHT_BROWSERS_PATH=/ms-playwright")
+    install = dockerfile.find("playwright install")
+    assert 0 <= env < install
+
+
+def test_fallback_render_and_page_count_run_off_the_event_loop(monkeypatch):
+    """The drawn fallback and the pymupdf count are CPU work; on the event
+    loop they would stall every other request while they run."""
+    offloaded = []
+    real = main.run_in_threadpool
+
+    async def spy(func, *args, **kwargs):
+        offloaded.append(getattr(func, "__name__", repr(func)))
+        return await real(func, *args, **kwargs)
+
+    async def boom(html, timeout=15.0):
+        raise printer.PrintError("no chromium")
+
+    monkeypatch.setattr(main, "run_in_threadpool", spy)
+    monkeypatch.setattr(printer, "print_html", boom)
+    with TestClient(main.app) as client:
+        assert _post(client).json()["renderer"] == "fallback"
+    assert "render_template" in offloaded
+    assert "_page_count" in offloaded

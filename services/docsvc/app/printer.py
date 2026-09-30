@@ -15,6 +15,14 @@ class PrintError(Exception):
     """Chromium could not produce a PDF; the caller falls back to drawing."""
 
 
+#: How long the timeout path waits for a wedged browser to close before
+#: giving up on it; the print timeout must not be doubled by close().
+CLOSE_TIMEOUT = 5.0
+
+#: Containers give /dev/shm 64 MB, which Chromium overflows on a long page;
+#: this makes it use /tmp instead.
+LAUNCH_ARGS = ["--disable-dev-shm-usage"]
+
 _lock = asyncio.Lock()
 _playwright: Playwright | None = None
 _browser: Browser | None = None
@@ -28,7 +36,7 @@ async def _get_browser(fresh: bool = False) -> Browser:
         if _browser is None:
             _playwright = await async_playwright().start()
             try:
-                _browser = await _playwright.chromium.launch()
+                _browser = await _playwright.chromium.launch(args=LAUNCH_ARGS)
             except BaseException:
                 # Chromium missing or unlaunchable: stop the driver we just
                 # started, or every request leaks a node process.
@@ -85,7 +93,12 @@ async def print_html(html: str, timeout: float = 15.0) -> bytes:
         # A browser that timed out is presumed wedged; the next call gets a
         # fresh one instead of waiting out another timeout.
         async with _lock:
-            await _close()
+            try:
+                await asyncio.wait_for(_close(), CLOSE_TIMEOUT)
+            except asyncio.TimeoutError:
+                # _close() cleared the globals first; the stuck process is
+                # abandoned and the next call launches a fresh one.
+                pass
         raise PrintError(f"chromium timed out after {timeout:g}s") from exc
     except (PlaywrightError, OSError) as exc:
         raise PrintError(f"chromium failed: {exc}") from exc

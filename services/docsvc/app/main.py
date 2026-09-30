@@ -15,6 +15,7 @@ from pathlib import Path
 
 import pymupdf
 from fastapi import Depends, FastAPI, Header, HTTPException
+from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
 
 from . import printer, render
@@ -135,6 +136,11 @@ MAX_HTML_BYTES = 4_000_000
 _print_log = logging.getLogger("docsvc.print")
 
 
+def _page_count(data: bytes) -> int:
+    with pymupdf.open(stream=data, filetype="pdf") as pdf:
+        return pdf.page_count
+
+
 @app.post("/print", dependencies=[Depends(require_token)])
 async def print_endpoint(request: PrintRequest) -> dict:
     """Print the web app's HTML resume to PDF; never return a blank result.
@@ -154,12 +160,13 @@ async def print_endpoint(request: PrintRequest) -> dict:
             break
         except printer.PrintError as exc:
             _print_log.warning("chromium print failed (attempt %d): %s", attempt, exc)
+    # The drawn fallback and the page count are CPU work: off the event loop,
+    # so one slow render does not stall every other request.
     if data is None:
-        data, _ = render_template(document_to_blocks(request.document.model_dump()))
+        data, _ = await run_in_threadpool(render_template, document_to_blocks(request.document.model_dump()))
         renderer = "fallback"
 
-    with pymupdf.open(stream=data, filetype="pdf") as pdf:
-        pages = pdf.page_count
+    pages = await run_in_threadpool(_page_count, data)
     return {
         "pages": pages,
         "renderer": renderer,
