@@ -52,6 +52,7 @@ const render = (over: Partial<Parameters<typeof SectionsPane>[0]> = {}) =>
       onToggle={() => {}}
       focusKey={null}
       sectionOrder={[0, 1]}
+      pagesLabel="1 page"
       onEdit={() => {}}
       onDecide={() => {}}
       onUndo={() => {}}
@@ -104,5 +105,40 @@ describe("SectionsPane", () => {
     const html = render({ state: { compare: true, whyOpen: false, currentOpId: null, edits: {} } });
     expect(html).toContain("Turn off compare to make changes.");
     expect(html).toMatch(/<fieldset[^>]*disabled/);
+  });
+
+  it("names the skill on an added line's Undo and keeps a skipped draft's Undo", () => {
+    const added: TemplateDocument = { ...doc, sections: [{ ...doc.sections[0], entries: [{ ...doc.sections[0].entries[0], items: [
+      { text: "Shipped X.", bullet: true, state: "unchanged", blockId: "b1", key: "line-b1" },
+      { text: "Worked with Kafka.", bullet: true, state: "added", opId: "d1", blockId: "b1", key: "line-d1" },
+    ] }] }, doc.sections[1]] };
+    const skipped = item("d2", "skipped", { skill: "Kubernetes" });
+    const html = render({
+      document: added,
+      list: { ...list, toDecide: [], current: null, decided: [item("d1", "added"), skipped] },
+      items: new Map([["d1", item("d1", "added")], ["d2", skipped]]),
+    });
+    expect(html).toContain('aria-label="Undo adding Kafka line"');
+    expect(html).toContain('aria-label="Undo skipping Kubernetes line"');
+    expect(html).toContain("Kubernetes");
+    expect(html).toContain("Skipped");
+  });
+
+  it("shows header fields read-only when a flat result has no field ids", () => {
+    const flat: TemplateDocument = { ...doc, sections: [{ ...doc.sections[0], entries: [{
+      org: "Razorfin", title: "Software Engineer", dates: "Aug 2024 – present", place: null, items: [],
+    }] }] };
+    const html = render({ document: flat });
+    expect(html).toContain("Razorfin");
+    expect(html).toContain("Aug 2024 – present");
+    expect(html).toMatch(/aria-label="Employer: Razorfin\. Edit"[^>]*disabled/);
+  });
+
+  it("says all decided when nothing is left, with the coverage and the pages", () => {
+    const html = render({
+      list: { ...list, toDecide: [], current: null, decided: [item("d1", "added")] },
+      pagesLabel: "1 page",
+    });
+    expect(html).toContain("All decided. Covers 6 of 9 · 1 page.");
   });
 });

@@ -8,15 +8,15 @@ import { coverageOf } from "@/lib/tailor/coverage";
 import { linesToDocument, resolveDocument } from "@/lib/tailor/document";
 import { downloadResume } from "@/lib/tailor/download";
 import { requirementRows } from "@/lib/tailor/requirement-rows";
-import { createReviewReducer, fromStored, toStored } from "@/lib/tailor/review";
-import { decisionAnnouncement, reviewList, undoAnnouncement, withDecisions } from "@/lib/tailor/review-list";
+import { type ReviewAction, createReviewReducer, fromStored, toStored } from "@/lib/tailor/review";
+import { type ReviewItem, decisionAnnouncement, reviewList, undoAnnouncement, withDecisions } from "@/lib/tailor/review-list";
+import { findOpItem, sectionCounts, sectionKey, sectionName } from "@/lib/tailor/sections";
 import type { Layout, Outline, TailorPlan } from "@/lib/tailor/types";
 import { usePrintedPages } from "@/lib/tailor/usePrintedPages";
 import { buildLines } from "@/lib/tailor/view";
 import { ResumePreview } from "@/components/resume/ResumePreview";
 import { ResultHeader } from "./ResultHeader";
-import { ReviewList } from "./ReviewList";
-import { SummaryPanel } from "./SummaryPanel";
+import { SectionsPane } from "./sections/SectionsPane";
 
 /** How long the fallback-layout note stays up before the finish screen. */
 const NOTE_MS = 4000;
@@ -25,8 +25,10 @@ const NOTE_MS = 4000;
  * The Result screen: see the value → make 0–3 decisions → finish.
  *
  * Layout and wiring only. What the user can do lives in `review.ts`, what the
- * screen shows in `review-list.ts` and `requirement-rows.ts`, both tested
- * without a browser. The design is docs/superpowers/specs/2026-09-29-result-screen-revamp-design.md.
+ * screen shows in `review-list.ts`, `requirement-rows.ts` and `sections.ts`,
+ * all tested without a browser. Two panes: the resume as sections on the left,
+ * the page on the right, both from one preview document. The design is
+ * docs/superpowers/specs/2026-10-01-result-editor-design.md.
  */
 export function ResultScreen({
   layout,
@@ -79,31 +81,36 @@ export function ResultScreen({
   }, [state]);
 
   const operations = useMemo(() => withDecisions(plan.operations, state.decisions), [plan.operations, state.decisions]);
+  // Compare shows the uploaded wording: the user's edits step aside with the rewordings.
+  const shownEdits = state.compare ? {} : state.edits;
   const lines = useMemo(
-    () => buildLines(layout, operations, state.decisions, state.compare, state.wordings),
-    [layout, operations, state.decisions, state.compare, state.wordings],
+    () => buildLines(layout, operations, state.decisions, state.compare, state.wordings, true, shownEdits),
+    [layout, operations, state.decisions, state.compare, state.wordings, shownEdits],
   );
   /* The document path wants one line per change, not the sheet's grouped
      lines — so it gets its own build. */
   const documentLines = useMemo(
-    () => (outline ? buildLines(layout, operations, state.decisions, state.compare, state.wordings, false) : null),
-    [outline, layout, operations, state.decisions, state.compare, state.wordings],
+    () => (outline ? buildLines(layout, operations, state.decisions, state.compare, state.wordings, false, shownEdits) : null),
+    [outline, layout, operations, state.decisions, state.compare, state.wordings, shownEdits],
   );
   /* Two documents from the same template. The preview follows Compare and
-     shows drafts and removals, marked. The file is always the tailored
-     version with only what the user kept: it is what the download prints and
-     what the printer counts, so the length the user agrees to is the file's. */
+     shows drafts and removals, marked; the sections pane renders from it too,
+     so both panes always agree. The file is always the tailored version with
+     only what the user kept: it is what the download prints and what the
+     printer counts, so the length the user agrees to is the file's. */
   const previewDocument = useMemo(
     () =>
       outline && documentLines
-        ? resolveDocument(outline, documentLines, { drafts: true })
+        ? resolveDocument(outline, documentLines, { drafts: true, edits: shownEdits, sectionOrder: state.sectionOrder })
         : linesToDocument(lines, { drafts: true }),
-    [outline, documentLines, lines],
+    [outline, documentLines, lines, shownEdits, state.sectionOrder],
   );
   const fileDocument = useMemo(() => {
-    const final = buildLines(layout, operations, state.decisions, false, state.wordings, !outline);
-    return outline ? resolveDocument(outline, final) : linesToDocument(final);
-  }, [outline, layout, operations, state.decisions, state.wordings]);
+    const final = buildLines(layout, operations, state.decisions, false, state.wordings, !outline, state.edits);
+    return outline
+      ? resolveDocument(outline, final, { edits: state.edits, sectionOrder: state.sectionOrder })
+      : linesToDocument(final);
+  }, [outline, layout, operations, state.decisions, state.wordings, state.edits, state.sectionOrder]);
 
   const printed = usePrintedPages(fileDocument);
   /* Keyed on the flag as well as the number: a printer count of the same
@@ -120,8 +127,31 @@ export function ResultScreen({
      refuses to save a file longer than agreed. */
   const countKnown = printed.failed || (!printed.checking && state.pages !== null);
   const coverage = coverageOf(plan.requirements, plan.matches, operations);
-  const rows = requirementRows(plan.requirements, plan.matches, operations);
+  // A row whose evidence the user retyped says so; coverage itself still reflects the plan.
+  const editedBlocks = useMemo(() => new Set(Object.keys(state.edits).map((k) => k.split(":")[0])), [state.edits]);
+  const rows = requirementRows(plan.requirements, plan.matches, operations, editedBlocks);
   const highlightBlocks = rows.find((r) => r.requirement.id === state.selectedRequirement)?.pointsTo ?? null;
+  const items = useMemo(() => {
+    const m = new Map<string, ReviewItem>();
+    for (const i of [...list.toDecide, ...list.decided, ...list.reworded, ...list.removed]) m.set(i.op.id, i);
+    return m;
+  }, [list]);
+
+  /* Which sections are open: the ones with a question waiting, else the
+     first. Local state — a way of looking, not a decision. */
+  const [open, setOpen] = useState<Record<string, boolean>>(() => {
+    const o: Record<string, boolean> = {};
+    let any = false;
+    previewDocument.sections.forEach((sec, i) => {
+      if (sectionCounts(sec).toDecide > 0) {
+        o[sectionKey(sec, i)] = true;
+        any = true;
+      }
+    });
+    if (!any && previewDocument.sections[0]) o[sectionKey(previewDocument.sections[0], 0)] = true;
+    return o;
+  });
+  const [focusKey, setFocusKey] = useState<string | null>(null);
 
   // A decided line's border tracks whether its "why" explanation is actually
   // open, not just whether it was last clicked — else a second click can't
@@ -157,10 +187,26 @@ export function ResultScreen({
     );
   }
 
-  /** A changed line on the page opens its card, or its row's explanation. */
+  /** A changed line on the page opens its section and its card, or its row's explanation. */
   function focusLine(opId: string) {
+    const found = findOpItem(previewDocument, opId);
+    const key = found ? sectionKey(previewDocument.sections[found.section], found.section) : "personal";
+    setOpen((o) => ({ ...o, [key]: true }));
+    setFocusKey(found?.key ?? null);
     if (list.toDecide.some((i) => i.op.id === opId)) dispatch({ type: "open", opId });
     else dispatch({ type: "why", opId });
+  }
+
+  function edit(action: ReviewAction) {
+    dispatch(action);
+    if (action.type === "edit") announce("Edited. Your own words are on the page.");
+    if (action.type === "undoEdit") announce("Edit undone.");
+  }
+
+  function moveSection(index: number, to: number, order: number[]) {
+    dispatch({ type: "moveSection", index, to, order });
+    const sec = previewDocument.sections.find((x) => x.outlineIndex === index);
+    announce(sec ? `${sectionName(sec)} moved.` : "Section moved.");
   }
 
   async function download() {
@@ -254,25 +300,49 @@ export function ResultScreen({
         downloading={downloading}
       />
 
-      {/* 220 · up to 794 (A4 at 96dpi, the page ResumePage draws) · 300.
-          Below 1240 the summary folds into a strip above; below 900 the review
-          list moves above the resume. Nothing is ever hidden. */}
+      {/* Two panes: the resume as sections, then the page it becomes. Below
+          1100 they stack, sections first. Nothing is ever hidden. */}
       <div
         className="grid flex-1 content-start justify-center gap-8 overflow-y-auto bg-paper-sunken px-8 py-8
-                   [grid-template-columns:220px_minmax(0,794px)_300px]
-                   max-[1240px]:[grid-template-columns:minmax(0,1fr)_300px]
-                   max-[900px]:[grid-template-columns:minmax(0,1fr)] max-[900px]:gap-4 max-[900px]:p-4"
+                   [grid-template-columns:minmax(0,1fr)_minmax(0,1.25fr)]
+                   max-[1100px]:[grid-template-columns:minmax(0,1fr)] max-[1100px]:gap-4 max-[1100px]:p-4"
       >
-        <SummaryPanel
-          className="self-start min-[1240px]:sticky min-[1240px]:top-0 min-[1240px]:max-h-[calc(100dvh-8rem)]
-                     min-[1240px]:overflow-y-auto max-[1240px]:col-span-2 max-[900px]:col-span-1"
-          rows={rows}
-          coverage={coverage}
-          selected={state.selectedRequirement}
-          onSelect={(requirementId, opId) => dispatch({ type: "selectRequirement", requirementId, opId })}
-        />
+        <div
+          className="flex min-w-0 flex-col gap-3 self-start min-[1100px]:sticky min-[1100px]:top-0
+                     min-[1100px]:max-h-[calc(100dvh-8rem)] min-[1100px]:overflow-y-auto"
+        >
+          {notice}
+          <SectionsPane
+            document={previewDocument}
+            list={list}
+            items={items}
+            state={state}
+            coverage={coverage}
+            rows={rows}
+            selectedRequirement={state.selectedRequirement}
+            open={open}
+            onToggle={(key) => setOpen((o) => ({ ...o, [key]: !(o[key] ?? false) }))}
+            focusKey={focusKey}
+            sectionOrder={state.sectionOrder}
+            pagesLabel={
+              printed.failed
+                ? "page count unavailable"
+                : state.pages === null
+                  ? "checking pages…"
+                  : `${state.pages} page${state.pages === 1 ? "" : "s"}`
+            }
+            onEdit={edit}
+            onDecide={decide}
+            onUndo={undo}
+            onNextWording={(opId) => dispatch({ type: "nextWording", opId })}
+            onWhy={(opId) => dispatch({ type: "why", opId })}
+            onChoosePageFit={choosePageFit}
+            onSelectRequirement={(requirementId, opId) => dispatch({ type: "selectRequirement", requirementId, opId })}
+            onMoveSection={moveSection}
+          />
+        </div>
 
-        <div className="flex min-w-0 flex-col gap-3 max-[900px]:order-3">
+        <div className="flex min-w-0 flex-col gap-3">
           <ResumePreview
             document={previewDocument}
             activeOpId={activeOpId}
@@ -280,22 +350,6 @@ export function ResultScreen({
             onSelect={focusLine}
           />
         </div>
-
-        <ReviewList
-          className="self-start min-[900px]:sticky min-[900px]:top-0 min-[900px]:max-h-[calc(100dvh-8rem)]
-                     min-[900px]:overflow-y-auto max-[900px]:order-2"
-          list={list}
-          state={state}
-          countFailed={printed.failed}
-          coverage={coverage}
-          notice={notice}
-          onDecide={decide}
-          onUndo={undo}
-          onNextWording={(opId) => dispatch({ type: "nextWording", opId })}
-          onOpen={(opId) => dispatch({ type: "open", opId })}
-          onWhy={(opId) => dispatch({ type: "why", opId })}
-          onChoosePageFit={choosePageFit}
-        />
       </div>
 
       <p aria-live="polite" className="sr-only">

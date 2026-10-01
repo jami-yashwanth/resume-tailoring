@@ -18,7 +18,7 @@
       {
         "id": "b1",
         "kind": "contact",
-        "text": "Backend Engineer \u00b7 Bengaluru \u00b7 Notice period 30 days \u00b7 priya.sharma@example.com",
+        "text": "Backend Engineer · Bengaluru · Notice period 30 days · priya.sharma@example.com",
         "section": null,
         "style": "Normal",
         "lines": 1,
@@ -54,7 +54,7 @@
       {
         "id": "b5",
         "kind": "role",
-        "text": "Razorfin \u00b7 Software Engineer, Backend\tAug 2024 \u2013 present",
+        "text": "Razorfin · Software Engineer, Backend\tAug 2024 – present",
         "section": "EXPERIENCE",
         "style": "Normal",
         "lines": 1,
@@ -99,7 +99,7 @@
       {
         "id": "b10",
         "kind": "role",
-        "text": "Kitebyte Labs \u00b7 Associate Software Engineer\tJul 2023 \u2013 Jul 2024",
+        "text": "Kitebyte Labs · Associate Software Engineer\tJul 2023 – Jul 2024",
         "section": "EXPERIENCE",
         "style": "Normal",
         "lines": 1,
@@ -162,7 +162,7 @@
       {
         "id": "b17",
         "kind": "paragraph",
-        "text": "B.Tech, Computer Science \u00b7 CGPA 8.4 \u00b7 2023",
+        "text": "B.Tech, Computer Science · CGPA 8.4 · 2023",
         "section": "EDUCATION",
         "style": "Normal",
         "lines": 1,
@@ -377,5 +377,95 @@
     "role": "Backend Engineer"
   },
   "violations": [],
-  "generated": "2026-09-28"
+  "generated": "2026-09-28",
+  "outline": {
+    "name": "b0",
+    "contact": [
+      "b1"
+    ],
+    "sections": [
+      {
+        "heading": "b2",
+        "kind": "summary",
+        "entries": [],
+        "skills": [],
+        "lines": [
+          "b3"
+        ]
+      },
+      {
+        "heading": "b4",
+        "kind": "experience",
+        "entries": [
+          {
+            "org": {
+              "block": "b5",
+              "text": "Razorfin"
+            },
+            "title": {
+              "block": "b5",
+              "text": "Software Engineer, Backend"
+            },
+            "dates": {
+              "block": "b5",
+              "text": "Aug 2024 – present"
+            },
+            "place": null,
+            "bullets": [
+              "b6",
+              "b7",
+              "b8",
+              "b9"
+            ],
+            "lines": []
+          },
+          {
+            "org": {
+              "block": "b10",
+              "text": "Kitebyte Labs"
+            },
+            "title": {
+              "block": "b10",
+              "text": "Associate Software Engineer"
+            },
+            "dates": {
+              "block": "b10",
+              "text": "Jul 2023 – Jul 2024"
+            },
+            "place": null,
+            "bullets": [
+              "b11",
+              "b12",
+              "b13"
+            ],
+            "lines": []
+          }
+        ],
+        "skills": [],
+        "lines": []
+      },
+      {
+        "heading": "b14",
+        "kind": "skills",
+        "entries": [],
+        "skills": [
+          {
+            "block": "b15",
+            "label": null,
+            "items": "Python, Git, Docker, Java, Spring Boot, AWS, PostgreSQL, Redis"
+          }
+        ],
+        "lines": []
+      },
+      {
+        "heading": "b16",
+        "kind": "education",
+        "entries": [],
+        "skills": [],
+        "lines": [
+          "b17"
+        ]
+      }
+    ]
+  }
 }

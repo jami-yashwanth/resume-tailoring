@@ -44,14 +44,17 @@ export function EntryCard({
   onNextWording: (opId: string) => void;
   onWhy: (opId: string) => void;
 }) {
-  const fields = FIELDS.filter((f) => entry[f.key] !== null && entry.fields?.[f.key]);
+  // A flat result (no outline) has the text but no block behind each field:
+  // shown, not editable, so the pane still reads as the resume.
+  const fields = FIELDS.filter((f) => entry[f.key] !== null);
   return (
     <div className="rounded-lg border border-line bg-paper-raised p-2">
       {fields.length > 0 && (
         <div className="grid grid-cols-2 gap-x-3 gap-y-1 max-[520px]:grid-cols-1">
           {fields.map((f) => {
-            const slot = `${entry.fields![f.key]}:${f.key}`;
-            const edited = slot in edits;
+            const block = entry.fields?.[f.key];
+            const slot = block ? `${block}:${f.key}` : "";
+            const edited = slot !== "" && slot in edits;
             return (
               <div key={f.key} className={f.key === "org" || f.key === "title" ? "min-w-0" : "min-w-0"}>
                 <span className="block px-2 font-ui text-[11px] font-semibold uppercase tracking-[0.06em] text-ink-muted">
@@ -64,8 +67,8 @@ export function EntryCard({
                   original={edited ? undefined : (entry[f.key] ?? "")}
                   label={f.label}
                   focusKey={slot}
-                  focused={focusKey === slot}
-                  disabled={disabled}
+                  focused={slot !== "" && focusKey === slot}
+                  disabled={disabled || slot === ""}
                   highlighted={edited}
                   onCommit={onEdit}
                 />
@@ -106,6 +109,7 @@ export function EntryCard({
               key={item.key ?? `i-${i}`}
               item={item}
               label={item.bullet ? "Bullet" : "Line"}
+              skill={item.opId ? items.get(item.opId)?.skill : null}
               focusKey={item.key}
               focused={focusKey !== null && focusKey === item.key}
               disabled={disabled}

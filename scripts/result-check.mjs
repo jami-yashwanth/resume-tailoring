@@ -67,7 +67,12 @@ async function openResult(
       apply();
       document.addEventListener("readystatechange", apply);
     },
-    [JSON.stringify({ layout, plan }), decisions ? JSON.stringify(decisions) : null, theme],
+    // The outline places the fixture's own blocks; a padded layout keeps the flat path.
+    [
+      JSON.stringify({ layout, plan, outline: layout === fixture.layout ? (fixture.outline ?? null) : null }),
+      decisions ? JSON.stringify(decisions) : null,
+      theme,
+    ],
   );
   const page = await context.newPage();
   page.on("pageerror", (e) => failures.push(`page error at ${width}px: ${e.message}`));
@@ -238,6 +243,72 @@ for (const width of WIDTHS) {
     await heading.waitFor({ state: "hidden", timeout: 8000 }).catch(() => {});
     check(!(await visible(heading)), "removing a line closes the page-fit card");
     check((await focused(page)).id.startsWith("decision-"), "after a page-fit choice, focus moves to the open card");
+    await context.close();
+  }
+
+  // ── Editing and reordering, in the sections pane ─────────────────────────
+  {
+    const { context, page } = await openResult(browser, width);
+    const experience = page.getByRole("button", { name: /^EXPERIENCE/ });
+    if ((await experience.getAttribute("aria-expanded")) !== "true") await experience.click();
+
+    // Edit a bullet: type, Enter. The mark appears here and the page shows the new words.
+    const bullet = page.getByRole("button", { name: /^Bullet: Worked on backend APIs for payments\.\. Edit$/ });
+    await bullet.click();
+    const area = page.getByRole("textbox", { name: "Bullet" });
+    await area.fill("Built backend APIs for payments, in my own words.");
+    await area.press("Enter");
+    const undoEdit = page.getByRole("button", { name: /^Undo edit: Built backend APIs for payments, in my own words\.$/ });
+    check(await visible(undoEdit), "an edited line says Edited by you and has Undo");
+    check(
+      (await page.locator('.rz-preview [data-page] [data-state="edited"]').first().innerText()).includes("in my own words"),
+      "the page shows the edited words, highlighted",
+    );
+    await undoEdit.click();
+    check(
+      await visible(page.getByRole("button", { name: /^Bullet: Worked on backend APIs for payments\.\. Edit$/ })),
+      "Undo restores the original line",
+    );
+
+    // Edit a header field.
+    await page.getByRole("button", { name: /^Employer: Razorfin\. Edit$/ }).first().click();
+    const employer = page.getByRole("textbox", { name: "Employer" });
+    await employer.fill("Razorfin Payments");
+    await employer.press("Enter");
+    const editedOrg = page.locator(".rz-preview [data-page] .rz-org", { hasText: "Razorfin Payments" }).first();
+    await editedOrg.waitFor({ timeout: 3000 }).catch(() => {});
+    check(await visible(editedOrg), "an edited employer reaches the page");
+
+    // Escape cancels.
+    await page.getByRole("button", { name: /^Bullet: Helped refactor the refunds module\.\. Edit$/ }).click();
+    await page.getByRole("textbox", { name: "Bullet" }).fill("not kept");
+    await page.getByRole("textbox", { name: "Bullet" }).press("Escape");
+    check((await page.getByText("not kept").count()) === 0, "Escape cancels an edit");
+
+    // Reorder: Education above Skills, in both panes.
+    const headingsBefore = await page.locator(".rz-preview [data-page] .rz-heading").allInnerTexts();
+    await page.getByRole("button", { name: "Move EDUCATION up" }).click();
+    const headingsAfter = await page.locator(".rz-preview [data-page] .rz-heading").allInnerTexts();
+    check(
+      headingsBefore.indexOf("EDUCATION") > headingsBefore.indexOf("SKILLS") &&
+        headingsAfter.indexOf("EDUCATION") < headingsAfter.indexOf("SKILLS"),
+      "Move up reorders the section on the page",
+    );
+    const rows = await page.locator("section[aria-labelledby$='-name'] [id$='-name']").allInnerTexts();
+    check(rows.indexOf("EDUCATION") < rows.indexOf("SKILLS"), "and in the sections pane");
+    check(
+      await page.getByRole("button", { name: "Move SUMMARY up" }).isDisabled(),
+      "the first section cannot move up",
+    );
+
+    // Edits survive Compare being toggled on and off.
+    await page.getByRole("button", { name: "Compare with original" }).click();
+    check(
+      !(await page.getByText("Razorfin Payments").first().isVisible().catch(() => false)),
+      "Compare shows the uploaded wording, without edits",
+    );
+    await page.getByRole("button", { name: "Compare with original" }).click();
+    check(await visible(page.getByText("Razorfin Payments").first()), "edits come back when Compare is off");
     await context.close();
   }
 

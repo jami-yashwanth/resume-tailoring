@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { ResultLoader } from "@/components/result/ResultLoader";
-import type { Layout, TailorPlan } from "@/lib/tailor/types";
+import type { Layout, Outline, TailorPlan } from "@/lib/tailor/types";
 
 /**
  * The Result screen.
@@ -20,7 +20,7 @@ export const metadata = {
   title: "Your tailored resume — Rezz",
 };
 
-type Fixture = { layout: Layout; plan: TailorPlan };
+type Fixture = { layout: Layout; plan: TailorPlan; outline?: Outline | null };
 
 export default async function ResultPage({
   searchParams,
@@ -36,7 +36,7 @@ export default async function ResultPage({
   if (demo !== undefined) {
     const file = path.join(process.cwd(), "fixtures", "sample-plan.json");
     fallback = fs.existsSync(file)
-      ? (JSON.parse(fs.readFileSync(file, "utf8")) as Fixture)
+      ? (({ layout, plan, outline = null }: Fixture) => ({ layout, plan, outline }))(JSON.parse(fs.readFileSync(file, "utf8")) as Fixture)
       : null;
   }
 

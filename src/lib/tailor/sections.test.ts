@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { TemplateDocument, TemplateSection } from "./document";
-import { commitEdit, countsLabel, findOpSection, moveTargets, sectionCounts, sectionName } from "./sections";
+import { commitEdit, countsLabel, findOpItem, findOpSection, moveTargets, sectionCounts, sectionKey, sectionName } from "./sections";
 
 const section = (over: Partial<TemplateSection> = {}): TemplateSection => ({
   heading: null, kind: "experience", lead: [], entries: [], skills: [], items: [], ...over,
@@ -67,5 +67,23 @@ describe("moveTargets", () => {
     expect(moveTargets([2, 0, 1], 2)).toEqual({ up: null, down: 1 });
     expect(moveTargets([2, 0, 1], 0)).toEqual({ up: 0, down: 2 });
     expect(moveTargets([2, 0, 1], 1)).toEqual({ up: 1, down: null });
+  });
+});
+
+describe("findOpItem", () => {
+  it("returns the section and the item key for an operation", () => {
+    const doc: TemplateDocument = { name: null, contact: [], sections: [
+      section({ heading: "A", items: [{ text: "x", bullet: true, state: "reworded", opId: "r1", key: "line-b3" }] }),
+    ] };
+    expect(findOpItem(doc, "r1")).toEqual({ section: 0, key: "line-b3" });
+    expect(findOpItem(doc, "nope")).toBeNull();
+  });
+});
+
+describe("sectionKey", () => {
+  it("is stable from the outline index, and from position without one", () => {
+    expect(sectionKey(section({ outlineIndex: 2 }), 5)).toBe("s-2");
+    expect(sectionKey(section({ outlineIndex: -1 }), 0)).toBe("s--1");
+    expect(sectionKey(section({}), 3)).toBe("s-p3");
   });
 });

@@ -19,9 +19,28 @@ const WAY_BACK: Partial<Record<NonNullable<Item["state"]>, string>> = {
   removed: "Keep it",
 };
 
+/** The way back's accessible name: the same vocabulary the old review list used. */
+function undoName(state: NonNullable<Item["state"]>, text: string, skill: string | null | undefined): string {
+  switch (state) {
+    case "added":
+      return `Undo adding ${skill ?? "this"} line`;
+    case "reworded":
+      return `Undo rewording: ${text}`;
+    case "edited":
+      return `Undo edit: ${text}`;
+    case "reverted":
+      return `Use the rewording again: ${text}`;
+    case "removed":
+      return `Keep this line: ${text}`;
+    default:
+      return `Undo: ${text}`;
+  }
+}
+
 export function LineRow({
   item,
   label,
+  skill,
   focusKey,
   focused,
   disabled,
@@ -30,6 +49,8 @@ export function LineRow({
 }: {
   item: Item | SkillRow;
   label: string;
+  /** What an added line is about ("Kafka"), for its Undo's name. */
+  skill?: string | null;
   focusKey?: string;
   focused?: boolean;
   disabled: boolean;
@@ -64,7 +85,7 @@ export function LineRow({
             variant="secondary"
             size="sm"
             disabled={disabled}
-            aria-label={`${back}: ${text}`}
+            aria-label={undoName(state, text, skill)}
             onClick={() => (state === "edited" ? onEdit({ type: "undoEdit", slot }) : item.opId && onUndo(item.opId))}
           >
             {back}

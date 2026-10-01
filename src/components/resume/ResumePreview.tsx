@@ -48,6 +48,7 @@ ${FONT_CSS}
 .rz-preview .rz-page > style + .rz-block { margin-top: 0 }
 .rz-preview .rz-block { transition: opacity 150ms ease-out }
 .rz-preview [data-state="reworded"] .rz-text,
+.rz-preview [data-state="edited"] .rz-text,
 .rz-preview [data-state="added"] .rz-text {
   background: var(--highlighter);
   color: var(--on-highlighter);

@@ -21,7 +21,7 @@ import { ResultScreen } from "./ResultScreen";
 export function ResultLoader({
   fallback,
 }: {
-  fallback: { layout: Layout; plan: TailorPlan } | null;
+  fallback: { layout: Layout; plan: TailorPlan; outline?: Outline | null } | null;
 }) {
   const router = useRouter();
   const [state, setState] = useState<{
@@ -46,7 +46,7 @@ export function ResultLoader({
       return;
     }
     if (fallback) {
-      setState({ ...fallback, outline: null, resume: null, filename: null, sample: true });
+      setState({ ...fallback, outline: fallback.outline ?? null, resume: null, filename: null, sample: true });
       return;
     }
     router.replace(session.getResume() ? "/job" : "/upload");

@@ -48,6 +48,12 @@ const KIND_NAME: Record<SectionKind, string> = {
   other: "Other",
 };
 
+/** One key per section for open state and focus: the outline index when the
+ *  section has one, else its position (flat-block results). */
+export function sectionKey(section: TemplateSection, position: number): string {
+  return `s-${section.outlineIndex ?? `p${position}`}`;
+}
+
 /** The user's own heading when there is one; the kind's name otherwise. */
 export function sectionName(section: TemplateSection): string {
   return section.heading?.trim() || KIND_NAME[section.kind];
@@ -55,8 +61,16 @@ export function sectionName(section: TemplateSection): string {
 
 /** Index into `doc.sections` of the section holding `opId`, or null (personal information, or nowhere). */
 export function findOpSection(doc: TemplateDocument, opId: string): number | null {
-  const i = doc.sections.findIndex((s) => marked(s).some((m) => m.opId === opId));
-  return i === -1 ? null : i;
+  return findOpItem(doc, opId)?.section ?? null;
+}
+
+/** The section and the line key an operation's mark sits on, for opening and focusing it. */
+export function findOpItem(doc: TemplateDocument, opId: string): { section: number; key: string | undefined } | null {
+  for (let i = 0; i < doc.sections.length; i++) {
+    const m = marked(doc.sections[i]).find((x) => x.opId === opId);
+    if (m) return { section: i, key: m.key };
+  }
+  return null;
 }
 
 /**
