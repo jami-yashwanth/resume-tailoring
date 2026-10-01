@@ -391,3 +391,55 @@ describe("resolveDocument drafts", () => {
     ]);
   });
 });
+
+describe("resolveDocument with edits and section order", () => {
+  const o = () =>
+    outline(
+      [
+        section({ heading: "h1", kind: "experience", entries: [entry({ org: ref("9", "Google"), dates: ref("9", "Jun 2022"), bullets: ["b1"] })] }),
+        section({ heading: "h2", kind: "education", lines: ["e1"] }),
+        section({ heading: "h3", kind: "skills", skills: [{ block: "s1", label: "Languages", items: "Go" }] }),
+      ],
+      { name: "n", contact: ["c"] },
+    );
+  const lines = () => [
+    line("n", "Priya", "unchanged", "name"),
+    line("c", "priya@example.com", "unchanged", "contact"),
+    line("h1", "EXPERIENCE", "unchanged", "heading"),
+    line("9", "Google\tJun 2022", "unchanged", "role"),
+    line("b1", "Shipped X."),
+    line("h2", "EDUCATION", "unchanged", "heading"),
+    line("e1", "BTech", "unchanged", "paragraph"),
+    line("h3", "SKILLS", "unchanged", "heading"),
+    line("s1", "Languages: Go", "unchanged", "paragraph"),
+  ];
+
+  it("applies field edits to org and dates on a split block", () => {
+    const doc = resolveDocument(o(), lines(), { edits: { "9:dates": "Jun 2022 – Present" } });
+    expect(doc.sections[0].entries[0]).toMatchObject({ org: "Google", dates: "Jun 2022 – Present" });
+  });
+
+  it("orders sections by sectionOrder and keeps the leading section first", () => {
+    const doc = resolveDocument(
+      o(),
+      [...lines(), line("n", "Lead draft", "pending", "name")],
+      { drafts: true, sectionOrder: [2, 0, 1] },
+    );
+    expect(doc.sections.map((s) => s.heading)).toEqual([null, "SKILLS", "EXPERIENCE", "EDUCATION"]);
+    expect(doc.sections.map((s) => s.outlineIndex)).toEqual([-1, 2, 0, 1]);
+  });
+
+  it("ignores unknown section indices and appends missing ones", () => {
+    const doc = resolveDocument(o(), lines(), { sectionOrder: [5, 1] });
+    expect(doc.sections.map((s) => s.heading)).toEqual(["EDUCATION", "EXPERIENCE", "SKILLS"]);
+  });
+
+  it("exposes field block ids, outline index, name and contact marks", () => {
+    const doc = resolveDocument(o(), lines());
+    expect(doc.sections[0].entries[0].fields).toEqual({ org: "9", dates: "9" });
+    expect(doc.sections[0].outlineIndex).toBe(0);
+    expect(doc.nameMark).toMatchObject({ blockId: "n", state: "unchanged" });
+    expect(doc.contactMarks).toHaveLength(1);
+    expect(doc.contactMarks?.[0]).toMatchObject({ blockId: "c" });
+  });
+});

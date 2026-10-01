@@ -198,6 +198,43 @@ describe("storage", () => {
 
   it("stores only what should survive a refresh", () => {
     const stored = toStored(start({ decisions: { ins1: true }, currentOpId: "ins2", compare: true, pagesAllowed: 1 }));
-    expect(Object.keys(stored).sort()).toEqual(["decisions", "growthAllowed", "pagesAllowed", "pagesSource", "removedFor", "wordings"]);
+    expect(Object.keys(stored).sort()).toEqual(["decisions", "edits", "growthAllowed", "pagesAllowed", "pagesSource", "removedFor", "sectionOrder", "wordings"]);
+  });
+});
+
+describe("edits and section order", () => {
+  it("edit stores the text and undoEdit removes it", () => {
+    let state = reduce(start(), { type: "edit", slot: "b6", text: "My own words." });
+    expect(state.edits).toEqual({ b6: "My own words." });
+    state = reduce(state, { type: "edit", slot: "b9:dates", text: "Jun 2022 – Present" });
+    expect(state.edits["b9:dates"]).toBe("Jun 2022 – Present");
+    state = reduce(state, { type: "undoEdit", slot: "b6" });
+    expect(state.edits).toEqual({ "b9:dates": "Jun 2022 – Present" });
+  });
+
+  it("ignores an empty edit", () => {
+    const state = reduce(start({ edits: { b6: "Kept." } }), { type: "edit", slot: "b6", text: "   " });
+    expect(state.edits).toEqual({ b6: "Kept." });
+  });
+
+  it("moveSection reorders outline indices and ignores out-of-range", () => {
+    let state = reduce(start({ sectionOrder: [0, 1, 2] }), { type: "moveSection", index: 2, to: 0 });
+    expect(state.sectionOrder).toEqual([2, 0, 1]);
+    state = reduce(state, { type: "moveSection", index: 7, to: 0 });
+    expect(state.sectionOrder).toEqual([2, 0, 1]);
+    state = reduce(state, { type: "moveSection", index: 0, to: 9 });
+    expect(state.sectionOrder).toEqual([2, 0, 1]);
+  });
+
+  it("persists edits and sectionOrder and defaults them when absent", () => {
+    const stored = toStored(start({ edits: { b6: "Mine." }, sectionOrder: [1, 0] }));
+    expect(stored.edits).toEqual({ b6: "Mine." });
+    expect(stored.sectionOrder).toEqual([1, 0]);
+    const back = fromStored(stored);
+    expect(back.edits).toEqual({ b6: "Mine." });
+    expect(back.sectionOrder).toEqual([1, 0]);
+    const old = fromStored({ decisions: {}, wordings: {}, pagesAllowed: null, growthAllowed: false });
+    expect(old.edits).toEqual({});
+    expect(old.sectionOrder).toEqual([]);
   });
 });

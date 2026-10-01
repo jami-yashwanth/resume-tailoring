@@ -32,7 +32,15 @@ export type ReviewState = {
   pages: number | null;
   /** `pages` came from the drawn fallback layout: shown, never agreed to. */
   pagesFallback: boolean;
+  /** The user's own retyped text, by slot: a block id for a whole line, or
+   *  `"<block>:org|title|dates|place"` for one header field. Never sent to the
+   *  model; wins over the original and over a rewording of that line. */
+  edits: Edits;
+  /** Outline section indices in the user's order. Empty means document order. */
+  sectionOrder: number[];
 };
+
+export type Edits = Record<string, string>;
 
 export type ReviewAction =
   | { type: "decide"; opId: string; approved: boolean }
@@ -44,7 +52,12 @@ export type ReviewAction =
   | { type: "choosePageFit"; optionId: string; causedBy: string | null }
   | { type: "toggleCompare" }
   /** `fallback`: counted by the drawn fallback layout, not Chromium. */
-  | { type: "measuredPages"; pages: number; fallback?: boolean };
+  | { type: "measuredPages"; pages: number; fallback?: boolean }
+  /** Ignored when `text` is blank: an empty line is never an edit. */
+  | { type: "edit"; slot: string; text: string }
+  | { type: "undoEdit"; slot: string }
+  /** Both are outline indices. Out of range: no-op. */
+  | { type: "moveSection"; index: number; to: number };
 
 /** What survives a refresh. `removedFor` is optional so older sessions load. */
 export type Persisted = {
@@ -56,6 +69,8 @@ export type Persisted = {
   pagesSource?: "printer";
   growthAllowed: boolean;
   removedFor?: Record<string, string[]>;
+  edits?: Edits;
+  sectionOrder?: number[];
 };
 
 export function fromStored(stored: Persisted | null): ReviewState {
@@ -81,6 +96,8 @@ export function fromStored(stored: Persisted | null): ReviewState {
     compare: false,
     pages: null,
     pagesFallback: false,
+    edits: stored?.edits ?? {},
+    sectionOrder: stored?.sectionOrder ?? [],
   };
 }
 
@@ -92,6 +109,8 @@ export function toStored(state: ReviewState): Persisted {
     ...(state.pagesAllowed === null ? {} : { pagesSource: "printer" as const }),
     growthAllowed: state.growthAllowed,
     removedFor: state.removedFor,
+    edits: state.edits,
+    sectionOrder: state.sectionOrder,
   };
 }
 
@@ -145,6 +164,22 @@ export function createReviewReducer(operations: PlannedOp[]) {
           pagesFallback: fallback,
           pagesAllowed: fallback ? state.pagesAllowed : (state.pagesAllowed ?? action.pages),
         };
+      }
+      case "edit": {
+        if (!action.text.trim()) return state;
+        return { ...state, edits: { ...state.edits, [action.slot]: action.text } };
+      }
+      case "undoEdit": {
+        const { [action.slot]: _gone, ...edits } = state.edits;
+        return { ...state, edits };
+      }
+      case "moveSection": {
+        const order = [...state.sectionOrder];
+        const from = order.indexOf(action.index);
+        if (from === -1 || action.to < 0 || action.to >= order.length) return state;
+        order.splice(from, 1);
+        order.splice(action.to, 0, action.index);
+        return { ...state, sectionOrder: order };
       }
     }
   };

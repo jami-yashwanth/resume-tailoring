@@ -30,12 +30,18 @@ export type RequirementRow = {
   reason: string | null;
   /** The undecided drafted line to open, for "to_decide" rows. */
   opId: string | null;
+  /** The user retyped a line this row points at. Coverage still reflects the
+   *  plan, and the row says so rather than pretending to re-check. */
+  editedNote?: string;
 };
+
+export const EDITED_NOTE = "You edited this line; tailor again to re-check";
 
 export function requirementRows(
   requirements: Requirement[],
   matches: Match[],
   operations: PlannedOp[],
+  editedBlocks: Set<string> = new Set(),
 ): RequirementRow[] {
   return requirements.map((requirement) => {
     const match = matches.find((m) => m.requirementId === requirement.id);
@@ -47,14 +53,19 @@ export function requirementRows(
       blocks: string[],
       reason: string | null,
       extra: Partial<Pick<RequirementRow, "added" | "opId">> = {},
-    ): RequirementRow => ({
-      requirement,
-      group,
-      added: extra.added ?? false,
-      pointsTo: blocks.length ? [...new Set(blocks)] : null,
-      reason,
-      opId: extra.opId ?? null,
-    });
+    ): RequirementRow => {
+      const pointsTo = blocks.length ? [...new Set(blocks)] : null;
+      const edited = pointsTo?.some((b) => editedBlocks.has(b)) ?? false;
+      return {
+        requirement,
+        group,
+        added: extra.added ?? false,
+        pointsTo,
+        reason,
+        opId: extra.opId ?? null,
+        ...(edited ? { editedNote: EDITED_NOTE } : {}),
+      };
+    };
 
     // A knockout is shown, never changed, and never a control.
     if (requirement.knockout || match?.status === "cannot_change") {

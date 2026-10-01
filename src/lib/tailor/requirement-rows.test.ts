@@ -98,3 +98,17 @@ describe("requirementRows", () => {
     expect(rowFor("r9", rows).reason!.endsWith("…")).toBe(true);
   });
 });
+
+describe("edited evidence", () => {
+  it("notes an edited evidence line", () => {
+    const rows = requirementRows(
+      [req("r1", "Kafka")],
+      [{ requirementId: "r1", status: "matched", evidence: ["b6"] }],
+      [],
+      new Set(["b6"]),
+    );
+    expect(rowFor("r1", rows).editedNote).toBe("You edited this line; tailor again to re-check");
+    const untouched = requirementRows([req("r1", "Kafka")], [{ requirementId: "r1", status: "matched", evidence: ["b6"] }], []);
+    expect(rowFor("r1", untouched).editedNote).toBeUndefined();
+  });
+});

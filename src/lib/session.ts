@@ -49,6 +49,10 @@ export type StoredDecisions = {
   /** Lines removed to make room for an insert, keyed by that insert. Absent in
    *  sessions saved before 29 Sep 2026, which is why it is optional. */
   removedFor?: Record<string, string[]>;
+  /** The user's own retyped lines and fields, by slot (see `review.ts`). */
+  edits?: Record<string, string>;
+  /** Outline section indices in the user's order. */
+  sectionOrder?: number[];
 };
 
 /** What the finish screen needs, written at the moment of a successful

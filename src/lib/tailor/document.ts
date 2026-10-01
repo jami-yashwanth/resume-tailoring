@@ -30,6 +30,8 @@ export type TemplateEntry = {
   dates: string | null;
   place: string | null;
   items: Item[];
+  /** Block id behind each present header field, for the editor's slots. */
+  fields?: { org?: string; title?: string; dates?: string; place?: string };
 };
 export type TemplateSection = {
   heading: string | null;
@@ -40,11 +42,16 @@ export type TemplateSection = {
   skills: SkillRow[];
   /** Loose lines after that, in order. */
   items: Item[];
+  /** Index into the outline's sections; -1 for the synthetic leading one. */
+  outlineIndex?: number;
 };
 export type TemplateDocument = {
   name: string | null;
   contact: string[];
   sections: TemplateSection[];
+  nameMark?: Marks;
+  /** Parallel to `contact`. */
+  contactMarks?: Marks[];
 };
 
 /**
@@ -68,7 +75,27 @@ export function splitSkillRow(
  * kept; the preview also shows the drafts waiting for Add it / Skip and the
  * lines chosen for removal, marked, so both can be seen and reached on the page.
  */
-export type DocumentOptions = { drafts?: boolean };
+export type DocumentOptions = {
+  drafts?: boolean;
+  /** The user's own text by slot; here only the field slots
+   *  (`"<block>:org|title|dates|place"`) apply — line edits arrive in `lines`. */
+  edits?: Record<string, string>;
+  /** Outline section indices in the user's order (see `orderSections`). */
+  sectionOrder?: number[];
+};
+
+/**
+ * Sections in the user's order. Indices the outline no longer has are
+ * ignored, and sections the order does not mention follow in document order,
+ * so an order saved against another resume can never hide a section.
+ */
+export function orderSections<T>(sections: T[], order: number[] | undefined): T[] {
+  if (!order?.length) return sections;
+  const seen = new Set<number>();
+  const picked = order.filter((i) => i >= 0 && i < sections.length && !seen.has(i) && seen.add(i));
+  const rest = sections.map((_, i) => i).filter((i) => !seen.has(i));
+  return [...picked, ...rest].map((i) => sections[i]);
+}
 
 /** Whether a line belongs in the document being built. */
 const kept = (l: RenderedLine, drafts: boolean) => drafts || (l.state !== "removed" && l.state !== "pending");
@@ -82,7 +109,7 @@ const kept = (l: RenderedLine, drafts: boolean) => drafts || (l.state !== "remov
 export function resolveDocument(
   outline: Outline,
   lines: RenderedLine[],
-  { drafts = false }: DocumentOptions = {},
+  { drafts = false, edits = {}, sectionOrder }: DocumentOptions = {},
 ): TemplateDocument {
   const byBlock = new Map<string, RenderedLine[]>();
   // Where a block first appears in `lines` (document order), whatever its state.
@@ -115,13 +142,31 @@ export function resolveDocument(
      draft could be neither marked nor opened. */
   const afterName = outline.name === null ? [] : insertedLines(outline.name).map(plain);
   const leading: TemplateSection[] = afterName.length
-    ? [{ heading: null, kind: "other", lead: afterName, entries: [], skills: [], items: [] }]
+    ? [{ heading: null, kind: "other", lead: afterName, entries: [], skills: [], items: [], outlineIndex: -1 }]
     : [];
+
+  const field = (e: Entry, name: "org" | "title" | "dates" | "place") => {
+    const r = e[name];
+    if (!r) return null;
+    return edits[`${r.block}:${name}`] ?? r.text;
+  };
+  const fieldsOf = (e: Entry) => {
+    const f: NonNullable<TemplateEntry["fields"]> = {};
+    if (e.org) f.org = e.org.block;
+    if (e.title) f.title = e.title.block;
+    if (e.dates) f.dates = e.dates.block;
+    if (e.place) f.place = e.place.block;
+    return f;
+  };
+  const ownLine = (id: string) => resolved(id).find((l) => !isInsert(l));
+  const contactLines = outline.contact.flatMap(resolved);
 
   return {
     name: outline.name === null ? null : own(outline.name),
-    contact: outline.contact.flatMap(texts),
-    sections: [...leading, ...outline.sections.map((s) => {
+    contact: contactLines.map((l) => l.text),
+    ...(outline.name !== null && ownLine(outline.name) ? { nameMark: marks(ownLine(outline.name)!) } : {}),
+    contactMarks: contactLines.map(marks),
+    sections: [...leading, ...orderSections(outline.sections.map((s, outlineIndex) => {
       const headerBlocks = (e: Entry) =>
         // A block split across fields (org + dates) is looked up once.
         [...new Set([e.org, e.title, e.dates, e.place].flatMap((r) => (r ? [r.block] : [])))];
@@ -135,15 +180,18 @@ export function resolveDocument(
       return {
         heading: s.heading === null ? null : own(s.heading),
         kind: s.kind,
+        outlineIndex,
         lead: [...(s.heading === null ? [] : insertedLines(s.heading).map(plain)), ...items(lead)],
         // Header fields come from the ref, never from a reworded line: titles and
         // dates are not rewritten by rule. Empty entries are kept, not dropped.
+        // Field edits are the user's own; the model never rewrites these.
         entries: s.entries.map((e) => ({
-          org: e.org?.text ?? null,
-          title: e.title?.text ?? null,
-          dates: e.dates?.text ?? null,
-          place: e.place?.text ?? null,
+          org: field(e, "org"),
+          title: field(e, "title"),
+          dates: field(e, "dates"),
+          place: field(e, "place"),
           items: [...headerBlocks(e).flatMap(insertedLines).map(plain), ...items([...e.bullets, ...e.lines])],
+          fields: fieldsOf(e),
         })),
         skills: s.skills.flatMap((row): SkillRow[] => {
           const [first, ...inserts] = resolved(row.block);
@@ -154,7 +202,7 @@ export function resolveDocument(
         }),
         items: items(rest),
       };
-    })],
+    }), sectionOrder)],
   };
 }
 
