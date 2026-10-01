@@ -67,6 +67,9 @@ export function SummaryPanel({
           {r.reason ? (
             <small className="mt-0.5 block text-[12.5px] leading-[17px] text-ink-muted">{r.reason}</small>
           ) : null}
+          {r.editedNote ? (
+            <small className="mt-0.5 block text-[12.5px] leading-[17px] text-ink-muted">{r.editedNote}</small>
+          ) : null}
         </span>
       </>
     );

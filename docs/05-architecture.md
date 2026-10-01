@@ -3,7 +3,7 @@
 ## Pipeline
 
 ```
-Upload ─► Parse (DOCX / PDF / LaTeX)
+Upload ─► Parse (DOCX / PDF)
           ├─► Layout model (sections, blocks, lines, measurements)
           └─► Facts (role, project, achievement, skill + claim level + evidence)
 
@@ -25,7 +25,7 @@ Result (~15 s) ─► user decisions (Add it / Skip) ─► re-plan only what ch
 Export (clean file, same design) + claim log + interview prep
 ```
 
-**Reading the resume (`reading_resume`).** After docsvc parses the file into blocks, Claude sorts them into an outline: name, contact, and sections made of entries (employer, title, dates, place, bullets) and skill rows. The model only points at block ids and copies text out of them; it never writes text of its own. `checkOutline` (`src/lib/tailor/outline.ts`) then verifies every reference against the file: every block id must exist, every block must be placed exactly once, each piece of copied text must appear verbatim in the block it names (whitespace collapsed for the comparison, nothing else), and the parts of a split block (an employer and its dates on one tabbed line) must together cover the whole line. A rejected outline is retried once with the reason fed back. An accepted outline is resolved against the user's decided lines (`resolveDocument`, `src/lib/tailor/document.ts`) into a structured document, in file order with bullet marks kept, which docsvc renders through the template's own macros (`document_to_latex`). If the retry is also rejected, or the API fails, the parser's own labels are kept, the pipeline carries on (logged, never shown to the user), and the result renders through the flat-blocks path (`blocks_to_latex`) instead. Design and rationale: [schema extraction spec](superpowers/specs/2026-09-30-schema-extraction.md).
+**Reading the resume (`reading_resume`).** After docsvc parses the file into blocks, Claude sorts them into an outline: name, contact, and sections made of entries (employer, title, dates, place, bullets) and skill rows. The model only points at block ids and copies text out of them; it never writes text of its own. `checkOutline` (`src/lib/tailor/outline.ts`) then verifies every reference against the file: every block id must exist, every block must be placed exactly once, each piece of copied text must appear verbatim in the block it names (whitespace collapsed for the comparison, nothing else), and the parts of a split block (an employer and its dates on one tabbed line) must together cover the whole line. A rejected outline is retried once with the reason fed back. An accepted outline is resolved against the user's decided lines (`resolveDocument`, `src/lib/tailor/document.ts`) into a structured document, in file order with bullet marks kept, which the web app renders as the resume page (next paragraph). If the retry is also rejected, or the API fails, the parser's own labels are kept, the pipeline carries on (logged, never shown to the user), and the result renders from those labels instead. Design and rationale: [schema extraction spec](superpowers/specs/2026-09-30-schema-extraction.md).
 
 ## Claim levels
 
@@ -49,7 +49,7 @@ Hard rules in code: numbers must match a fact exactly; job titles and dates are 
 - Page budget = current lines + empty space on the last page. Page count never grows unless the user allows it.
 - Each change has a value (match weight × claim strength) and a cost (lines). Pick the best set within budget (greedy works).
 - Ways to pay for space, least to most visible: fit into existing skills line → tighten a long bullet → replace the least relevant bullet in the same role → remove a low-relevance bullet → shorten the summary → ask ("allow 2 pages?").
-- Never shrink font size; paragraph spacing may flex ±1pt in DOCX/LaTeX only; no stranded headings; avoid 1–2-word last lines.
+- Never shrink font size; paragraph spacing may flex ±1pt in DOCX only; no stranded headings; avoid 1–2-word last lines.
 - Loop: plan → render → measure → apply next saving → re-render, max 3 rounds, then ask.
 
 ## Editing the user's own file
@@ -57,8 +57,7 @@ Hard rules in code: numbers must match a fact exactly; job titles and dates are 
 | Format | Strategy | Status |
 | --- | --- | --- |
 | DOCX (incl. Google Docs export) | Edit text runs in place; clone a neighbouring paragraph to add a bullet; delete to remove | Proven in the prototype |
-| LaTeX | Edit source, recompile (Tectonic), check pages | Not prototyped |
-| Text PDF from Word/Docs/LaTeX | Swap a line in the same box; adding/removing needs reflow → look-alike rebuild | Swap proven in the prototype |
+| Text PDF from Word/Docs | Swap a line in the same box; adding/removing needs reflow → look-alike rebuild | Swap proven in the prototype |
 | Canva / scanned PDF | Look-alike rebuild only, with a clear warning | Not prototyped |
 
 Prototype findings (`prototypes/in-place-editing/`):
@@ -69,6 +68,8 @@ Prototype findings (`prototypes/in-place-editing/`):
 Other problems to handle: mixed formatting inside a line, two-column layouts (fit each column), headers/footers with contact info, hidden white text (warn), ATS-hostile templates (offer an ATS-safe second download).
 
 **v1 override (28 Sep 2026):** the "ATS-safe second download" above was scoped as a *fallback* for ATS-hostile source files. For v1 it is promoted to the primary path for every result, not just hostile-format cases — see `CLAUDE.md`'s dated override. Every tailored result renders into one default Rezz template (structured `Layout.blocks` in, fixed template out) rather than editing the original file in place, which sidesteps the subset-font and page-fit problems above entirely for this pipeline (they resurface if/when in-place editing is revisited). In-place editing (the table above) stays documented as the longer-term direction, not deleted.
+
+**Rendering the result (1 Oct 2026).** `ResumePage` (`src/components/resume/ResumePage.tsx`, one serif single-column template) is the only template. The Result screen previews it live; Download renders the same component with `renderResumeHtml` (fonts inlined) and posts it to docsvc `/print`, which prints it with Chromium (Playwright; network blocked; 4 MB HTML and 15 s caps). If Chromium fails twice, the drawn fallback (`document_to_blocks` → `render_template`, PyMuPDF, Helvetica) renders the same document so a download never fails. The page count comes from the printer; the screen shows "checking pages…" until it arrives. Design: [result editor spec](superpowers/specs/2026-10-01-result-editor-design.md).
 
 ## AI model and cost
 

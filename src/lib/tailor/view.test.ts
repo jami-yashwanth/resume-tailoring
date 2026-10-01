@@ -362,3 +362,50 @@ describe("buildLines grouping", () => {
     expect(buildLines(roles, [], {}, false).map((l) => l.kind)).toContain("job_title");
   });
 });
+
+describe("buildLines with edits", () => {
+  const edits = { b6: "My own sentence." };
+
+  it("an edit replaces the line with state edited and keeps the original", () => {
+    const line = buildLines(layout, [], {}, false, {}, true, edits).find((l) => l.blockId === "b6")!;
+    expect(line.state).toBe("edited");
+    expect(line.text).toBe("My own sentence.");
+    expect(line.original).toBe("Worked on backend APIs for payments.");
+  });
+
+  it("an edit wins over an applied rewording", () => {
+    const line = buildLines(layout, [op({})], {}, false, {}, true, edits).find((l) => l.blockId === "b6")!;
+    expect(line.state).toBe("edited");
+    expect(line.text).toBe("My own sentence.");
+    expect(line.original).toBe("Designed backend REST APIs for payments.");
+    expect(line.opId).toBe("o1");
+  });
+
+  it("undoing an edit restores the rewording, not the original", () => {
+    const line = buildLines(layout, [op({})], {}, false, {}, true, {}).find((l) => l.blockId === "b6")!;
+    expect(line.state).toBe("reworded");
+    expect(line.text).toBe("Designed backend REST APIs for payments.");
+  });
+
+  it("an edit keeps the inserts that follow the line", () => {
+    const lines = buildLines(layout, [draft], {}, false, {}, true, { b7: "Edited anchor." });
+    const i = lines.findIndex((l) => l.blockId === "b7" && l.state === "edited");
+    expect(i).toBeGreaterThan(-1);
+    expect(lines[i + 1]).toMatchObject({ opId: "o2", state: "pending" });
+  });
+
+  it("compare with original ignores edits", () => {
+    const line = buildLines(layout, [], {}, true, {}, true, edits).find((l) => l.blockId === "b6")!;
+    expect(line.state).toBe("unchanged");
+    expect(line.text).toBe("Worked on backend APIs for payments.");
+  });
+});
+
+describe("edits and removals", () => {
+  it("a removed line keeps the edited text", () => {
+    const removal = op({ id: "rm", op: "remove", block: "b13", text: undefined });
+    const line = buildLines(layout, [removal], { rm: true }, false, {}, true, { b13: "Mine, removed." }).find((l) => l.blockId === "b13")!;
+    expect(line.state).toBe("removed");
+    expect(line.text).toBe("Mine, removed.");
+  });
+});

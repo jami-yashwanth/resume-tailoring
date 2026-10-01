@@ -184,8 +184,8 @@ def _classify(index: int, text: str, bold: bool, italic: bool, size: float, body
         len(text) < 40 and bold and size >= body_size * 1.15 and not carries_a_value(text)
     ):
         return BlockKind.HEADING
-    # A role's title is bold in most templates, italic in some (this file's
-    # LaTeX template among them) — either is a stronger signal than "not
+    # A role's title is bold in most templates, italic in some (the
+    # Rezz template among them) — either is a stronger signal than "not
     # bold", which is why this comes before the plain-paragraph fallback.
     if len(text) < 90 and (bold or italic):
         return BlockKind.ROLE

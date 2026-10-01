@@ -1,27 +1,48 @@
-import { describe, expect, it } from "vitest";
-import { downloadBlocks, downloadName, safeName, templateInput } from "./download";
-import type { Outline } from "./types";
-import type { RenderedLine } from "./view";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import type { TemplateDocument } from "./document";
+import { FALLBACK_NOTE, downloadName, downloadResume, safeName } from "./download";
 
-const line = (key: string, state: RenderedLine["state"], text: string): RenderedLine => ({
-  key, blockId: key, kind: "bullet", section: null, style: null, text, state,
-  runs: [], size: 10.5, spaceBefore: 0, align: "left", ruleBelow: false,
-});
+const doc: TemplateDocument = { name: "Priya", contact: [], sections: [] };
 
-describe("downloadBlocks", () => {
-  it("sends what the user kept and nothing they did not agree to", () => {
-    const blocks = downloadBlocks([
-      line("a", "unchanged", "Kept."),
-      line("b", "pending", "Not decided."),
-      line("c", "removed", "Dropped to fit."),
-      line("d", "added", "Added by you."),
-      line("e", "reverted", "Your words."),
-    ]);
-    expect(blocks).toEqual([
-      { kind: "bullet", text: "Kept." },
-      { kind: "bullet", text: "Added by you." },
-      { kind: "bullet", text: "Your words." },
-    ]);
+describe("downloadResume", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  const run = async (renderer: "chromium" | "fallback", pages = 1, allowPages: number | null = null) => {
+    const fetchMock = vi.fn(async () => Response.json({ file: btoa("%PDF"), pages, renderer }));
+    vi.stubGlobal("fetch", fetchMock);
+    const createObjectURL = vi.fn(() => "blob:x");
+    vi.stubGlobal("URL", { createObjectURL, revokeObjectURL: vi.fn() });
+    const link = { click: vi.fn(), remove: vi.fn(), href: "", download: "" };
+    vi.stubGlobal("document", {
+      createElement: vi.fn(() => link),
+      body: { appendChild: vi.fn() },
+    });
+    const result = await downloadResume(doc, "priya.docx", "Kosha", allowPages);
+    return { result, fetchMock, createObjectURL };
+  };
+
+  it("does not save a file longer than the agreed length", async () => {
+    const { result, createObjectURL } = await run("chromium", 2, 1);
+    expect(result).toMatchObject({ saved: false, pages: 2, fallback: false });
+    // A refused fallback print says so, so its count is not taken as the allowance.
+    expect((await run("fallback", 2, 1)).result).toMatchObject({ saved: false, pages: 2, fallback: true });
+    expect(createObjectURL).not.toHaveBeenCalled();
+  });
+
+  it("saves a file within the agreed length, or with no length agreed", async () => {
+    const within = await run("chromium", 1, 1);
+    expect(within.result.saved).toBe(true);
+    expect(within.createObjectURL).toHaveBeenCalledTimes(1);
+    expect((await run("chromium", 3, null)).result.saved).toBe(true);
+  });
+
+  it("reports the fallback layout in the download message", async () => {
+    const { result, fetchMock } = await run("fallback");
+    expect(result.note).toBe(FALLBACK_NOTE);
+    expect(result.pages).toBe(1);
+    const init = (fetchMock.mock.calls[0] as unknown as [string, RequestInit])[1];
+    expect(JSON.parse(init.body as string)).toEqual({ document: doc });
+    expect((await run("chromium")).result.note).toBeNull();
   });
 });
 
@@ -34,27 +55,5 @@ describe("file names", () => {
   it("names the file after the upload and the company", () => {
     expect(downloadName("priya_resume.docx", "Kosha Payments")).toBe("priya_resume — Kosha Payments.pdf");
     expect(downloadName(null, "Kosha")).toBe("resume — Kosha.pdf");
-  });
-});
-
-describe("templateInput", () => {
-  it("sends flat blocks when there is no outline", () => {
-    const lines = [line("a", "unchanged", "Kept."), line("b", "pending", "Not decided.")];
-    expect(templateInput(lines, null)).toEqual({ blocks: downloadBlocks(lines) });
-  });
-
-  it("sends a document when there is an outline", () => {
-    const outline: Outline = {
-      name: null,
-      contact: [],
-      sections: [{
-        heading: null, kind: "experience", skills: [], lines: [],
-        entries: [{ org: null, title: null, dates: null, place: null, bullets: ["a"], lines: [] }],
-      }],
-    };
-    const result = templateInput([line("a", "unchanged", "Kept.")], outline);
-    expect("document" in result).toBe(true);
-    if (!("document" in result)) return;
-    expect(result.document.sections[0].entries[0].items[0]).toEqual({ text: "Kept.", bullet: true });
   });
 });

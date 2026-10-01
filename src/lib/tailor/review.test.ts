@@ -102,6 +102,27 @@ describe("page fit", () => {
 });
 
 describe("measuredPages", () => {
+  it("starts with pages null and adopts the first printed count as the allowance", () => {
+    const fresh = start();
+    expect(fresh.pages).toBeNull();
+    expect(fresh.pagesAllowed).toBeNull();
+    const state = reduce(fresh, { type: "measuredPages", pages: 2 });
+    expect(state).toMatchObject({ pages: 2, pagesAllowed: 2 });
+  });
+
+  it("growing before any count keeps the stored allowance", () => {
+    const next = reduce(start({ pagesAllowed: 1 }), { type: "choosePageFit", optionId: "grow", causedBy: null });
+    expect(next.pagesAllowed).toBe(1);
+  });
+
+  it("shows a fallback-layout count but never adopts it as the allowance", () => {
+    let state = reduce(start(), { type: "measuredPages", pages: 3, fallback: true });
+    expect(state).toMatchObject({ pages: 3, pagesFallback: true, pagesAllowed: null });
+    // The printer's own count, when it comes, is the one agreed to.
+    state = reduce(state, { type: "measuredPages", pages: 2 });
+    expect(state).toMatchObject({ pages: 2, pagesFallback: false, pagesAllowed: 2 });
+  });
+
   it("takes the first measurement as the allowance and never lowers or raises it after", () => {
     let state = reduce(start(), { type: "measuredPages", pages: 2 });
     expect(state).toMatchObject({ pages: 2, pagesAllowed: 2 });
@@ -140,8 +161,24 @@ describe("open, why, select, compare, wording", () => {
 
 describe("storage", () => {
   it("loads a session saved before removedFor existed", () => {
-    const state = fromStored({ decisions: { ins1: true }, wordings: { ins1: 1 }, pagesAllowed: 1, growthAllowed: false });
+    const state = fromStored({
+      decisions: { ins1: true }, wordings: { ins1: 1 }, pagesAllowed: 1, pagesSource: "printer", growthAllowed: false,
+    });
     expect(state).toMatchObject({ decisions: { ins1: true }, wordings: { ins1: 1 }, pagesAllowed: 1, growthAllowed: false, removedFor: {} });
+  });
+
+  it("drops an allowance that was not counted by the printer", () => {
+    // Sessions from before the Chromium printer measured a different layout;
+    // that length is not the file's, so the next printed count replaces it.
+    const old = fromStored({ decisions: { ins1: true }, wordings: {}, pagesAllowed: 1, growthAllowed: false, removedFor: {} });
+    expect(old.pagesAllowed).toBeNull();
+    expect(old.decisions).toEqual({ ins1: true });
+  });
+
+  it("stores the allowance with its source, and only when there is one", () => {
+    expect(toStored(start({ pagesAllowed: 2 }))).toMatchObject({ pagesAllowed: 2, pagesSource: "printer" });
+    expect(toStored(start()).pagesSource).toBeUndefined();
+    expect(fromStored(toStored(start({ pagesAllowed: 2 }))).pagesAllowed).toBe(2);
   });
 
   it("re-reads the length of an old session that had already allowed growth", () => {
@@ -149,7 +186,9 @@ describe("storage", () => {
     // pagesAllowed, so the stored allowance is the old, shorter length.
     const old = fromStored({ decisions: { ins1: true }, wordings: {}, pagesAllowed: 1, growthAllowed: true });
     expect(old).toMatchObject({ pagesAllowed: null, growthAllowed: true });
-    const current = fromStored({ decisions: {}, wordings: {}, pagesAllowed: 2, growthAllowed: true, removedFor: {} });
+    const current = fromStored({
+      decisions: {}, wordings: {}, pagesAllowed: 2, pagesSource: "printer", growthAllowed: true, removedFor: {},
+    });
     expect(current.pagesAllowed).toBe(2);
   });
 
@@ -158,7 +197,51 @@ describe("storage", () => {
   });
 
   it("stores only what should survive a refresh", () => {
-    const stored = toStored(start({ decisions: { ins1: true }, currentOpId: "ins2", compare: true }));
-    expect(Object.keys(stored).sort()).toEqual(["decisions", "growthAllowed", "pagesAllowed", "removedFor", "wordings"]);
+    const stored = toStored(start({ decisions: { ins1: true }, currentOpId: "ins2", compare: true, pagesAllowed: 1 }));
+    expect(Object.keys(stored).sort()).toEqual(["decisions", "edits", "growthAllowed", "pagesAllowed", "pagesSource", "removedFor", "sectionOrder", "wordings"]);
+  });
+});
+
+describe("edits and section order", () => {
+  it("edit stores the text and undoEdit removes it", () => {
+    let state = reduce(start(), { type: "edit", slot: "b6", text: "My own words." });
+    expect(state.edits).toEqual({ b6: "My own words." });
+    state = reduce(state, { type: "edit", slot: "b9:dates", text: "Jun 2022 – Present" });
+    expect(state.edits["b9:dates"]).toBe("Jun 2022 – Present");
+    state = reduce(state, { type: "undoEdit", slot: "b6" });
+    expect(state.edits).toEqual({ "b9:dates": "Jun 2022 – Present" });
+  });
+
+  it("ignores an empty edit", () => {
+    const state = reduce(start({ edits: { b6: "Kept." } }), { type: "edit", slot: "b6", text: "   " });
+    expect(state.edits).toEqual({ b6: "Kept." });
+  });
+
+  it("moveSection reorders outline indices and ignores out-of-range", () => {
+    let state = reduce(start({ sectionOrder: [0, 1, 2] }), { type: "moveSection", index: 2, to: 0 });
+    expect(state.sectionOrder).toEqual([2, 0, 1]);
+    state = reduce(state, { type: "moveSection", index: 7, to: 0 });
+    expect(state.sectionOrder).toEqual([2, 0, 1]);
+    state = reduce(state, { type: "moveSection", index: 0, to: 9 });
+    expect(state.sectionOrder).toEqual([2, 0, 1]);
+  });
+
+  it("persists edits and sectionOrder and defaults them when absent", () => {
+    const stored = toStored(start({ edits: { b6: "Mine." }, sectionOrder: [1, 0] }));
+    expect(stored.edits).toEqual({ b6: "Mine." });
+    expect(stored.sectionOrder).toEqual([1, 0]);
+    const back = fromStored(stored);
+    expect(back.edits).toEqual({ b6: "Mine." });
+    expect(back.sectionOrder).toEqual([1, 0]);
+    const old = fromStored({ decisions: {}, wordings: {}, pagesAllowed: null, growthAllowed: false });
+    expect(old.edits).toEqual({});
+    expect(old.sectionOrder).toEqual([]);
+  });
+});
+
+describe("moveSection before any reorder", () => {
+  it("starts from the shown order when none is stored", () => {
+    const state = reduce(start(), { type: "moveSection", index: 1, to: 0, order: [0, 1, 2] });
+    expect(state.sectionOrder).toEqual([1, 0, 2]);
   });
 });

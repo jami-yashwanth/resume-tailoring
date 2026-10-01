@@ -18,14 +18,22 @@ export function DecisionCard({
   item,
   position,
   total,
+  compact = false,
+  focusKey,
+  focused = false,
   whyOpen,
   onDecide,
   onNextWording,
   onWhy,
 }: {
   item: ReviewItem;
-  position: number;
-  total: number;
+  position?: number;
+  total?: number;
+  /** Inline in a section: the line's place says where it lands, so no "N of M". */
+  compact?: boolean;
+  /** The line key the page uses for this draft; clicking it there focuses this card. */
+  focusKey?: string;
+  focused?: boolean;
   whyOpen: boolean;
   onDecide: (opId: string, approved: boolean) => void;
   onNextWording: (opId: string) => void;
@@ -43,6 +51,10 @@ export function DecisionCard({
     shownAt.current = performance.now();
   }, [id]);
 
+  useEffect(() => {
+    if (focused) headingRef.current?.focus();
+  }, [focused]);
+
   /* A new card appears exactly where the last one was, so the second half of
      a double click (or a held Enter) lands on its buttons. Anything faster
      than a person can read the question is not an answer to it. */
@@ -54,9 +66,13 @@ export function DecisionCard({
   const label = item.skill ?? "this";
 
   return (
-    <section aria-labelledby={`decision-${id}`} className="rounded-lg border border-gap bg-paper-raised p-4">
+    <section
+      aria-labelledby={`decision-${id}`}
+      data-focus-key={focusKey}
+      className={`rounded-lg border bg-paper-raised p-4 ${compact ? "border-dashed border-gap" : "border-gap"}`}
+    >
       <span className="block font-mark text-[11.5px] leading-4 text-gap">
-        Needs your OK · {position} of {total}
+        {compact || position === undefined ? "Not in your resume · Needs your OK" : `Needs your OK · ${position} of ${total}`}
       </span>
       <h3
         id={`decision-${id}`}

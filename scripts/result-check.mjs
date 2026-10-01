@@ -17,6 +17,9 @@ fs.mkdirSync(OUT, { recursive: true });
 const fixture = JSON.parse(fs.readFileSync(path.join(repoRoot, "fixtures/sample-plan.json"), "utf8"));
 const WIDTHS = [1440, 1240, 1100, 880];
 const failures = [];
+/* Download reads "Checking pages…" while the printer counts the document on
+   screen, and "Download resume" once it has. Either is the one Download. */
+const DOWNLOAD = /^(Download resume|Checking pages…)$/;
 
 function check(ok, what) {
   if (!ok) failures.push(what);
@@ -30,16 +33,11 @@ function longLayout(layout, count = 40) {
   return { ...layout, blocks: [...layout.blocks, ...extra] };
 }
 
-/* The first pad count that runs to two pages, measured per width against the
-   template's compiled metrics (re-measured 30 Sep 2026 after the re-cut to
-   the owner's LaTeX reference). Per width rather than one constant: every
-   length in the preview is cqi so pagination scales in exact math, but the
-   sheet renders at a different absolute width per breakpoint and browser text
-   rasterisation is not perfectly linear — a sample bullet that wraps to two
-   lines at 794px fits one at 844px, and the boundary moves a pad. One pad
-   under sits at one page everywhere; removing one pad from the boundary
-   brings it back under everywhere. */
-const PAGE_BOUNDARY = { 1440: 21, 1240: 20, 1100: 20, 880: 21 };
+/* The first pad count whose file runs to two pages, as the printer counts it
+   (measured 1 Oct 2026 against the Chromium print of ResumePage: 34 pads is
+   one page, 35 is two). One number for every width: the count is the printed
+   file's, and the file does not depend on the window. */
+const PAGE_BOUNDARY = 35;
 
 /** The sample plan plus a removal the page-fit card can offer: the last pad line. */
 const planWithRemoval = (padCount) => ({
@@ -69,13 +67,21 @@ async function openResult(
       apply();
       document.addEventListener("readystatechange", apply);
     },
-    [JSON.stringify({ layout, plan }), decisions ? JSON.stringify(decisions) : null, theme],
+    // The outline places the fixture's own blocks; a padded layout keeps the flat path.
+    [
+      JSON.stringify({ layout, plan, outline: layout === fixture.layout ? (fixture.outline ?? null) : null }),
+      decisions ? JSON.stringify(decisions) : null,
+      theme,
+    ],
   );
   const page = await context.newPage();
   page.on("pageerror", (e) => failures.push(`page error at ${width}px: ${e.message}`));
+  // The page count is the printer's, asked after a debounce: wait for its first answer.
+  const counted = page.waitForResponse((r) => r.url().includes("/api/pages"), { timeout: 15000 }).catch(() => {});
   await page.goto(`${BASE}/result`);
+  await counted;
   await page.waitForLoadState("networkidle").catch(() => {});
-  await page.waitForTimeout(900);
+  await page.waitForTimeout(300);
   return { context, page };
 }
 
@@ -89,6 +95,7 @@ async function focused(page) {
     id: document.activeElement?.id ?? "",
     text: (document.activeElement?.textContent ?? "").trim().slice(0, 40),
     tag: document.activeElement?.tagName ?? "",
+    label: document.activeElement?.getAttribute("aria-label") ?? "",
   }));
 }
 
@@ -96,7 +103,7 @@ const browser = await chromium.launch();
 
 for (const width of WIDTHS) {
   console.log(`\n${width}px`);
-  const JUST_OVER_ONE_PAGE = PAGE_BOUNDARY[width];
+  const JUST_OVER_ONE_PAGE = PAGE_BOUNDARY;
   const JUST_UNDER_ONE_PAGE = JUST_OVER_ONE_PAGE - 1;
 
   for (const theme of ["light", "dark"]) {
@@ -133,7 +140,7 @@ for (const width of WIDTHS) {
       await add.first().click();
       await page.waitForTimeout(450); // longer than the card's 350ms guard
     }
-    const download = page.getByRole("button", { name: "Download resume" });
+    const download = page.getByRole("button", { name: DOWNLOAD });
     check((await download.count()) === 1, "exactly one Download button");
     check(await visible(page.getByText(/^All decided\./)), "the list says all decided");
     check((await focused(page)).text.startsWith("All decided."), "focus moves to \"All decided\" after the last decision");
@@ -165,7 +172,7 @@ for (const width of WIDTHS) {
     const { context, page } = await openResult(browser, width, {
       layout: longLayout(fixture.layout),
       plan: { ...fixture.plan, operations: [...fixture.plan.operations, removal("rm-a", "pad38"), removal("rm-b", "pad39")] },
-      decisions: { decisions: {}, wordings: {}, pagesAllowed: 1, growthAllowed: false, removedFor: {} },
+      decisions: { decisions: {}, wordings: {}, pagesAllowed: 1, pagesSource: "printer", growthAllowed: false, removedFor: {} },
     });
     await page.evaluate(() => {
       const region = document.querySelector('[aria-live="polite"]');
@@ -190,7 +197,7 @@ for (const width of WIDTHS) {
   {
     const { context, page } = await openResult(browser, width, {
       layout: longLayout(fixture.layout),
-      decisions: { decisions: {}, wordings: {}, pagesAllowed: 1, growthAllowed: false },
+      decisions: { decisions: {}, wordings: {}, pagesAllowed: 1, pagesSource: "printer", growthAllowed: false },
     });
     const heading = page.getByRole("heading", { name: /(makes it|runs to) \d+ pages\./ });
     check(await visible(heading), "the page-fit card is on screen");
@@ -213,9 +220,11 @@ for (const width of WIDTHS) {
       await add.first().click();
       await page.waitForTimeout(450);
     }
+    // The card waits for the printer's recount of the file.
+    await heading.waitFor({ timeout: 8000 }).catch(() => {});
     check(await visible(heading), "adding every draft to a full page shows the page-fit card");
     check(
-      await page.getByRole("button", { name: "Download resume" }).isDisabled(),
+      await page.getByRole("button", { name: DOWNLOAD }).isDisabled(),
       "Download waits for the page-fit answer",
     );
     check(await visible(page.getByText(/^Choose how it fits · 2 pages$/)), "the status says why");
@@ -227,14 +236,141 @@ for (const width of WIDTHS) {
     const { context, page } = await openResult(browser, width, {
       layout: longLayout(fixture.layout, JUST_OVER_ONE_PAGE),
       plan: planWithRemoval(JUST_OVER_ONE_PAGE),
-      decisions: { decisions: {}, wordings: {}, pagesAllowed: 1, growthAllowed: false, removedFor: {} },
+      decisions: { decisions: {}, wordings: {}, pagesAllowed: 1, pagesSource: "printer", growthAllowed: false, removedFor: {} },
     });
     const heading = page.getByRole("heading", { name: /(makes it|runs to) \d+ pages\./ });
     check(await visible(heading), "a resume just over its agreed page asks about length");
     await page.getByRole("button", { name: "Remove that line" }).click();
-    await page.waitForTimeout(300);
+    await heading.waitFor({ state: "hidden", timeout: 8000 }).catch(() => {});
     check(!(await visible(heading)), "removing a line closes the page-fit card");
     check((await focused(page)).id.startsWith("decision-"), "after a page-fit choice, focus moves to the open card");
+    await context.close();
+  }
+
+  // ── Editing and reordering, in the sections pane ─────────────────────────
+  {
+    const { context, page } = await openResult(browser, width);
+    const experience = page.getByRole("button", { name: /^EXPERIENCE/ });
+    if ((await experience.getAttribute("aria-expanded")) !== "true") await experience.click();
+
+    // Edit a bullet: type, Enter. The mark appears here and the page shows the new words.
+    const bullet = page.getByRole("button", { name: /^Bullet: Worked on backend APIs for payments\.\. Edit$/ });
+    await bullet.click();
+    const area = page.getByRole("textbox", { name: "Bullet" });
+    await area.fill("Built backend APIs for payments, in my own words.");
+    await area.press("Enter");
+    const undoEdit = page.getByRole("button", { name: /^Undo edit: Built backend APIs for payments, in my own words\.$/ });
+    check(await visible(undoEdit), "an edited line says Edited by you and has Undo");
+    check(
+      (await page.locator('.rz-preview [data-page] [data-state="edited"]').first().innerText()).includes("in my own words"),
+      "the page shows the edited words, highlighted",
+    );
+    await undoEdit.click();
+    check(
+      await visible(page.getByRole("button", { name: /^Bullet: Worked on backend APIs for payments\.\. Edit$/ })),
+      "Undo restores the original line",
+    );
+
+    // Edit a header field.
+    await page.getByRole("button", { name: /^Employer: Razorfin\. Edit$/ }).first().click();
+    const employer = page.getByRole("textbox", { name: "Employer" });
+    await employer.fill("Razorfin Payments");
+    await employer.press("Enter");
+    const editedOrg = page.locator(".rz-preview [data-page] .rz-org", { hasText: "Razorfin Payments" }).first();
+    await editedOrg.waitFor({ timeout: 3000 }).catch(() => {});
+    check(await visible(editedOrg), "an edited employer reaches the page");
+
+    // Escape cancels.
+    await page.getByRole("button", { name: /^Bullet: Helped refactor the refunds module\.\. Edit$/ }).click();
+    await page.getByRole("textbox", { name: "Bullet" }).fill("not kept");
+    await page.getByRole("textbox", { name: "Bullet" }).press("Escape");
+    check((await page.getByText("not kept").count()) === 0, "Escape cancels an edit");
+
+    // Reorder: Education above Skills, in both panes.
+    const headingsBefore = await page.locator(".rz-preview [data-page] .rz-heading").allInnerTexts();
+    await page.getByRole("button", { name: "Move EDUCATION up" }).click();
+    const headingsAfter = await page.locator(".rz-preview [data-page] .rz-heading").allInnerTexts();
+    check(
+      headingsBefore.indexOf("EDUCATION") > headingsBefore.indexOf("SKILLS") &&
+        headingsAfter.indexOf("EDUCATION") < headingsAfter.indexOf("SKILLS"),
+      "Move up reorders the section on the page",
+    );
+    const rows = await page.locator("section[aria-labelledby$='-name'] [id$='-name']").allInnerTexts();
+    check(rows.indexOf("EDUCATION") < rows.indexOf("SKILLS"), "and in the sections pane");
+    check(
+      await page.getByRole("button", { name: "Move SUMMARY up" }).isDisabled(),
+      "the first section cannot move up",
+    );
+
+    // Edits survive Compare being toggled on and off.
+    await page.getByRole("button", { name: "Compare with original" }).click();
+    check(
+      !(await page.getByText("Razorfin Payments").first().isVisible().catch(() => false)),
+      "Compare shows the uploaded wording, without edits",
+    );
+    await page.getByRole("button", { name: "Compare with original" }).click();
+    check(await visible(page.getByText("Razorfin Payments").first()), "edits come back when Compare is off");
+    await context.close();
+  }
+
+  // ── Focus never falls to the body ────────────────────────────────────────
+  {
+    const { context, page } = await openResult(browser, width);
+    const add = page.getByRole("button", { name: /^Add .+ line to my resume$/ });
+    const skip = page.getByRole("button", { name: /^Skip .+ line$/ });
+    // Answer the first of several cards: the next card takes focus.
+    await add.first().click();
+    await page.waitForTimeout(450);
+    check((await focused(page)).id.startsWith("decision-"), "after a mid-list decision, focus moves to the next card");
+
+    // Skip one, close its section, Undo from the Skipped list: the card comes back where it can be seen.
+    await skip.first().click();
+    await page.waitForTimeout(450);
+    const experience = page.getByRole("button", { name: /^EXPERIENCE/ });
+    await experience.click(); // close it
+    await page.getByRole("button", { name: /^Undo skipping .+ line$/ }).first().click();
+    await page.waitForTimeout(450);
+    check((await experience.getAttribute("aria-expanded")) === "true", "Undo on a skipped draft reopens its section");
+    check((await focused(page)).id.startsWith("decision-"), "and focuses the card that came back");
+
+    // Click a draft on the page: its card is focused.
+    await page.locator('.rz-preview [data-page] [data-state="pending"] .rz-text').last().click();
+    await page.waitForTimeout(300);
+    check((await focused(page)).id.startsWith("decision-"), "clicking a draft on the page focuses its card");
+
+    // Keyboard-only reorder: Tab lands on the move button, Enter moves, focus stays on a move control.
+    await page.getByRole("button", { name: "Move EDUCATION up" }).focus();
+    await page.keyboard.press("Enter");
+    await page.waitForTimeout(300);
+    const after = await focused(page);
+    check(/^Move EDUCATION (up|down)$/.test(after.label ?? ""), "after a keyboard move, focus stays on the section's move control");
+    await page.keyboard.press("Enter");
+    await page.waitForTimeout(300);
+    const headings = await page.locator(".rz-preview [data-page] .rz-heading").allInnerTexts();
+    check(headings.indexOf("EDUCATION") < headings.indexOf("EXPERIENCE"), "two keyboard moves carry a section past two others");
+    await context.close();
+  }
+
+  // ── Download waits for the printer's count ───────────────────────────────
+  {
+    const context = await browser.newContext({ viewport: { width, height: 900 } });
+    await context.addInitScript((result) => {
+      sessionStorage.setItem("rezz.result", result);
+      sessionStorage.setItem("rezz.resume", "UEsDBBQAAAAI");
+    }, JSON.stringify({ layout: fixture.layout, plan: fixture.plan }));
+    const page = await context.newPage();
+    // Hold the count back, so the screen sits in its "checking" state.
+    await page.route("**/api/pages", async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 4000));
+      await route.continue().catch(() => {});
+    });
+    await page.goto(`${BASE}/result`);
+    await page.getByText(/checking pages…$/).first().waitFor({ timeout: 5000 }).catch(() => {});
+    check(await visible(page.getByText(/checking pages…$/)), "the status says the pages are being checked");
+    check(
+      await page.getByRole("button", { name: DOWNLOAD }).isDisabled(),
+      "Download waits while the pages are being checked",
+    );
     await context.close();
   }
 

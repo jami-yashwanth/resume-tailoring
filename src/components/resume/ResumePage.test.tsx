@@ -1,0 +1,156 @@
+import { renderToStaticMarkup } from "react-dom/server";
+import { describe, expect, it } from "vitest";
+import { renderResumeHtml } from "@/lib/tailor/resume-html";
+import type { TemplateDocument } from "@/lib/tailor/document";
+import { RESUME_CSS } from "./resumeCss";
+import { ResumePage } from "./ResumePage";
+
+const doc: TemplateDocument = {
+  name: "Priya Sharma",
+  contact: ["priya@example.com", "Hyderabad"],
+  sections: [
+    {
+      heading: "Summary", kind: "summary",
+      lead: [{ text: "Backend engineer.", bullet: false }],
+      entries: [], skills: [], items: [],
+    },
+    {
+      heading: "Experience", kind: "experience", lead: [],
+      entries: [{
+        org: "Inncircles", place: "Hyderabad", dates: "2023 - 2026", title: "Engineer",
+        items: [
+          { text: "Built the billing service", bullet: true },
+          { text: "Shipped search", bullet: true },
+          { text: "Tech: Go, Postgres", bullet: false },
+        ],
+      }],
+      skills: [], items: [],
+    },
+    {
+      heading: "Skills", kind: "skills", lead: [], entries: [],
+      skills: [{ label: "Languages", items: "Python, Go" }], items: [],
+    },
+  ],
+};
+
+const html = (d = doc, marks?: boolean) => renderToStaticMarkup(<ResumePage document={d} marks={marks} />);
+
+describe("ResumePage", () => {
+  it("renders sections, entries and items in document order", () => {
+    const out = html();
+    const at = ["Summary", "Inncircles", "Built the billing", "Tech: Go", "Languages"].map((s) => out.indexOf(s));
+    expect(at.every((i) => i >= 0)).toBe(true);
+    expect([...at].sort((a, b) => a - b)).toEqual(at);
+  });
+
+  it("sets the entry header as org, place, dates and italic title", () => {
+    const out = html();
+    const i = [out.indexOf('class="rz-org"'), out.indexOf('class="rz-dates"'), out.indexOf('class="rz-title"')];
+    expect(i.every((x) => x >= 0)).toBe(true);
+    expect([...i].sort((a, b) => a - b)).toEqual(i);
+    expect(out).toContain('<span class="rz-place">, Hyderabad</span>');
+  });
+
+  it("renders user text literally", () => {
+    const d = structuredClone(doc);
+    d.sections[0].lead = [{ text: "<script>alert(1)</script> & 100% \\TeX", bullet: true }];
+    const out = html(d);
+    expect(out).toContain("&lt;script&gt;");
+    expect(out).not.toContain("<script>");
+    expect(out).toContain("100% \\TeX");
+  });
+
+  it("marks every block with its key, block, op and state", () => {
+    const d = structuredClone(doc);
+    d.sections[1].entries[0].items[0] = {
+      text: "Built the billing service", bullet: true,
+      key: "line-op1", state: "reworded", opId: "op1", blockId: "7",
+    };
+    const out = html(d);
+    expect(out).toContain('data-key="line-op1" data-block="7" data-op="op1" data-state="reworded"');
+    expect(html(d, false)).not.toMatch(/data-(key|block|op|state)=/);
+    // A changed line is a keyboard control on screen, and plain text in print.
+    expect(out).toContain('role="button" tabindex="0" aria-label="Reworded: Built the billing service. Why this line changed."');
+    expect(html(d, false)).not.toContain('role="button"');
+  });
+
+  it("puts the control on the line's text, so a list item stays a list item", () => {
+    const d = structuredClone(doc);
+    d.sections[1].entries[0].items[0] = {
+      text: "Built the billing service", bullet: true, key: "k", state: "reworded", opId: "op1", blockId: "7",
+    };
+    const out = html(d);
+    const li = out.match(/<li[^>]*>/)![0];
+    expect(li).toContain('data-op="op1"');
+    expect(li).not.toMatch(/role=|tabindex=/);
+    expect(out).toMatch(/<span class="rz-text" role="button" tabindex="0" aria-label="Reworded: Built the billing service\./);
+  });
+
+  it("marks skills rows like items: a pending draft and a reworded row", () => {
+    const d = structuredClone(doc);
+    d.sections[2].skills = [
+      { label: "Languages", items: "Python, Go, Rust", key: "k1", state: "reworded", opId: "r1", blockId: "s1" },
+      { label: null, items: "Kafka", key: "k2", state: "pending", opId: "p1", blockId: "s1" },
+    ];
+    const out = html(d);
+    const rows = out.match(/<div class="rz-block rz-skill"[^>]*>/g) ?? [];
+    expect(rows[0]).toContain('data-state="reworded"');
+    expect(rows[0]).toContain('data-op="r1"');
+    expect(rows[1]).toContain('data-state="pending"');
+    expect(out).toContain('aria-label="Needs your OK: Kafka. Open this decision."');
+    expect(html(d, false)).not.toMatch(/data-(key|block|op|state)=|role="button"/);
+  });
+
+  it("breaks pages only between blocks", () => {
+    const out = html();
+    const tags = out.match(/<(?:div|li)[^>]*class="[^"]*\brz-block\b/g) ?? [];
+    expect(tags.length).toBeGreaterThan(8);
+    expect(RESUME_CSS.replace(/\s+/g, "")).toContain(".rz-block{break-inside:avoid");
+  });
+
+  it("keeps print geometry in one place", () => {
+    const css = RESUME_CSS.replace(/\s+/g, "");
+    expect(css).toContain("@mediaprint{.rz-page{width:auto;padding:0;box-shadow:none}}");
+    expect(css).toMatch(/\.rz-heading\{break-after:avoid/);
+  });
+
+  it("renders only the blocks in range, counted in emission order", () => {
+    const all = html().match(/class="rz-block[^"]*"/g) ?? [];
+    // The entry header and the first bullet: the range splits the bullet run.
+    const part = renderToStaticMarkup(<ResumePage document={doc} range={[5, 7]} />);
+    const blocks = part.match(/class="rz-block[^"]*"/g) ?? [];
+    expect(blocks).toEqual(all.slice(5, 7));
+    expect(part).toContain("Inncircles");
+    expect(part).toContain("Built the billing service");
+    expect(part).not.toContain("Shipped search");
+    // No empty list is left behind for a run of bullets outside the range.
+    const none = renderToStaticMarkup(<ResumePage document={doc} range={[0, 2]} />);
+    expect(none).not.toContain(`class="rz-list"`);
+    expect(none).toContain("Priya Sharma");
+    expect(none).not.toContain("Summary");
+  });
+
+  it("omits empty sections and entries", () => {
+    const d: TemplateDocument = {
+      name: null, contact: [],
+      sections: [{ heading: "Projects", kind: "projects", lead: [], skills: [], items: [],
+        entries: [{ org: null, title: null, dates: null, place: null, items: [] }] }],
+    };
+    expect(html(d)).not.toContain("Projects");
+  });
+});
+
+describe("renderResumeHtml", () => {
+  it("embeds fonts and css", async () => {
+    const out = await renderResumeHtml(doc);
+    expect(out.startsWith("<!doctype html>")).toBe(true);
+    expect(out.split("data:font/woff2;base64,").length - 1).toBe(2);
+    expect(out).toContain(RESUME_CSS);
+    expect(out).toContain("Priya Sharma");
+  });
+
+  it("zeroes the browser's default body margin, so the page starts at the 40pt @page margin", async () => {
+    const out = (await renderResumeHtml(doc)).replace(/\s+/g, "");
+    expect(out).toContain("html,body{margin:0;padding:0}");
+  });
+});

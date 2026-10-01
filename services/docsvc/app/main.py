@@ -6,6 +6,7 @@ database and never sees the Claude API key.
 """
 import base64
 import binascii
+import logging
 import os
 import secrets
 import shutil
@@ -14,17 +15,18 @@ from pathlib import Path
 
 import pymupdf
 from fastapi import Depends, FastAPI, Header, HTTPException
+from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
 
-from . import render
+from . import printer, render
 from .docx_ops import parse_docx
 from .fitter import fit
-from .models import ApplyRequest, ApplyResponse, BlockKind, Document, Layout
-from .latex_render import document_to_blocks, render_latex, render_latex_document
+from .models import ApplyRequest, ApplyResponse, Document, Layout
 from .pdf_ops import parse_pdf
-from .template_render import render_template
+from .template_render import document_to_blocks, render_template
 
 app = FastAPI(title="docsvc", version="0.1.0")
+app.router.add_event_handler("shutdown", printer.shutdown)
 
 
 #: A resume is about as personal as a document gets, and this service will
@@ -83,6 +85,7 @@ def health() -> dict:
         "ok": True,
         "renderer": render.soffice_bin(),
         "page_counts": "real" if render.available() else "estimated",
+        "printer": "chromium" if printer.available() else "fallback",
     }
 
 
@@ -118,72 +121,57 @@ def parse(request: ParseRequest) -> Layout:
     )
 
 
-class TemplateBlock(BaseModel):
-    kind: BlockKind
-    text: str
+class PrintRequest(BaseModel):
+    #: Self-contained page from the web app (fonts inlined, no network).
+    html: str
+    #: The same resume as structure, for the drawn fallback.
+    document: Document
+    count_only: bool = False
 
 
-class RenderTemplateRequest(BaseModel):
-    #: Flat (kind, text) pairs, or the structured document — `document` wins
-    #: when both are sent.
-    blocks: list[TemplateBlock] | None = None
-    document: Document | None = None
-    #: Also render each page as a PNG — the Result screen's exact preview,
-    #: pictures of the same bytes the download gets. Off for downloads.
-    images: bool = False
+#: The web app inlines ~1 MB of fonts into the page; past this it is not a
+#: resume page.
+MAX_HTML_BYTES = 4_000_000
+
+_print_log = logging.getLogger("docsvc.print")
 
 
-#: 2x A4 (~144dpi): crisp at any preview width the Result screen renders,
-#: ~100-200KB per text page.
-_IMAGE_SCALE = 2
+def _page_count(data: bytes) -> int:
+    with pymupdf.open(stream=data, filetype="pdf") as pdf:
+        return pdf.page_count
 
 
-@app.post("/render-template", dependencies=[Depends(require_token)])
-def render_template_endpoint(request: RenderTemplateRequest) -> dict:
-    """Render the tailored content into the one default Rezz template.
+@app.post("/print", dependencies=[Depends(require_token)])
+async def print_endpoint(request: PrintRequest) -> dict:
+    """Print the web app's HTML resume to PDF; never return a blank result.
 
-    v1 override (28 Sep 2026, see CLAUDE.md): every download comes through
-    here instead of `/apply` + `/export`. The web app has already resolved
-    the plan and the user's Add it / Skip decisions into a final ordered
-    list of (kind, text) pairs — nothing here touches an original file.
+    Chromium gets two attempts (the first can land on a browser that just
+    died). If both fail, the drawn template renders the same document, so
+    the download still works and only the typeface differs.
     """
-    if request.document is not None:
-        document = request.document.model_dump()
-        blocks = document_to_blocks(document)
-    elif request.blocks is not None:
-        document = None
-        blocks = [b.model_dump() for b in request.blocks]
-    else:
-        raise HTTPException(status_code=422, detail="send blocks or document")
+    if len(request.html.encode()) > MAX_HTML_BYTES:
+        raise HTTPException(status_code=413, detail="html over 4 MB")
 
-    # The LaTeX path IS the template (owner's call, 30 Sep 2026): the owner's
-    # reference .tex, stored verbatim, compiled with Tectonic — true
-    # typesetting, ~0.5s warm. On by default; REZZ_LATEX_TEMPLATE survives
-    # only as an off switch ("false", for a machine without tectonic). Any
-    # failure — tectonic missing, compile error, timeout — still falls back
-    # to the drawn template, so the download can never fail because of this.
     data: bytes | None = None
-    pages = 0
-    if os.environ.get("REZZ_LATEX_TEMPLATE", "").strip().lower() != "false":
+    renderer = "chromium"
+    for attempt in (1, 2):
         try:
-            data = render_latex_document(document) if document is not None else render_latex(blocks)
-            with pymupdf.open(stream=data, filetype="pdf") as compiled:
-                pages = compiled.page_count
-        except Exception:
-            data = None  # the drawn template below is the never-fails path
-
+            data = await printer.print_html(request.html)
+            break
+        except printer.PrintError as exc:
+            _print_log.warning("chromium print failed (attempt %d): %s", attempt, exc)
+    # The drawn fallback and the page count are CPU work: off the event loop,
+    # so one slow render does not stall every other request.
     if data is None:
-        data, pages = render_template(blocks)
+        data, _ = await run_in_threadpool(render_template, document_to_blocks(request.document.model_dump()))
+        renderer = "fallback"
 
-    payload = {"file": base64.b64encode(data).decode(), "pages": pages, "format": "pdf"}
-    if request.images:
-        matrix = pymupdf.Matrix(_IMAGE_SCALE, _IMAGE_SCALE)
-        with pymupdf.open(stream=data, filetype="pdf") as doc:
-            payload["images"] = [
-                base64.b64encode(page.get_pixmap(matrix=matrix).tobytes("png")).decode()
-                for page in doc
-            ]
-    return payload
+    pages = await run_in_threadpool(_page_count, data)
+    return {
+        "pages": pages,
+        "renderer": renderer,
+        "file": None if request.count_only else base64.b64encode(data).decode(),
+    }
 
 
 @app.post("/apply", response_model=ApplyResponse, dependencies=[Depends(require_token)])

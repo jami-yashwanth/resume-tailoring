@@ -159,9 +159,10 @@ export async function tailor(
 /**
  * Write the user's decisions into their file.
  *
- * Currently unused — `/api/download` calls `docsvc.renderTemplate` directly
- * for v1 (see CLAUDE.md's dated override). Kept, not deleted: this is the
- * in-place path to come back to once that override is revisited.
+ * Currently unused — for v1 `/api/download` prints the default template
+ * (`renderResumeHtml` → `docsvc.printResume`) instead (see CLAUDE.md's dated
+ * override). Kept, not deleted: this is the in-place path to come back to
+ * once that override is revisited.
  *
  * `toDocsvcOps` is what enforces the promise at this boundary: a drafted line
  * the user has not approved is not sent, and one they have approved is pinned

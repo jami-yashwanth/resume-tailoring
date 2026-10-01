@@ -43,7 +43,7 @@ const plan: TailorPlan = {
   operations: [ins2, reph, ins1, rem],
   coverage: { covered: 0, total: 2, originalCovered: 0 },
 };
-const state = (over: Partial<ReviewState> = {}): ReviewState => ({ ...fromStored(null), pagesAllowed: 1, ...over });
+const state = (over: Partial<ReviewState> = {}): ReviewState => ({ ...fromStored(null), pages: 1, pagesAllowed: 1, ...over });
 
 describe("reviewList", () => {
   it("lists what is left to decide in document order and opens the first", () => {
@@ -51,6 +51,13 @@ describe("reviewList", () => {
     expect(list.toDecide.map((i) => i.op.id)).toEqual(["ins1", "ins2"]);
     expect(list.current?.op.id).toBe("ins1");
     expect(list).toMatchObject({ position: 1, totalDecisions: 2, status: "2 to decide · 1 page", ready: false });
+    // Before the printer has answered, the status says so and asks nothing about length.
+    const unchecked = reviewList(plan, layout, state({ pages: null }));
+    expect(unchecked).toMatchObject({ status: "2 to decide · checking pages…", pageFit: null });
+    // The printer gave up: say so, rather than go on checking.
+    expect(reviewList(plan, layout, state({ pages: null }), { countFailed: true }).status).toBe(
+      "2 to decide · page count unavailable",
+    );
   });
 
   it("opens the card the user chose", () => {
@@ -145,6 +152,19 @@ describe("reviewList", () => {
     expect(reviewList(later, layout, s).removed).toEqual([]);
   });
 
+  it("says it is checking pages whenever a count is in flight, not only before the first", () => {
+    const list = reviewList(plan, layout, state({ decisions: { ins1: true, ins2: false }, pages: 1 }), { checking: true });
+    expect(list.status).toBe("All decided · checking pages…");
+    expect(reviewList(plan, layout, state({ decisions: { ins1: true, ins2: false }, pages: 1 })).status).toBe(
+      "All decided · 1 page",
+    );
+  });
+
+  it("says when the count is the fallback layout's", () => {
+    const list = reviewList(plan, layout, state({ decisions: { ins1: true, ins2: false }, pages: 2, pagesAllowed: 2, pagesFallback: true }));
+    expect(list.status).toBe("All decided · 2 pages (fallback layout)");
+  });
+
   it("never asks about length while comparing", () => {
     expect(reviewList(plan, layout, state({ pages: 2, pagesAllowed: 1, compare: true })).pageFit).toBeNull();
   });
@@ -191,5 +211,21 @@ describe("announcements", () => {
     expect(undoAnnouncement(list.decided[0])).toBe("Apache Kafka line is back to decide.");
     expect(undoAnnouncement(list.reworded[0])).toBe("Rewording undone. Your original line is back.");
     expect(undoAnnouncement(list.removed[0])).toBe("Line kept.");
+  });
+});
+
+describe("pageFitOptions with edits", () => {
+  it("quotes the edited text for a removal and offers no shorter wording for an edited line", () => {
+    const rephWithAlternatives: PlannedOp = { ...reph, alternatives: ["Short.", "Shorter."] };
+    const options = pageFitOptions({
+      operations: [rephWithAlternatives, rem],
+      layout,
+      wordings: {},
+      changedOpId: "reph",
+      pages: 2,
+      edits: { b6: "My own long sentence.", b13: "My own removable line." },
+    });
+    expect(options.find((o) => o.id.startsWith("shorter:"))).toBeUndefined();
+    expect(options.find((o) => o.id === "remove:rem")?.quote).toBe("My own removable line.");
   });
 });

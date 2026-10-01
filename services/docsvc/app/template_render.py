@@ -1,26 +1,101 @@
 """The default template drawn with PyMuPDF — the never-fails fallback.
 
-Since 30 Sep 2026 the template IS the owner's LaTeX reference compiled with
-Tectonic (`latex_render.py`); this module is what `/render-template` falls
-back to when that compile cannot run — tectonic missing, compile error,
-timeout. It reproduces the compiled geometry from `shared/template.json`
-(measured off the compiled PDF; see the box model documented there), drawn in
-base-14 Helvetica because the fallback embeds no fonts. Same boxes, same page
-breaks; only the face differs.
+The printed resume is the web app's HTML page, printed by Chromium (`/print`,
+see `printer.py`). This module is what `/print` falls back to when Chromium
+cannot run: it draws the same document onto A4 in base-14 Helvetica, embedding
+no fonts. Same content and order; only the face and the exact wraps differ.
 
-Every number comes from `shared/template.json`, which the web app's
-`src/lib/tailor/template-metrics.ts` reads too, and docsvc's
-`tests/test_latex_parity.py` re-measures against the compiled PDF. Change the
-template by changing the .tex, never by tuning numbers here.
+The numbers below (PDF points) are the fallback's own: edit them here.
 """
-import json
 import re
-from pathlib import Path
 
 import pymupdf
 
-#: Four levels up from `services/docsvc/app/template_render.py` is the repo root.
-_SPEC = json.loads((Path(__file__).resolve().parents[3] / "shared" / "template.json").read_text())
+#: Leading bullet marks a file may carry on its own text.
+_BULLET_PREFIX = re.compile(r"^[•◦▪‣·\-*]+\s*")
+
+_SPEC = {
+    "page": {
+        "width": 595.28,
+        "height": 841.89,
+        "margin": 36
+    },
+    "rule": {
+        "width": 0.4
+    },
+    "color": {
+        "ink": "#000000",
+        "muted": "#5a6273",
+        "rule": "#000000"
+    },
+    "type": {
+        "name": {
+            "size": 24.79,
+            "leading": 20.23,
+            "bold": True,
+            "align": "center"
+        },
+        "contact": {
+            "size": 8.97,
+            "leading": 10.96,
+            "align": "center"
+        },
+        "heading": {
+            "size": 14.35,
+            "leading": 20.97,
+            "bold": True,
+            "upper": True,
+            "rule": True
+        },
+        "role": {
+            "size": 9.96,
+            "leading": 11.96,
+            "bold": True,
+            "indent": 10.8,
+            "width": 507.58
+        },
+        "job_title": {
+            "size": 9.96,
+            "leading": 11.96,
+            "italic": True,
+            "indent": 10.8
+        },
+        "bullet": {
+            "size": 8.97,
+            "leading": 10.96,
+            "indent": 10.8,
+            "indentNested": 21.6,
+            "marker": "• "
+        },
+        "paragraph": {
+            "size": 9.96,
+            "leading": 11.96
+        }
+    },
+    "gaps": {
+        "default": 8,
+        "name>contact": 0.77,
+        "contact>heading": 15.16,
+        "heading>paragraph": 8.17,
+        "heading>bullet": 8.25,
+        "heading>role": 8.06,
+        "heading>job_title": 8.06,
+        "paragraph>heading": 15.0,
+        "paragraph>paragraph": 0,
+        "bullet>bullet": 7.97,
+        "bullet>heading": 15.16,
+        "bullet>role": 8,
+        "bullet2>bullet2": 3.99,
+        "bullet2>heading": 15.16,
+        "bullet2>role": 11.11,
+        "role>job_title": 0,
+        "role>role": 1.99,
+        "role>heading": 10.02,
+        "job_title>bullet2": 1.27,
+        "job_title>role": 4.59,
+        "job_title>heading": 7.23
+    }
+}
 
 TYPE: dict[str, dict] = _SPEC["type"]
 GAPS: dict[str, float] = _SPEC["gaps"]
@@ -34,9 +109,9 @@ RULE_WIDTH = _SPEC["rule"]["width"]
 
 #: Roboto's hhea metrics — the box model places a line's baseline
 #: f(S, L) = L/2 + S*(asc - (asc+desc)/2) below its box top (the browser's
-#: line-box arithmetic; template.json documents it). The fallback draws
-#: Helvetica but keeps Roboto's baseline placement so its boxes and page
-#: breaks are the compiled file's.
+#: line-box arithmetic). The fallback draws
+#: Helvetica but keeps Roboto's baseline placement, so its boxes and page
+#: breaks follow the old measured layout's rather than drifting line by line.
 _ASC, _DESC = 1900 / 2048, 500 / 2048
 
 
@@ -67,9 +142,8 @@ SANS_ITALIC = "heit"
 
 BULLET_CHARS = "•◦▪‣·-*"
 
-#: How far a bullet's text sits past the drawn dot. The compiled file carries
-#: "• " as literal \small Roboto text; this is that string's width, near
-#: enough, in the fallback's own face.
+#: How far a bullet's text sits past the drawn dot: the width of "• " in the
+#: fallback's own face, near enough.
 MARKER_WIDTH = 6.0
 
 # PyMuPDF's base-14 fonts (no embedded font file) only cover a narrow glyph
@@ -155,9 +229,9 @@ class _Writer:
         )
 
     def centered(self, text: str, size: float, leading: float, fontname: str, color=INK) -> None:
-        """One line centered on the page's midline — the reference template's
-        header block. Centering happens per drawn line, so a wrapped contact
-        line centers each of its lines like LaTeX's {center} does."""
+        """One line centered on the page's midline — the template's header
+        block. Centering happens per drawn line, so each line of a wrapped
+        contact line is centered on its own."""
         font = pymupdf.Font(fontname)
         x = MARGIN + max(0.0, (CONTENT_WIDTH - font.text_length(_sanitize(text), fontsize=size)) / 2)
         self.text(x, text, size, leading, fontname, color)
@@ -247,7 +321,7 @@ def render_template(blocks: list[dict]) -> tuple[bytes, int]:
 
     #: The previous drawn block, with bullet depth resolved ("bullet2" under a
     #: role), for the gaps lookup — and whether we're under a role, the same
-    #: rule `test_latex_parity.leveled` and the preview apply.
+    #: rule the printed page applies.
     prev: str | None = None
     under_role = False
 
@@ -272,7 +346,7 @@ def render_template(blocks: list[dict]) -> tuple[bytes, int]:
             w.line(leading)
 
         elif kind == "contact":
-            # The reference separates contact fields with pipes; parsed
+            # The template separates contact fields with pipes; parsed
             # resumes usually arrive with middots, which base-14 fonts cannot
             # draw anyway (`_sanitize` would degrade them to hyphens).
             contact = re.sub(r"\s*[·|]\s*", " | ", text.replace("\t", " | "))
@@ -287,8 +361,8 @@ def render_template(blocks: list[dict]) -> tuple[bytes, int]:
             w._ensure(g + leading + gap("heading", "bullet") + TYPE["bullet"]["leading"])
             w.space(g)
             w.text(MARGIN, text.upper(), size, leading, SANS_BOLD)
-            # The rule sits at the heading box's bottom edge, where the
-            # reference's \titlerule lands.
+            # The rule sits at the heading box's bottom edge, as the
+            # template's heading border does.
             w.line(leading)
             w.rule()
 
@@ -337,3 +411,53 @@ def render_template(blocks: list[dict]) -> tuple[bytes, int]:
     pages = w.pages
     doc.close()
     return data, pages
+
+
+def _items(items) -> list[dict]:
+    """The non-empty items, stripped, bullet marks taken off bullet text."""
+    out = []
+    for item in items or []:
+        text = (item.get("text") or "").strip()
+        if not text:
+            continue
+        bullet = bool(item.get("bullet"))
+        out.append({"text": _BULLET_PREFIX.sub("", text) if bullet else text, "bullet": bullet})
+    return out
+
+
+def document_to_blocks(doc: dict) -> list[dict]:
+    """The document flattened to the (kind, text) shape the drawn fallback
+    renderer and the parity tests consume."""
+    blocks: list[dict] = []
+
+    def add(kind: str, text: str):
+        blocks.append({"kind": kind, "text": text})
+
+    def add_items(items):
+        for item in _items(items):
+            if item["bullet"]:
+                add("bullet", "• " + item["text"])
+            else:
+                add("paragraph", item["text"])
+
+    if doc.get("name"):
+        add("name", doc["name"])
+    for c in doc.get("contact") or []:
+        add("contact", c)
+    for section in doc.get("sections") or []:
+        if section.get("heading"):
+            add("heading", section["heading"])
+        add_items(section.get("lead"))
+        for e in section.get("entries") or []:
+            role = " · ".join(x for x in (e.get("org"), e.get("place")) if x)
+            if e.get("dates"):
+                role = f"{role}\t{e['dates']}" if role else e["dates"]
+            if role:
+                add("role", role)
+            if e.get("title"):
+                add("job_title", e["title"])
+            add_items(e.get("items"))
+        for row in section.get("skills") or []:
+            add("paragraph", f"{row['label']}: {row['items']}" if row.get("label") else row["items"])
+        add_items(section.get("items"))
+    return blocks

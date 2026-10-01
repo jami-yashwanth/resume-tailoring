@@ -41,11 +41,18 @@ export type StoredDecisions = {
   wordings: Wordings;
   /** The page count the user has agreed the document may reach. */
   pagesAllowed: number | null;
+  /** "printer": `pagesAllowed` is a Chromium count. Absent in sessions from
+   *  before the printer; their allowance is dropped on load. */
+  pagesSource?: "printer";
   /** They chose "keep everything" over losing a line, so stop asking. */
   growthAllowed: boolean;
   /** Lines removed to make room for an insert, keyed by that insert. Absent in
    *  sessions saved before 29 Sep 2026, which is why it is optional. */
   removedFor?: Record<string, string[]>;
+  /** The user's own retyped lines and fields, by slot (see `review.ts`). */
+  edits?: Record<string, string>;
+  /** Outline section indices in the user's order. */
+  sectionOrder?: number[];
 };
 
 /** What the finish screen needs, written at the moment of a successful

@@ -77,7 +77,20 @@ export function withDecisions(operations: PlannedOp[], decisions: Decisions): Pl
   return operations.map((op) => ({ ...op, approved: decisions[op.id] }));
 }
 
-export function reviewList(plan: TailorPlan, layout: Layout, state: ReviewState): ReviewList {
+export function reviewList(
+  plan: TailorPlan,
+  layout: Layout,
+  state: ReviewState,
+  {
+    countFailed = false,
+    checking = false,
+  }: {
+    /** The printer did not answer for the current document, even on a retry. */
+    countFailed?: boolean;
+    /** A count for the current document is in flight. */
+    checking?: boolean;
+  } = {},
+): ReviewList {
   const operations = withDecisions(plan.operations, state.decisions);
   const blockIndex = new Map(layout.blocks.map((b, i) => [b.id, i]));
   const blockOf = (id: string) => layout.blocks.find((b) => b.id === id);
@@ -127,8 +140,8 @@ export function reviewList(plan: TailorPlan, layout: Layout, state: ReviewState)
   const totalDecisions = toDecide.length + decided.length;
 
   let pageFit: PageFit | null = null;
-  if (!state.compare && state.pagesAllowed !== null && state.pages > state.pagesAllowed) {
-    const lines = buildLines(layout, operations, state.decisions, false, state.wordings);
+  if (!state.compare && state.pages !== null && state.pagesAllowed !== null && state.pages > state.pagesAllowed) {
+    const lines = buildLines(layout, operations, state.decisions, false, state.wordings, true, state.edits);
     const lastChanged = [...lines].reverse().find((l) => l.state === "added" || l.state === "reworded");
     /* The Add the user just made, when there is one: the last changed line in
        document order can be a rewording further down, and filing the removal
@@ -145,11 +158,18 @@ export function reviewList(plan: TailorPlan, layout: Layout, state: ReviewState)
         wordings: state.wordings,
         changedOpId: causedBy ?? undefined,
         pages: state.pages,
+        edits: state.edits,
       }),
     };
   }
 
-  const pagesText = `${state.pages} page${state.pages === 1 ? "" : "s"}`;
+  /* The printer has not answered for the document on screen yet: say so
+     rather than show the last document's length — Download waits for it. */
+  const pagesText = countFailed
+    ? "page count unavailable"
+    : checking || state.pages === null
+      ? "checking pages…"
+      : `${state.pages} page${state.pages === 1 ? "" : "s"}${state.pagesFallback ? " (fallback layout)" : ""}`;
   const status = toDecide.length
     ? `${toDecide.length} to decide · ${pagesText}`
     : pageFit
@@ -197,17 +217,21 @@ export function pageFitOptions({
   wordings,
   changedOpId,
   pages,
+  edits = {},
 }: {
   operations: PlannedOp[];
   layout: Layout;
   wordings: Wordings;
   changedOpId?: string;
   pages: number;
+  /** The user's own text by block: a retyped line has no shorter wording to
+   *  offer, and a removal quotes what they typed. */
+  edits?: Record<string, string>;
 }): PageFitOption[] {
   const options: PageFitOption[] = [];
 
   const changed = operations.find((op) => op.id === changedOpId);
-  if (changed) {
+  if (changed && edits[changed.block] === undefined) {
     const list = wordingOptions(changed);
     const shorter = shorterWording(list, wordings[changed.id] ?? 0);
     if (shorter !== null) {
@@ -229,7 +253,7 @@ export function pageFitOptions({
       options.push({
         id: `remove:${op.id}`,
         label: index === 0 ? "Remove the least relevant line" : "Remove a different line",
-        quote: block ? cleanText(block.kind, block.text) : undefined,
+        quote: edits[op.block] ?? (block ? cleanText(block.kind, block.text) : undefined),
         verb: "Remove that line",
       });
     });

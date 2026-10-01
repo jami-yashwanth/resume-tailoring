@@ -28,9 +28,19 @@ export type ReviewState = {
   whyOpen: boolean;
   selectedRequirement: string | null;
   compare: boolean;
-  /** Pages the preview last measured. */
-  pages: number;
+  /** Pages the printer last counted for the file; null until it has answered. */
+  pages: number | null;
+  /** `pages` came from the drawn fallback layout: shown, never agreed to. */
+  pagesFallback: boolean;
+  /** The user's own retyped text, by slot: a block id for a whole line, or
+   *  `"<block>:org|title|dates|place"` for one header field. Never sent to the
+   *  model; wins over the original and over a rewording of that line. */
+  edits: Edits;
+  /** Outline section indices in the user's order. Empty means document order. */
+  sectionOrder: number[];
 };
+
+export type Edits = Record<string, string>;
 
 export type ReviewAction =
   | { type: "decide"; opId: string; approved: boolean }
@@ -41,15 +51,27 @@ export type ReviewAction =
   | { type: "selectRequirement"; requirementId: string; opId: string | null }
   | { type: "choosePageFit"; optionId: string; causedBy: string | null }
   | { type: "toggleCompare" }
-  | { type: "measuredPages"; pages: number };
+  /** `fallback`: counted by the drawn fallback layout, not Chromium. */
+  | { type: "measuredPages"; pages: number; fallback?: boolean }
+  /** Ignored when `text` is blank: an empty line is never an edit. */
+  | { type: "edit"; slot: string; text: string }
+  | { type: "undoEdit"; slot: string }
+  /** `index` is an outline index, `to` a position. `order` is the document
+   *  order shown now, used when nothing has been reordered yet. Out of range: no-op. */
+  | { type: "moveSection"; index: number; to: number; order?: number[] };
 
 /** What survives a refresh. `removedFor` is optional so older sessions load. */
 export type Persisted = {
   decisions: Decisions;
   wordings: Wordings;
   pagesAllowed: number | null;
+  /** Who counted `pagesAllowed`. Only a Chromium count of the template is kept
+   *  across a refresh; anything else (an older layout's) is re-counted. */
+  pagesSource?: "printer";
   growthAllowed: boolean;
   removedFor?: Record<string, string[]>;
+  edits?: Edits;
+  sectionOrder?: number[];
 };
 
 export function fromStored(stored: Persisted | null): ReviewState {
@@ -58,10 +80,14 @@ export function fromStored(stored: Persisted | null): ReviewState {
      shorter length, and would re-ask about a page already agreed to. The next
      measurement takes the current length instead. */
   const oldGrowth = Boolean(stored?.growthAllowed) && stored?.removedFor === undefined;
+  /* An allowance the printer did not count was measured on a layout the file
+     no longer has (the LaTeX template, the measured replica): drop it, and
+     the first printed count becomes the allowance again. */
+  const printed = stored?.pagesSource === "printer";
   return {
     decisions: stored?.decisions ?? {},
     wordings: stored?.wordings ?? {},
-    pagesAllowed: oldGrowth ? null : (stored?.pagesAllowed ?? null),
+    pagesAllowed: oldGrowth || !printed ? null : (stored?.pagesAllowed ?? null),
     growthAllowed: stored?.growthAllowed ?? false,
     removedFor: stored?.removedFor ?? {},
     lastAdded: null,
@@ -69,7 +95,10 @@ export function fromStored(stored: Persisted | null): ReviewState {
     whyOpen: false,
     selectedRequirement: null,
     compare: false,
-    pages: 1,
+    pages: null,
+    pagesFallback: false,
+    edits: stored?.edits ?? {},
+    sectionOrder: stored?.sectionOrder ?? [],
   };
 }
 
@@ -78,8 +107,11 @@ export function toStored(state: ReviewState): Persisted {
     decisions: state.decisions,
     wordings: state.wordings,
     pagesAllowed: state.pagesAllowed,
+    ...(state.pagesAllowed === null ? {} : { pagesSource: "printer" as const }),
     growthAllowed: state.growthAllowed,
     removedFor: state.removedFor,
+    edits: state.edits,
+    sectionOrder: state.sectionOrder,
   };
 }
 
@@ -122,8 +154,34 @@ export function createReviewReducer(operations: PlannedOp[]) {
         return choosePageFit(state, action.optionId, action.causedBy);
       case "toggleCompare":
         return { ...state, compare: !state.compare, whyOpen: false };
-      case "measuredPages":
-        return { ...state, pages: action.pages, pagesAllowed: state.pagesAllowed ?? action.pages };
+      case "measuredPages": {
+        /* A fallback count is shown but never becomes the allowance: the
+           drawn layout sets differently from the template, so agreeing to
+           its length would be agreeing to the wrong file's. */
+        const fallback = Boolean(action.fallback);
+        return {
+          ...state,
+          pages: action.pages,
+          pagesFallback: fallback,
+          pagesAllowed: fallback ? state.pagesAllowed : (state.pagesAllowed ?? action.pages),
+        };
+      }
+      case "edit": {
+        if (!action.text.trim()) return state;
+        return { ...state, edits: { ...state.edits, [action.slot]: action.text } };
+      }
+      case "undoEdit": {
+        const { [action.slot]: _gone, ...edits } = state.edits;
+        return { ...state, edits };
+      }
+      case "moveSection": {
+        const order = [...(state.sectionOrder.length ? state.sectionOrder : (action.order ?? []))];
+        const from = order.indexOf(action.index);
+        if (from === -1 || action.to < 0 || action.to >= order.length) return state;
+        order.splice(from, 1);
+        order.splice(action.to, 0, action.index);
+        return { ...state, sectionOrder: order };
+      }
     }
   };
 }
@@ -174,7 +232,8 @@ function choosePageFit(state: ReviewState, optionId: string, causedBy: string | 
 
   if (kind === "grow") {
     // Agreeing to this length is not agreeing to any length: growing again asks again.
-    return { ...state, growthAllowed: true, pagesAllowed: state.pages };
+    // With no count yet there is no new length to agree to; the allowance stands.
+    return { ...state, growthAllowed: true, pagesAllowed: state.pages ?? state.pagesAllowed };
   }
 
   return state;

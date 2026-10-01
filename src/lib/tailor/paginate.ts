@@ -1,19 +1,18 @@
 /**
  * Where the preview breaks its pages.
  *
- * This is `_Writer._ensure` from `services/docsvc/app/template_render.py`,
- * written out in the browser's terms: a block that does not fit in what is
- * left of the page moves to the next one whole, rather than splitting across
- * the fold. The two have to agree — the Result screen's whole job is showing
- * the file the user is about to download — so they decide it the same way
- * against the same measurements in `template-metrics.ts`.
+ * The rule Chromium applies to `.rz-block { break-inside: avoid }` when it
+ * prints the same `ResumePage`: a block that does not fit in what is left of
+ * the page moves to the next one whole, rather than splitting across the fold.
+ * It is a display guide only — the page count the user is shown and agrees a
+ * length with is the printer's (`usePrintedPages`), never this one.
  *
  * Heights come in already measured, because where text wraps is the browser's
  * answer and not something worth predicting. That also keeps this a pure
  * function: the rule can be read and tested without a DOM.
  */
 
-import { CONTENT } from "./template-metrics";
+import { CONTENT_HEIGHT_PT } from "./page";
 import type { LineState } from "./view";
 
 /**
@@ -21,7 +20,7 @@ import type { LineState } from "./view";
  * one point, in whatever pixels this preview draws a point at.
  *
  * Not a fudge factor — it is the difference between the two things being
- * compared. The renderer decides in exact points against a fixed A4 page. The
+ * compared. The printer decides in exact points against a fixed A4 page. The
  * browser reports `getBoundingClientRect()` heights that have been laid out at
  * a device-pixel grid and summed over forty-odd blocks, so its answer carries
  * accumulated float error. Comparing the two exactly means a document that
@@ -48,7 +47,7 @@ const SLACK_PT = 1;
  */
 export function paginate(heights: number[], pageHeight: number): number[][] {
   const pages: number[][] = [[]];
-  const slack = (pageHeight / CONTENT.height) * SLACK_PT;
+  const slack = (pageHeight / CONTENT_HEIGHT_PT) * SLACK_PT;
   let used = 0;
 
   heights.forEach((height, index) => {
@@ -85,4 +84,33 @@ export function filePageCount(
 ): number {
   const inFile = heights.filter((_, index) => states[index] !== "pending" && states[index] !== "removed");
   return paginate(inFile, pageHeight).length;
+}
+
+/**
+ * Pageable units from measured blocks: each heading (and a run of them) joined
+ * to the block that follows it, as `.rz-heading { break-after: avoid }` makes
+ * the printer keep them together. `starts[u]` is the first block of unit `u`;
+ * a unit runs to the next unit's start. A heading with nothing after it stays
+ * a unit of its own.
+ */
+export function mergeHeadingHeights(
+  heights: number[],
+  isHeading: readonly boolean[],
+): { heights: number[]; starts: number[] } {
+  const merged: number[] = [];
+  const starts: number[] = [];
+  let carried = 0;
+  let from: number | null = null;
+  heights.forEach((height, index) => {
+    if (isHeading[index] && index < heights.length - 1) {
+      carried += height;
+      from ??= index;
+      return;
+    }
+    merged.push(carried + height);
+    starts.push(from ?? index);
+    carried = 0;
+    from = null;
+  });
+  return { heights: merged, starts };
 }

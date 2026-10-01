@@ -37,13 +37,13 @@ npm run dev                 # terminal 2 — web app
   `src/lib/tailor/pipeline.ts`: parse → requirements (Claude, verifier model)
   → edit-op planner (Claude, planner model) → pure-code guardrails
   (`src/lib/tailor/rules.ts`) → heading renames.
-- **`/result`** renders a live-measured A4 preview (`DefaultTemplateSheet`,
-  numbers from `shared/template.json`, same file the PDF renderer reads) with
+- **`/result`** renders the live A4 resume (`ResumePage`, one serif template) with
   the review list; Add it / Skip decisions are a pure reducer
   (`src/lib/tailor/review.ts`) persisted per session. `/result?demo` shows a
   saved sample tailoring.
 - **Download** posts approved lines only (`src/lib/tailor/download.ts`) to
-  `/api/download`, which renders the PDF via docsvc `/render-template`.
+  `/api/download`, which prints the same page to PDF via docsvc `/print`
+  (Chromium, with a drawn fallback).
 
 `src/lib/tailor/planner.ts` holds the planner prompt and hard rules — the file
 to edit for different tailoring behaviour. The rules are deliberately

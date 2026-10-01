@@ -22,8 +22,7 @@ export type FunnelEvent =
   | "decision_made"
   | "all_decided"
   | "download_clicked"
-  | "download_done"
-  | "exact_preview_opened";
+  | "download_done";
 
 const ENDPOINT = process.env.NEXT_PUBLIC_PLAUSIBLE_ENDPOINT ?? "https://plausible.io/api/event";
 

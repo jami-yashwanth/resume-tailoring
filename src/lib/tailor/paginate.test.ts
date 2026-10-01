@@ -1,10 +1,10 @@
 import { describe, expect, test } from "vitest";
-import { filePageCount, paginate } from "./paginate";
+import { filePageCount, mergeHeadingHeights, paginate } from "./paginate";
 
 /**
- * The same rule `_Writer._ensure` in `services/docsvc/app/template_render.py`
- * applies, which is the point: the preview and the downloaded file have to
- * break in the same places, so they decide it the same way.
+ * The rule the printer applies to `.rz-block { break-inside: avoid }`, so the
+ * preview's sheets break about where the downloaded file does. Only a display
+ * guide: the count the user sees is the printer's.
  */
 describe("paginate", () => {
   test("keeps everything on one page when it all fits", () => {
@@ -76,5 +76,37 @@ describe("filePageCount", () => {
 
   test("added lines and automatic rewordings are counted", () => {
     expect(filePageCount([40, 40, 40], ["added", "reworded", "reverted"], 100)).toBe(2);
+  });
+});
+
+/**
+ * A heading is `break-after: avoid` in print, so Chromium never leaves one
+ * alone at the foot of a page. The preview pages a heading and the block after
+ * it as one unit to break the same way.
+ */
+describe("mergeHeadingHeights", () => {
+  test("folds each heading into the block after it", () => {
+    expect(mergeHeadingHeights([10, 20, 30, 40], [false, true, false, false])).toEqual({
+      heights: [10, 50, 40],
+      starts: [0, 1, 3],
+    });
+  });
+
+  test("a run of headings joins the first block after them; a trailing heading stands alone", () => {
+    expect(mergeHeadingHeights([5, 5, 30, 8], [true, true, false, true])).toEqual({
+      heights: [40, 8],
+      starts: [0, 3],
+    });
+  });
+
+  test("a heading never strands at a sheet's foot", () => {
+    const heights = [70, 10, 30];
+    const isHeading = [false, true, false];
+    // Paged block by block, the heading fits under the first block and its section starts overleaf.
+    expect(paginate(heights, 100)).toEqual([[0, 1], [2]]);
+    const units = mergeHeadingHeights(heights, isHeading);
+    expect(paginate(units.heights, 100)).toEqual([[0], [1]]);
+    // Unit 1 starts at block 1: the heading moves with its section.
+    expect(units.starts[1]).toBe(1);
   });
 });

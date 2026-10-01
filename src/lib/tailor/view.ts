@@ -19,7 +19,9 @@ export type LineState =
   /** The user tapped Add it. */
   | "added"
   /** Dropped to keep the page count — only ever because the user chose it. */
-  | "removed";
+  | "removed"
+  /** Retyped by the user. Their own words, over the original or a rewording. */
+  | "edited";
 
 export type RenderedLine = {
   /** DOM id. Margin marks anchor to this. */
@@ -110,6 +112,7 @@ export const MARK_LABEL: Record<Exclude<LineState, "unchanged">, string> = {
   pending: "Needs your OK",
   added: "Added by you",
   removed: "Removed to fit",
+  edited: "Edited by you",
 };
 
 /**
@@ -140,6 +143,10 @@ export function buildLines(
   /** False keeps role lines as parsed; the template document resolves its own
    *  fields from the outline and must not see them folded. */
   group = true,
+  /** The user's own text by block id; a whole-line edit replaces the line
+   *  (original or reworded) and marks it `edited`. Field edits are not lines
+   *  and apply in `resolveDocument`. */
+  edits: Record<string, string> = {},
 ): RenderedLine[] {
   const base = (block: Layout["blocks"][number]): RenderedLine => ({
     key: `line-${block.id}`,
@@ -169,15 +176,30 @@ export function buildLines(
   const lines: RenderedLine[] = [];
 
   for (const block of layout.blocks) {
-    const edits = operations.filter((op) => op.block === block.id);
-    const rephrase = edits.find((op) => op.op === "rephrase");
+    const ops = operations.filter((op) => op.block === block.id);
+    const rephrase = ops.find((op) => op.op === "rephrase");
     // A removal takes one of the user's own lines out of their resume, so it
     // waits for them to say so. Undecided, it does nothing at all.
-    const removal = edits.find((op) => op.op === "remove" && decisions[op.id] === true);
+    const removal = ops.find((op) => op.op === "remove" && decisions[op.id] === true);
 
     const line = base(block);
+    const edit = edits[block.id];
     if (removal) {
-      lines.push({ ...line, opId: removal.id, state: "removed" });
+      // Struck through in the user's current words, so "Keep it" brings back what they typed.
+      lines.push({ ...line, text: edit ?? line.text, opId: removal.id, state: "removed" });
+    } else if (edit !== undefined) {
+      // Their own words, over whatever was on the line: the rewording when
+      // one is applied (so undoing the edit returns to it), else the original.
+      const replaced =
+        rephrase && decisions[rephrase.id] !== false ? cleanText(block.kind, wordingFor(rephrase, wordings)) : line.text;
+      lines.push({
+        ...line,
+        opId: rephrase?.id,
+        text: edit,
+        original: replaced,
+        state: "edited",
+        runs: inheritRun(edit, line.runs),
+      });
     } else if (rephrase && decisions[rephrase.id] === false) {
       // Undone. Their own sentence is back, and the mark stays so they can
       // reach the popover and take the rewording again.
@@ -196,7 +218,7 @@ export function buildLines(
       lines.push(line);
     }
 
-    for (const insert of edits.filter((op) => op.op === "insert_after")) {
+    for (const insert of ops.filter((op) => op.op === "insert_after")) {
       const decision = decisions[insert.id];
       // A skipped line leaves no trace. The spec forbids re-asking, and a
       // greyed-out reminder of what you declined is a way of re-asking.

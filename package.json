@@ -12,7 +12,8 @@
     "lint": "eslint .",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
-    "check:extract": "tsx scripts/extract-check.ts"
+    "check:extract": "tsx scripts/extract-check.ts",
+    "fixture:print": "tsx --tsconfig scripts/tsconfig.tsx.json scripts/make-print-fixture.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.68.0",

@@ -5,24 +5,30 @@ import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "r
 import { track } from "@/lib/analytics";
 import { session } from "@/lib/session";
 import { coverageOf } from "@/lib/tailor/coverage";
+import { linesToDocument, resolveDocument } from "@/lib/tailor/document";
 import { downloadResume } from "@/lib/tailor/download";
 import { requirementRows } from "@/lib/tailor/requirement-rows";
-import { createReviewReducer, fromStored, toStored } from "@/lib/tailor/review";
-import { decisionAnnouncement, reviewList, undoAnnouncement, withDecisions } from "@/lib/tailor/review-list";
+import { type ReviewAction, createReviewReducer, fromStored, toStored } from "@/lib/tailor/review";
+import { type ReviewItem, decisionAnnouncement, reviewList, undoAnnouncement, withDecisions } from "@/lib/tailor/review-list";
+import { findBlockSection, findOpItem, sectionCounts, sectionKey, sectionName } from "@/lib/tailor/sections";
 import type { Layout, Outline, TailorPlan } from "@/lib/tailor/types";
+import { usePrintedPages } from "@/lib/tailor/usePrintedPages";
 import { buildLines } from "@/lib/tailor/view";
-import { DefaultTemplateSheet } from "./DefaultTemplateSheet";
-import { ExactPreview } from "./ExactPreview";
+import { ResumePreview } from "@/components/resume/ResumePreview";
 import { ResultHeader } from "./ResultHeader";
-import { ReviewList } from "./ReviewList";
-import { SummaryPanel } from "./SummaryPanel";
+import { SectionsPane } from "./sections/SectionsPane";
+
+/** How long the fallback-layout note stays up before the finish screen. */
+const NOTE_MS = 4000;
 
 /**
  * The Result screen: see the value → make 0–3 decisions → finish.
  *
  * Layout and wiring only. What the user can do lives in `review.ts`, what the
- * screen shows in `review-list.ts` and `requirement-rows.ts`, both tested
- * without a browser. The design is docs/superpowers/specs/2026-09-29-result-screen-revamp-design.md.
+ * screen shows in `review-list.ts`, `requirement-rows.ts` and `sections.ts`,
+ * all tested without a browser. Two panes: the resume as sections on the left,
+ * the page on the right, both from one preview document. The design is
+ * docs/superpowers/specs/2026-10-01-result-editor-design.md.
  */
 export function ResultScreen({
   layout,
@@ -36,7 +42,7 @@ export function ResultScreen({
 }: {
   layout: Layout;
   plan: TailorPlan;
-  /** Claude's reading of the structure. When set, the exact preview and the
+  /** Claude's reading of the structure. When set, the preview and the
    *  download render the structured document; null keeps flat blocks. */
   outline?: Outline | null;
   company: string;
@@ -64,38 +70,94 @@ export function ResultScreen({
   useEffect(() => () => cancelAnimationFrame(announceFrame.current), []);
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
-  /* Middle-column view: the working sheet, or the compiled PDF's own pages.
-     Local state, not the review reducer — it is a way of looking, not a
-     decision, and it should not persist into the stored decisions. */
-  const [exact, setExact] = useState(false);
+  /* Said when the file came from the fallback layout: the move to the finish
+     screen waits long enough for it to be read. */
+  const [downloadNote, setDownloadNote] = useState<string | null>(null);
+  const noteTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  useEffect(() => () => clearTimeout(noteTimer.current), []);
 
   useEffect(() => {
     session.setDecisions(toStored(state));
   }, [state]);
 
   const operations = useMemo(() => withDecisions(plan.operations, state.decisions), [plan.operations, state.decisions]);
+  // Compare shows the uploaded wording: the user's edits step aside with the rewordings.
+  const shownEdits = state.compare ? {} : state.edits;
   const lines = useMemo(
-    () => buildLines(layout, operations, state.decisions, state.compare, state.wordings),
-    [layout, operations, state.decisions, state.compare, state.wordings],
+    () => buildLines(layout, operations, state.decisions, state.compare, state.wordings, true, shownEdits),
+    [layout, operations, state.decisions, state.compare, state.wordings, shownEdits],
   );
   /* The document path wants one line per change, not the sheet's grouped
      lines — so it gets its own build. */
   const documentLines = useMemo(
-    () => (outline ? buildLines(layout, operations, state.decisions, state.compare, state.wordings, false) : null),
-    [outline, layout, operations, state.decisions, state.compare, state.wordings],
+    () => (outline ? buildLines(layout, operations, state.decisions, state.compare, state.wordings, false, shownEdits) : null),
+    [outline, layout, operations, state.decisions, state.compare, state.wordings, shownEdits],
   );
-  const list = reviewList(plan, layout, state);
+  /* Two documents from the same template. The preview follows Compare and
+     shows drafts and removals, marked; the sections pane renders from it too,
+     so both panes always agree. The file is always the tailored version with
+     only what the user kept: it is what the download prints and what the
+     printer counts, so the length the user agrees to is the file's. */
+  const previewDocument = useMemo(
+    () =>
+      outline && documentLines
+        ? resolveDocument(outline, documentLines, { drafts: true, edits: shownEdits, sectionOrder: state.sectionOrder })
+        : linesToDocument(lines, { drafts: true }),
+    [outline, documentLines, lines, shownEdits, state.sectionOrder],
+  );
+  const fileDocument = useMemo(() => {
+    const final = buildLines(layout, operations, state.decisions, false, state.wordings, !outline, state.edits);
+    return outline
+      ? resolveDocument(outline, final, { edits: state.edits, sectionOrder: state.sectionOrder })
+      : linesToDocument(final);
+  }, [outline, layout, operations, state.decisions, state.wordings, state.edits, state.sectionOrder]);
+
+  const printed = usePrintedPages(fileDocument);
+  /* Keyed on the flag as well as the number: a printer count of the same
+     length after a fallback one must still clear "(fallback layout)" and
+     become the allowance. */
+  useEffect(() => {
+    if (printed.pages !== null) dispatch({ type: "measuredPages", pages: printed.pages, fallback: printed.fallback });
+  }, [printed.pages, printed.fallback]);
+
+  const list = reviewList(plan, layout, state, { countFailed: printed.failed, checking: printed.checking });
+  /* Download waits for the printer's count of the file on screen: until then
+     the length is unknown or stale, and a file could grow a page nobody agreed
+     to. If the printer gave up, Download comes back — `allowPages` below still
+     refuses to save a file longer than agreed. */
+  const countKnown = printed.failed || (!printed.checking && state.pages !== null);
   const coverage = coverageOf(plan.requirements, plan.matches, operations);
-  const rows = requirementRows(plan.requirements, plan.matches, operations);
+  // A row whose evidence the user retyped says so; coverage itself still reflects the plan.
+  const editedBlocks = useMemo(() => new Set(Object.keys(state.edits).map((k) => k.split(":")[0])), [state.edits]);
+  const rows = requirementRows(plan.requirements, plan.matches, operations, editedBlocks);
   const highlightBlocks = rows.find((r) => r.requirement.id === state.selectedRequirement)?.pointsTo ?? null;
+  const items = useMemo(() => {
+    const m = new Map<string, ReviewItem>();
+    for (const i of [...list.toDecide, ...list.decided, ...list.reworded, ...list.removed]) m.set(i.op.id, i);
+    return m;
+  }, [list]);
+
+  /* Which sections are open: the ones with a question waiting, else the
+     first. Local state — a way of looking, not a decision. */
+  const [open, setOpen] = useState<Record<string, boolean>>(() => {
+    const o: Record<string, boolean> = {};
+    let any = false;
+    previewDocument.sections.forEach((sec, i) => {
+      if (sectionCounts(sec).toDecide > 0) {
+        o[sectionKey(sec, i)] = true;
+        any = true;
+      }
+    });
+    if (!any && previewDocument.sections[0]) o[sectionKey(previewDocument.sections[0], 0)] = true;
+    return o;
+  });
+  const [focusKey, setFocusKey] = useState<string | null>(null);
 
   // A decided line's border tracks whether its "why" explanation is actually
   // open, not just whether it was last clicked — else a second click can't
   // clear it. An undecided line's border tracks which card is open instead.
   const openOpId = state.currentOpId ?? list.current?.op.id ?? null;
   const activeOpId = list.toDecide.some((i) => i.op.id === openOpId) ? openOpId : state.whyOpen ? state.currentOpId : null;
-
-  const onPageCount = useCallback((pages: number) => dispatch({ type: "measuredPages", pages }), []);
 
   function decide(opId: string, approved: boolean) {
     const item = list.toDecide.find((i) => i.op.id === opId);
@@ -108,12 +170,17 @@ export function ResultScreen({
 
   function undo(opId: string) {
     const item = [...list.decided, ...list.reworded, ...list.removed].find((i) => i.op.id === opId);
+    // A skipped draft comes back as a card in its section: open that section first.
+    const sec = item ? findBlockSection(previewDocument, item.op.block) : null;
+    if (sec !== null) setOpen((o) => ({ ...o, [sectionKey(previewDocument.sections[sec], sec)]: true }));
     dispatch({ type: "undo", opId });
     announce(item ? undoAnnouncement(item) : "");
   }
 
   function choosePageFit(optionId: string) {
     dispatch({ type: "choosePageFit", optionId, causedBy: list.pageFit?.causedBy ?? null });
+    // "Your resume came to N pages…" is answered now; it would only mislead.
+    setDownloadError(null);
     announce(
       optionId.startsWith("remove:")
         ? "Line removed to fit."
@@ -123,27 +190,52 @@ export function ResultScreen({
     );
   }
 
-  /** A changed line on the page opens its card, or its row's explanation. */
+  /** A changed line on the page opens its section and its card, or its row's explanation. */
   function focusLine(opId: string) {
+    const found = findOpItem(previewDocument, opId);
+    const key = found ? sectionKey(previewDocument.sections[found.section], found.section) : "personal";
+    setOpen((o) => ({ ...o, [key]: true }));
+    setFocusKey(found?.key ?? null);
     if (list.toDecide.some((i) => i.op.id === opId)) dispatch({ type: "open", opId });
     else dispatch({ type: "why", opId });
+  }
+
+  function edit(action: ReviewAction) {
+    dispatch(action);
+    if (action.type === "edit") announce("Edited. Your own words are on the page.");
+    if (action.type === "undoEdit") announce("Edit undone.");
+  }
+
+  function moveSection(index: number, to: number, order: number[]) {
+    dispatch({ type: "moveSection", index, to, order });
+    const sec = previewDocument.sections.find((x) => x.outlineIndex === index);
+    announce(sec ? `${sectionName(sec)} moved.` : "Section moved.");
   }
 
   async function download() {
     if (!resume) return;
     setDownloading(true);
     setDownloadError(null);
+    setDownloadNote(null);
     track("download_clicked");
     try {
       // Always the tailored version, whatever the compare toggle shows.
-      const final = buildLines(layout, operations, state.decisions, false, state.wordings, !outline);
-      const saved = await downloadResume(final, filename, company, outline);
-      track("download_done", { pages: saved.pages ?? state.pages });
+      const allowPages = state.growthAllowed ? null : state.pagesAllowed;
+      const saved = await downloadResume(fileDocument, filename, company, allowPages);
+      if (!saved.saved && saved.pages !== null) {
+        // Longer than agreed: nothing saved. The page-fit card asks how it fits.
+        dispatch({ type: "measuredPages", pages: saved.pages, fallback: saved.fallback });
+        setDownloadError(`Your resume came to ${saved.pages} pages. Choose how it fits, then download again.`);
+        return;
+      }
+      // Neither count known is the rare case both the printer and the fallback went quiet about length.
+      const pages = saved.pages ?? state.pages ?? layout.pages;
+      track("download_done", { pages });
       session.setFinish({
         filename: saved.name,
         company,
         role,
-        pages: saved.pages ?? state.pages,
+        pages,
         pagesBefore: layout.pages,
         covered: coverage.covered,
         total: coverage.total,
@@ -153,7 +245,11 @@ export function ResultScreen({
         added: list.decided.filter((i) => i.state === "added").map((i) => i.text),
         operations,
       });
-      router.push("/done");
+      // The fallback layout can differ from the preview; say so before moving on.
+      if (saved.note) {
+        setDownloadNote(saved.note);
+        noteTimer.current = setTimeout(() => router.push("/done"), NOTE_MS);
+      } else router.push("/done");
     } catch (error) {
       setDownloadError(error instanceof Error ? error.message : "Could not write your file.");
     } finally {
@@ -161,28 +257,34 @@ export function ResultScreen({
     }
   }
 
-  const notice =
-    downloadError || sample || !resume ? (
-      <p
-        role={downloadError ? "alert" : undefined}
-        className={`m-0 rounded-lg border p-3 text-[13px] leading-[19px] ${
-          downloadError ? "border-gap bg-gap-soft font-semibold text-gap" : "border-line bg-paper-raised text-ink-muted"
-        }`}
-      >
-        {downloadError ??
-          (sample ? (
-            <>
-              This is a demo of a saved sample tailoring. <a href="/upload">Tailor your own resume</a> to download a
-              file.
-            </>
-          ) : (
-            <>
-              Your decisions are safe, but this browser no longer has your file, so we can&rsquo;t write the
-              download. <a href="/upload">Upload it again</a> to finish.
-            </>
-          ))}
-      </p>
-    ) : null;
+  const notice = downloadNote ? (
+    <p
+      role="status"
+      className="m-0 rounded-lg border border-line bg-paper-raised p-3 text-[13px] leading-[19px] text-ink-muted"
+    >
+      {downloadNote}
+    </p>
+  ) : downloadError || sample || !resume ? (
+    <p
+      role={downloadError ? "alert" : undefined}
+      className={`m-0 rounded-lg border p-3 text-[13px] leading-[19px] ${
+        downloadError ? "border-gap bg-gap-soft font-semibold text-gap" : "border-line bg-paper-raised text-ink-muted"
+      }`}
+    >
+      {downloadError ??
+        (sample ? (
+          <>
+            This is a demo of a saved sample tailoring. <a href="/upload">Tailor your own resume</a> to download a
+            file.
+          </>
+        ) : (
+          <>
+            Your decisions are safe, but this browser no longer has your file, so we can&rsquo;t write the
+            download. <a href="/upload">Upload it again</a> to finish.
+          </>
+        ))}
+    </p>
+  ) : null;
 
   return (
     <div className="flex h-screen flex-col overflow-hidden">
@@ -191,89 +293,66 @@ export function ResultScreen({
         company={company}
         status={list.status}
         compare={state.compare}
-        onToggleCompare={() => {
-          // The two middle-column views are exclusive: comparing shows the
-          // original wording in the working sheet, which the compiled PDF
-          // could silently contradict.
-          if (!state.compare) setExact(false);
-          dispatch({ type: "toggleCompare" });
-        }}
-        exact={exact}
-        onToggleExact={() => {
-          if (!exact) {
-            if (state.compare) dispatch({ type: "toggleCompare" });
-            track("exact_preview_opened");
-          }
-          setExact(!exact);
-        }}
+        onToggleCompare={() => dispatch({ type: "toggleCompare" })}
         ready={list.ready}
         onDownload={download}
-        // Not while the page-fit question is open: the file would be a length
-        // nobody agreed to. The status says why.
-        canDownload={Boolean(resume) && !list.pageFit}
+        // Not while the page-fit question is open or the count is still
+        // coming: the file would be a length nobody agreed to. The status says why.
+        canDownload={Boolean(resume) && countKnown && !list.pageFit && !downloadNote}
+        checking={printed.checking}
         downloading={downloading}
       />
 
-      {/* 220 · up to 794 (A4 at 96dpi, the page template_render.py draws) · 300.
-          Below 1240 the summary folds into a strip above; below 900 the review
-          list moves above the resume. Nothing is ever hidden. */}
+      {/* Two panes: the resume as sections, then the page it becomes. Below
+          1100 they stack, sections first. Nothing is ever hidden. */}
       <div
         className="grid flex-1 content-start justify-center gap-8 overflow-y-auto bg-paper-sunken px-8 py-8
-                   [grid-template-columns:220px_minmax(0,794px)_300px]
-                   max-[1240px]:[grid-template-columns:minmax(0,1fr)_300px]
-                   max-[900px]:[grid-template-columns:minmax(0,1fr)] max-[900px]:gap-4 max-[900px]:p-4"
+                   [grid-template-columns:minmax(0,1fr)_minmax(0,1.25fr)]
+                   max-[1100px]:[grid-template-columns:minmax(0,1fr)] max-[1100px]:gap-4 max-[1100px]:p-4"
       >
-        <SummaryPanel
-          className="self-start min-[1240px]:sticky min-[1240px]:top-0 min-[1240px]:max-h-[calc(100dvh-8rem)]
-                     min-[1240px]:overflow-y-auto max-[1240px]:col-span-2 max-[900px]:col-span-1"
-          rows={rows}
-          coverage={coverage}
-          selected={state.selectedRequirement}
-          onSelect={(requirementId, opId) => dispatch({ type: "selectRequirement", requirementId, opId })}
-        />
-
-        <div className="flex min-w-0 flex-col gap-3 max-[900px]:order-3">
-          {exact && (
-            <>
-              <p className="m-0 font-ui text-[13px] leading-[19px] text-ink-muted">
-                The compiled file, exactly as it downloads.
-                {list.toDecide.length > 0 &&
-                  ` ${list.toDecide.length === 1 ? "1 line waiting for your OK is" : `${list.toDecide.length} lines waiting for your OK are`} not in it.`}
-              </p>
-              <ExactPreview lines={documentLines ?? lines} outline={outline} who={layout.blocks[0]?.text ?? "Your"} />
-            </>
-          )}
-          {/* The working sheet stays mounted while the PDF view shows: its
-              hidden measuring pass is what keeps the agreed page count and the
-              page-fit question live while decisions land from the review list.
-              `invisible` (not display:none) keeps its width real, so those
-              measurements stay real; h-0 keeps it from taking space. */}
-          <div className={exact ? "invisible h-0 overflow-hidden" : "contents"} aria-hidden={exact || undefined}>
-            <DefaultTemplateSheet
-              layout={layout}
-              lines={lines}
-              activeOpId={activeOpId}
-              highlightBlocks={highlightBlocks}
-              onSelect={focusLine}
-              onPageCount={onPageCount}
-            />
-          </div>
+        <div
+          className="flex min-w-0 flex-col gap-3 self-start min-[1100px]:sticky min-[1100px]:top-0
+                     min-[1100px]:max-h-[calc(100dvh-8rem)] min-[1100px]:overflow-y-auto"
+        >
+          {notice}
+          <SectionsPane
+            document={previewDocument}
+            list={list}
+            items={items}
+            state={state}
+            coverage={coverage}
+            rows={rows}
+            selectedRequirement={state.selectedRequirement}
+            open={open}
+            onToggle={(key) => setOpen((o) => ({ ...o, [key]: !(o[key] ?? false) }))}
+            focusKey={focusKey}
+            sectionOrder={state.sectionOrder}
+            pagesLabel={
+              printed.failed
+                ? "page count unavailable"
+                : state.pages === null
+                  ? "checking pages…"
+                  : `${state.pages} page${state.pages === 1 ? "" : "s"}`
+            }
+            onEdit={edit}
+            onDecide={decide}
+            onUndo={undo}
+            onNextWording={(opId) => dispatch({ type: "nextWording", opId })}
+            onWhy={(opId) => dispatch({ type: "why", opId })}
+            onChoosePageFit={choosePageFit}
+            onSelectRequirement={(requirementId, opId) => dispatch({ type: "selectRequirement", requirementId, opId })}
+            onMoveSection={moveSection}
+          />
         </div>
 
-        <ReviewList
-          className="self-start min-[900px]:sticky min-[900px]:top-0 min-[900px]:max-h-[calc(100dvh-8rem)]
-                     min-[900px]:overflow-y-auto max-[900px]:order-2"
-          list={list}
-          state={state}
-          coverage={coverage}
-          notice={notice}
-          onDecide={decide}
-          onUndo={undo}
-          onNextWording={(opId) => dispatch({ type: "nextWording", opId })}
-          onOpen={(opId) => dispatch({ type: "open", opId })}
-          onWhy={(opId) => dispatch({ type: "why", opId })}
-          onChoosePageFit={choosePageFit}
-        />
+        <div className="flex min-w-0 flex-col gap-3">
+          <ResumePreview
+            document={previewDocument}
+            activeOpId={activeOpId}
+            highlightBlocks={highlightBlocks}
+            onSelect={focusLine}
+          />
+        </div>
       </div>
 
       <p aria-live="polite" className="sr-only">

@@ -48,7 +48,7 @@ No product was found that edits a user's own PDF in place with tailoring.
 - Naukri launched an AI Resume Maker in Nov 2025 (3 free tries; Pro ~₹700–890/month, unverified). FastForward/visibility plans ₹600–1,900; human resume writing ₹1,150–4,200.
 - A crowded ₹49–299 long tail (ResumeGyani, CV Prime, ResAI…) almost all sell ATS scores. Zety/Resume.io use auto-renewing trials.
 - 86% of UPI merchant payments are under ₹500. LinkedIn Premium ~₹1,016/month on web vs ~₹1,850 via Google Play.
-- Indian resume conventions: notice period, current/expected CTC, a biodata block for government/PSU roles, marks tables for freshers, college-mandated templates, LaTeX (Jake's Resume) among techies.
+- Indian resume conventions: notice period, current/expected CTC, a biodata block for government/PSU roles, marks tables for freshers, college-mandated templates, Jake's Resume-style templates among techies.
 - Device split: ~64% of Indian web traffic is mobile (StatCounter, Aug 2026); no figure for job applications specifically.
 
 ## Recruiter/staffing market (for later)
