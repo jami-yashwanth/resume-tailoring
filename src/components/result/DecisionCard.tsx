@@ -18,14 +18,17 @@ export function DecisionCard({
   item,
   position,
   total,
+  compact = false,
   whyOpen,
   onDecide,
   onNextWording,
   onWhy,
 }: {
   item: ReviewItem;
-  position: number;
-  total: number;
+  position?: number;
+  total?: number;
+  /** Inline in a section: the line's place says where it lands, so no "N of M". */
+  compact?: boolean;
   whyOpen: boolean;
   onDecide: (opId: string, approved: boolean) => void;
   onNextWording: (opId: string) => void;
@@ -54,9 +57,9 @@ export function DecisionCard({
   const label = item.skill ?? "this";
 
   return (
-    <section aria-labelledby={`decision-${id}`} className="rounded-lg border border-gap bg-paper-raised p-4">
+    <section aria-labelledby={`decision-${id}`} className={`rounded-lg border bg-paper-raised p-4 ${compact ? "border-dashed border-gap" : "border-gap"}`}>
       <span className="block font-mark text-[11.5px] leading-4 text-gap">
-        Needs your OK · {position} of {total}
+        {compact || position === undefined ? "Not in your resume · Needs your OK" : `Needs your OK · ${position} of ${total}`}
       </span>
       <h3
         id={`decision-${id}`}

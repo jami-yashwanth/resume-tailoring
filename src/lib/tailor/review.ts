@@ -56,8 +56,9 @@ export type ReviewAction =
   /** Ignored when `text` is blank: an empty line is never an edit. */
   | { type: "edit"; slot: string; text: string }
   | { type: "undoEdit"; slot: string }
-  /** Both are outline indices. Out of range: no-op. */
-  | { type: "moveSection"; index: number; to: number };
+  /** `index` is an outline index, `to` a position. `order` is the document
+   *  order shown now, used when nothing has been reordered yet. Out of range: no-op. */
+  | { type: "moveSection"; index: number; to: number; order?: number[] };
 
 /** What survives a refresh. `removedFor` is optional so older sessions load. */
 export type Persisted = {
@@ -174,7 +175,7 @@ export function createReviewReducer(operations: PlannedOp[]) {
         return { ...state, edits };
       }
       case "moveSection": {
-        const order = [...state.sectionOrder];
+        const order = [...(state.sectionOrder.length ? state.sectionOrder : (action.order ?? []))];
         const from = order.indexOf(action.index);
         if (from === -1 || action.to < 0 || action.to >= order.length) return state;
         order.splice(from, 1);

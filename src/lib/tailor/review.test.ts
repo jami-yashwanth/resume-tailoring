@@ -238,3 +238,10 @@ describe("edits and section order", () => {
     expect(old.sectionOrder).toEqual([]);
   });
 });
+
+describe("moveSection before any reorder", () => {
+  it("starts from the shown order when none is stored", () => {
+    const state = reduce(start(), { type: "moveSection", index: 1, to: 0, order: [0, 1, 2] });
+    expect(state.sectionOrder).toEqual([1, 0, 2]);
+  });
+});
