@@ -141,7 +141,7 @@ export function reviewList(
 
   let pageFit: PageFit | null = null;
   if (!state.compare && state.pages !== null && state.pagesAllowed !== null && state.pages > state.pagesAllowed) {
-    const lines = buildLines(layout, operations, state.decisions, false, state.wordings);
+    const lines = buildLines(layout, operations, state.decisions, false, state.wordings, true, state.edits);
     const lastChanged = [...lines].reverse().find((l) => l.state === "added" || l.state === "reworded");
     /* The Add the user just made, when there is one: the last changed line in
        document order can be a rewording further down, and filing the removal
@@ -158,6 +158,7 @@ export function reviewList(
         wordings: state.wordings,
         changedOpId: causedBy ?? undefined,
         pages: state.pages,
+        edits: state.edits,
       }),
     };
   }
@@ -216,17 +217,21 @@ export function pageFitOptions({
   wordings,
   changedOpId,
   pages,
+  edits = {},
 }: {
   operations: PlannedOp[];
   layout: Layout;
   wordings: Wordings;
   changedOpId?: string;
   pages: number;
+  /** The user's own text by block: a retyped line has no shorter wording to
+   *  offer, and a removal quotes what they typed. */
+  edits?: Record<string, string>;
 }): PageFitOption[] {
   const options: PageFitOption[] = [];
 
   const changed = operations.find((op) => op.id === changedOpId);
-  if (changed) {
+  if (changed && edits[changed.block] === undefined) {
     const list = wordingOptions(changed);
     const shorter = shorterWording(list, wordings[changed.id] ?? 0);
     if (shorter !== null) {
@@ -248,7 +253,7 @@ export function pageFitOptions({
       options.push({
         id: `remove:${op.id}`,
         label: index === 0 ? "Remove the least relevant line" : "Remove a different line",
-        quote: block ? cleanText(block.kind, block.text) : undefined,
+        quote: edits[op.block] ?? (block ? cleanText(block.kind, block.text) : undefined),
         verb: "Remove that line",
       });
     });

@@ -400,3 +400,12 @@ describe("buildLines with edits", () => {
     expect(line.text).toBe("Worked on backend APIs for payments.");
   });
 });
+
+describe("edits and removals", () => {
+  it("a removed line keeps the edited text", () => {
+    const removal = op({ id: "rm", op: "remove", block: "b13", text: undefined });
+    const line = buildLines(layout, [removal], { rm: true }, false, {}, true, { b13: "Mine, removed." }).find((l) => l.blockId === "b13")!;
+    expect(line.state).toBe("removed");
+    expect(line.text).toBe("Mine, removed.");
+  });
+});

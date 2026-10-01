@@ -1,12 +1,13 @@
 "use client";
 
-import { ChevronDown, ChevronUp, GripVertical } from "lucide-react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import type { ReactNode } from "react";
 
 /**
  * A section's row: name, what is waiting inside, and the controls to open it
  * or move it. Move up / Move down are buttons, always in the tab order, so
- * reordering never needs a pointer.
+ * reordering never needs a pointer. There is no drag in this version, so
+ * there is no grip to promise one.
  */
 export function SectionRow({
   id,
@@ -40,11 +41,6 @@ export function SectionRow({
   return (
     <section aria-labelledby={`${id}-name`} className="rounded-lg border border-line bg-paper-raised">
       <div className="flex items-center gap-1 px-2 py-1">
-        {movable ? (
-          <GripVertical aria-hidden className="h-5 w-5 flex-none text-ink-muted" strokeWidth={1.5} />
-        ) : (
-          <span aria-hidden className="h-5 w-5 flex-none" />
-        )}
         <button
           type="button"
           aria-expanded={open}
@@ -64,10 +60,10 @@ export function SectionRow({
         </button>
         {movable && (
           <div className="flex flex-none items-center">
-            <button type="button" aria-label={`Move ${name} up`} disabled={disabled || !canMoveUp} onClick={onMoveUp} className={moveButton}>
+            <button id={`${id}-up`} type="button" aria-label={`Move ${name} up`} disabled={disabled || !canMoveUp} onClick={onMoveUp} className={moveButton}>
               <ChevronUp aria-hidden className="h-4 w-4" strokeWidth={1.5} />
             </button>
-            <button type="button" aria-label={`Move ${name} down`} disabled={disabled || !canMoveDown} onClick={onMoveDown} className={moveButton}>
+            <button id={`${id}-down`} type="button" aria-label={`Move ${name} down`} disabled={disabled || !canMoveDown} onClick={onMoveDown} className={moveButton}>
               <ChevronDown aria-hidden className="h-4 w-4" strokeWidth={1.5} />
             </button>
           </div>

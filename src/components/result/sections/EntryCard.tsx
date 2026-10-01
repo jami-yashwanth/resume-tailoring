@@ -96,6 +96,8 @@ export function EntryCard({
                 <DecisionCard
                   item={ri}
                   compact
+                  focusKey={item.key}
+                  focused={focusKey !== null && focusKey === item.key}
                   whyOpen={state.whyOpen && state.currentOpId === ri.op.id}
                   onDecide={onDecide}
                   onNextWording={onNextWording}

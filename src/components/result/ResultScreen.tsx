@@ -10,7 +10,7 @@ import { downloadResume } from "@/lib/tailor/download";
 import { requirementRows } from "@/lib/tailor/requirement-rows";
 import { type ReviewAction, createReviewReducer, fromStored, toStored } from "@/lib/tailor/review";
 import { type ReviewItem, decisionAnnouncement, reviewList, undoAnnouncement, withDecisions } from "@/lib/tailor/review-list";
-import { findOpItem, sectionCounts, sectionKey, sectionName } from "@/lib/tailor/sections";
+import { findBlockSection, findOpItem, sectionCounts, sectionKey, sectionName } from "@/lib/tailor/sections";
 import type { Layout, Outline, TailorPlan } from "@/lib/tailor/types";
 import { usePrintedPages } from "@/lib/tailor/usePrintedPages";
 import { buildLines } from "@/lib/tailor/view";
@@ -170,6 +170,9 @@ export function ResultScreen({
 
   function undo(opId: string) {
     const item = [...list.decided, ...list.reworded, ...list.removed].find((i) => i.op.id === opId);
+    // A skipped draft comes back as a card in its section: open that section first.
+    const sec = item ? findBlockSection(previewDocument, item.op.block) : null;
+    if (sec !== null) setOpen((o) => ({ ...o, [sectionKey(previewDocument.sections[sec], sec)]: true }));
     dispatch({ type: "undo", opId });
     announce(item ? undoAnnouncement(item) : "");
   }

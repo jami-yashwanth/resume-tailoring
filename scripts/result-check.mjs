@@ -95,6 +95,7 @@ async function focused(page) {
     id: document.activeElement?.id ?? "",
     text: (document.activeElement?.textContent ?? "").trim().slice(0, 40),
     tag: document.activeElement?.tagName ?? "",
+    label: document.activeElement?.getAttribute("aria-label") ?? "",
   }));
 }
 
@@ -309,6 +310,44 @@ for (const width of WIDTHS) {
     );
     await page.getByRole("button", { name: "Compare with original" }).click();
     check(await visible(page.getByText("Razorfin Payments").first()), "edits come back when Compare is off");
+    await context.close();
+  }
+
+  // ── Focus never falls to the body ────────────────────────────────────────
+  {
+    const { context, page } = await openResult(browser, width);
+    const add = page.getByRole("button", { name: /^Add .+ line to my resume$/ });
+    const skip = page.getByRole("button", { name: /^Skip .+ line$/ });
+    // Answer the first of several cards: the next card takes focus.
+    await add.first().click();
+    await page.waitForTimeout(450);
+    check((await focused(page)).id.startsWith("decision-"), "after a mid-list decision, focus moves to the next card");
+
+    // Skip one, close its section, Undo from the Skipped list: the card comes back where it can be seen.
+    await skip.first().click();
+    await page.waitForTimeout(450);
+    const experience = page.getByRole("button", { name: /^EXPERIENCE/ });
+    await experience.click(); // close it
+    await page.getByRole("button", { name: /^Undo skipping .+ line$/ }).first().click();
+    await page.waitForTimeout(450);
+    check((await experience.getAttribute("aria-expanded")) === "true", "Undo on a skipped draft reopens its section");
+    check((await focused(page)).id.startsWith("decision-"), "and focuses the card that came back");
+
+    // Click a draft on the page: its card is focused.
+    await page.locator('.rz-preview [data-page] [data-state="pending"] .rz-text').last().click();
+    await page.waitForTimeout(300);
+    check((await focused(page)).id.startsWith("decision-"), "clicking a draft on the page focuses its card");
+
+    // Keyboard-only reorder: Tab lands on the move button, Enter moves, focus stays on a move control.
+    await page.getByRole("button", { name: "Move EDUCATION up" }).focus();
+    await page.keyboard.press("Enter");
+    await page.waitForTimeout(300);
+    const after = await focused(page);
+    check(/^Move EDUCATION (up|down)$/.test(after.label ?? ""), "after a keyboard move, focus stays on the section's move control");
+    await page.keyboard.press("Enter");
+    await page.waitForTimeout(300);
+    const headings = await page.locator(".rz-preview [data-page] .rz-heading").allInnerTexts();
+    check(headings.indexOf("EDUCATION") < headings.indexOf("EXPERIENCE"), "two keyboard moves carry a section past two others");
     await context.close();
   }
 

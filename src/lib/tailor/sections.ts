@@ -64,6 +64,16 @@ export function findOpSection(doc: TemplateDocument, opId: string): number | nul
   return findOpItem(doc, opId)?.section ?? null;
 }
 
+/** Index of the section a block lives in — as a line, a skill row or an entry field — or null. */
+export function findBlockSection(doc: TemplateDocument, blockId: string): number | null {
+  const i = doc.sections.findIndex(
+    (s) =>
+      marked(s).some((m) => m.blockId === blockId) ||
+      s.entries.some((e) => Object.values(e.fields ?? {}).includes(blockId)),
+  );
+  return i === -1 ? null : i;
+}
+
 /** The section and the line key an operation's mark sits on, for opening and focusing it. */
 export function findOpItem(doc: TemplateDocument, opId: string): { section: number; key: string | undefined } | null {
   for (let i = 0; i < doc.sections.length; i++) {

@@ -213,3 +213,19 @@ describe("announcements", () => {
     expect(undoAnnouncement(list.removed[0])).toBe("Line kept.");
   });
 });
+
+describe("pageFitOptions with edits", () => {
+  it("quotes the edited text for a removal and offers no shorter wording for an edited line", () => {
+    const rephWithAlternatives: PlannedOp = { ...reph, alternatives: ["Short.", "Shorter."] };
+    const options = pageFitOptions({
+      operations: [rephWithAlternatives, rem],
+      layout,
+      wordings: {},
+      changedOpId: "reph",
+      pages: 2,
+      edits: { b6: "My own long sentence.", b13: "My own removable line." },
+    });
+    expect(options.find((o) => o.id.startsWith("shorter:"))).toBeUndefined();
+    expect(options.find((o) => o.id === "remove:rem")?.quote).toBe("My own removable line.");
+  });
+});

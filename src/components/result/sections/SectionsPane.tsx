@@ -92,11 +92,22 @@ export function SectionsPane({
     const before = previousCurrent.current;
     previousCurrent.current = currentId;
     if (before === undefined) return;
-    // The last decision made: say so where the cards were.
-    if (before !== null && currentId === null) focusNext(null);
-    // A card came back with none open before it (an Undo from "All decided").
-    if (before === null && currentId !== null) focusNext(currentId);
+    /* Every card is its own instance here, so a card answered mid-list
+       unmounts and would drop focus to <body>: the next card (or the
+       all-decided line) takes it. */
+    if (before !== currentId) focusNext(currentId);
   }, [currentId]);
+
+  /* A moved section's button moves with it in the DOM, which drops focus:
+     put it back on the same control, or its sibling when that one is now at an end. */
+  const move = (key: string, idx: number, to: number, dir: "up" | "down") => {
+    onMoveSection(idx, to, order);
+    requestAnimationFrame(() => {
+      const same = globalThis.document.getElementById(`${key}-${dir}`) as HTMLButtonElement | null;
+      const other = globalThis.document.getElementById(`${key}-${dir === "up" ? "down" : "up"}`) as HTMLButtonElement | null;
+      (same && !same.disabled ? same : other)?.focus();
+    });
+  };
 
   useEffect(() => {
     const answered = answeredPageFit.current;
@@ -132,6 +143,8 @@ export function SectionsPane({
           <DecisionCard
             item={ri}
             compact
+            focusKey={item.key}
+            focused={focusKey !== null && focusKey === item.key}
             whyOpen={state.whyOpen && state.currentOpId === ri.op.id}
             onDecide={onDecide}
             onNextWording={onNextWording}
@@ -243,8 +256,8 @@ export function SectionsPane({
               movable={idx >= 0}
               canMoveUp={targets.up !== null}
               canMoveDown={targets.down !== null}
-              onMoveUp={() => targets.up !== null && onMoveSection(idx, targets.up, order)}
-              onMoveDown={() => targets.down !== null && onMoveSection(idx, targets.down, order)}
+              onMoveUp={() => targets.up !== null && move(key, idx, targets.up, "up")}
+              onMoveDown={() => targets.down !== null && move(key, idx, targets.down, "down")}
               disabled={disabled}
             >
               {s.lead.length > 0 && <ul className="m-0 flex list-none flex-col gap-0.5 p-0">{s.lead.map((it, j) => draftOrLine(it, j, it.bullet ? "Bullet" : "Line"))}</ul>}

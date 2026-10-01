@@ -141,4 +141,22 @@ describe("SectionsPane", () => {
     });
     expect(html).toContain("All decided. Covers 6 of 9 · 1 page.");
   });
+
+  it("never lets an added line be edited in place, and gives a draft card its focus key", () => {
+    const added: TemplateDocument = { ...doc, sections: [{ ...doc.sections[0], entries: [{ ...doc.sections[0].entries[0], items: [
+      { text: "Worked with Kafka.", bullet: true, state: "added", opId: "d1", blockId: "b1", key: "line-d1" },
+      { text: "Needs OK.", bullet: true, state: "pending", opId: "d2", blockId: "b1", key: "line-d2" },
+    ] }] }, doc.sections[1]] };
+    const html = render({
+      document: added,
+      list: { ...list, toDecide: [item("d2", "pending")], current: item("d2", "pending"), decided: [item("d1", "added")] },
+      items: new Map([["d1", item("d1", "added")], ["d2", item("d2", "pending")]]),
+    });
+    expect(html).toMatch(/aria-label="Bullet: Worked with Kafka\.\. Edit"[^>]*disabled/);
+    expect(html).toMatch(/<section[^>]*data-focus-key="line-d2"/);
+  });
+
+  it("has no decorative grip", () => {
+    expect(render()).not.toContain("lucide-grip-vertical");
+  });
 });

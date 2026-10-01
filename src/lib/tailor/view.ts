@@ -185,7 +185,8 @@ export function buildLines(
     const line = base(block);
     const edit = edits[block.id];
     if (removal) {
-      lines.push({ ...line, opId: removal.id, state: "removed" });
+      // Struck through in the user's current words, so "Keep it" brings back what they typed.
+      lines.push({ ...line, text: edit ?? line.text, opId: removal.id, state: "removed" });
     } else if (edit !== undefined) {
       // Their own words, over whatever was on the line: the rewording when
       // one is applied (so undoing the edit returns to it), else the original.

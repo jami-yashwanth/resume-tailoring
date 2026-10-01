@@ -73,7 +73,10 @@ export function LineRow({
         label={label}
         focusKey={focusKey}
         focused={focused}
-        disabled={disabled || removed || !slot}
+        // An added or pending line is the draft, keyed to the line it follows:
+        // retyping it here would rewrite that neighbour. Drafts change through
+        // "Try another wording".
+        disabled={disabled || removed || !slot || state === "added" || state === "pending"}
         highlighted={highlighted}
         className={removed ? "line-through" : ""}
       onCommit={onEdit}

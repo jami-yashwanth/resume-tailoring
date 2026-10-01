@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { TemplateDocument, TemplateSection } from "./document";
-import { commitEdit, countsLabel, findOpItem, findOpSection, moveTargets, sectionCounts, sectionKey, sectionName } from "./sections";
+import { commitEdit, countsLabel, findBlockSection, findOpItem, findOpSection, moveTargets, sectionCounts, sectionKey, sectionName } from "./sections";
 
 const section = (over: Partial<TemplateSection> = {}): TemplateSection => ({
   heading: null, kind: "experience", lead: [], entries: [], skills: [], items: [], ...over,
@@ -85,5 +85,17 @@ describe("sectionKey", () => {
     expect(sectionKey(section({ outlineIndex: 2 }), 5)).toBe("s-2");
     expect(sectionKey(section({ outlineIndex: -1 }), 0)).toBe("s--1");
     expect(sectionKey(section({}), 3)).toBe("s-p3");
+  });
+});
+
+describe("findBlockSection", () => {
+  it("locates the section whose lines include a block", () => {
+    const doc: TemplateDocument = { name: null, contact: [], sections: [
+      section({ heading: "A", items: [{ text: "x", bullet: false, blockId: "b3" }] }),
+      section({ heading: "B", entries: [{ org: null, title: null, dates: null, place: null, fields: { org: "b9" }, items: [{ text: "y", bullet: true, blockId: "b5" }] }] }),
+    ] };
+    expect(findBlockSection(doc, "b5")).toBe(1);
+    expect(findBlockSection(doc, "b9")).toBe(1);
+    expect(findBlockSection(doc, "nope")).toBeNull();
   });
 });
